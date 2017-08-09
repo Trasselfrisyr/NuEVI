@@ -73,6 +73,7 @@ int pbMax=2400;
 
 int vibThr=1800;
 int oldvibRead=0;
+byte dirUp=0;        // direction of first vibrato wave
 
 int fingeredNote;    // note calculated from fingering (switches) and octave joystick position
 byte activeNote;     // note playing
@@ -230,9 +231,17 @@ void pitch_bend(){
   int pbDn = touchRead(22);
   int vibRead = touchRead(1);
   if ((vibRead > vibThr)&&(vibRead > (oldvibRead+7))){
-    pitchBend=oldpb*0.7+0.3*(8192 + VIB_depth);
+    if (dirUp){
+      pitchBend=oldpb*0.7+0.3*(8192 + VIB_depth);
+    } else {
+      pitchBend=oldpb*0.7+0.3*(8191 - VIB_depth);
+    }
   } else if ((vibRead > vibThr)&&(vibRead < (oldvibRead-7))){
-    pitchBend=oldpb*0.7+0.3*(8191 - VIB_depth);
+    if (dirUp){
+      pitchBend=oldpb*0.7+0.3*(8191 - VIB_depth);
+    } else {
+      pitchBend=oldpb*0.7+0.3*(8192 + VIB_depth);
+    }
   } else {
     pitchBend = oldpb*0.7+8192*0.3; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
