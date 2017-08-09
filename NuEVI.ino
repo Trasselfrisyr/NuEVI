@@ -234,7 +234,7 @@ void pitch_bend(){
   } else if ((vibRead > vibThr)&&(vibRead < (oldvibRead-7))){
     pitchBend=oldpb*0.7+0.3*(8191 - VIB_depth);
   } else {
-    pitchBend = oldpb*0.4+8192*0.6; // released, so smooth your way back to zero
+    pitchBend = oldpb*0.7+8192*0.3; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   }
   oldvibRead = vibRead;
