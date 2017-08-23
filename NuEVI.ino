@@ -75,7 +75,7 @@ int vibThr=1800;
 int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
 
-int fingeredNote;    // note calculated from fingering (switches) and octave joystick position
+int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
 byte activeNote;     // note playing
 byte startNote=36;   // set startNote to C (change this value in steps of 12 to start in other octaves)
 
@@ -121,8 +121,10 @@ void loop() {
         velocity = map(constrain(max(pressureSensor,initial_breath_value),ON_Thr,breath_max),ON_Thr,breath_max,1,127);
         breathLevel=constrain(max(pressureSensor,initial_breath_value),ON_Thr,breath_max);
         breath(); // send breath data
-        usbMIDI.sendNoteOn(fingeredNote, velocity, MIDIchannel); // send Note On message for new note 
-        dinMIDIsendNoteOn(fingeredNote, velocity, MIDIchannel - 1);
+        if ((fingeredNote >= 0) and (fingeredNote <= 127)){ // don't send midi out of range
+          usbMIDI.sendNoteOn(fingeredNote, velocity, MIDIchannel); // send Note On message for new note 
+          dinMIDIsendNoteOn(fingeredNote, velocity, MIDIchannel - 1);
+        }
         activeNote=fingeredNote;
         state = NOTE_ON;
       }
@@ -134,8 +136,10 @@ void loop() {
   } else if (state == NOTE_ON) {
     if (pressureSensor < ON_Thr) {
       // Value has fallen below threshold - turn the note off
-      usbMIDI.sendNoteOff(activeNote, velocity, MIDIchannel); //  send Note Off message 
-      dinMIDIsendNoteOff(activeNote, velocity, MIDIchannel - 1);
+      if ((activeNote >= 0) and (activeNote <= 127)){ // don't send midi out of range
+        usbMIDI.sendNoteOff(activeNote, velocity, MIDIchannel); //  send Note Off message 
+        dinMIDIsendNoteOff(activeNote, velocity, MIDIchannel - 1);
+      }
       breathLevel=0;
       state = NOTE_OFF;
     } else {
@@ -153,10 +157,14 @@ void loop() {
           // Send a note off for the current note and a note on for
           // the new note.      
           velocity = map(constrain(pressureSensor,ON_Thr,breath_max),ON_Thr,breath_max,7,127); // set new velocity value based on current pressure sensor level
-          usbMIDI.sendNoteOn(fingeredNote, velocity, MIDIchannel); // send Note On message for new note      
-          dinMIDIsendNoteOn(fingeredNote, velocity, MIDIchannel - 1);   
-          usbMIDI.sendNoteOff(activeNote, 0, MIDIchannel); // send Note Off message for previous note (legato)
-          dinMIDIsendNoteOff(activeNote, 0, MIDIchannel - 1);
+          if ((fingeredNote >= 0) and (fingeredNote <= 127)){ // don't send midi out of range
+            usbMIDI.sendNoteOn(fingeredNote, velocity, MIDIchannel); // send Note On message for new note      
+            dinMIDIsendNoteOn(fingeredNote, velocity, MIDIchannel - 1);   
+          }
+          if ((activeNote >= 0) and (activeNote <= 127)){ // don't send midi out of range
+            usbMIDI.sendNoteOff(activeNote, 0, MIDIchannel); // send Note Off message for previous note (legato)
+            dinMIDIsendNoteOff(activeNote, 0, MIDIchannel - 1);
+          }
           activeNote=fingeredNote;
         }
       }
@@ -317,31 +325,33 @@ void readSwitches(){
   byte K6;   // Trill key 2 (pitch change +1)
   byte K7;   // Trill key 3 (pitch change +4)
 
-  byte octave = 0;
+  byte octaveR = 0;
 
   // Read touch pads (MPR121) and put value in variables
   uint16_t touchValue = touchSensor.touched();
   
   // Octave rollers
-  if      ((touchValue >> 5) & 0x01) octave = 6;
-  else if ((touchValue >> 4) & 0x01) octave = 5;
-  else if ((touchValue >> 3) & 0x01) octave = 4;
-  else if ((touchValue >> 2) & 0x01) octave = 3;
-  else if ((touchValue >> 1) & 0x01) octave = 2;
-  else if ((touchValue >> 0) & 0x01) octave = 1;
+  if      (((touchValue >> 2) & 0x01) && ((touchValue >> 4) & 0x01)) octaveR = 6; //R6 = R5 && R3
+  else if ((touchValue >> 4) & 0x01) octaveR = 5;  //R5
+  else if ((touchValue >> 3) & 0x01) octaveR = 4;  //R4
+  else if ((touchValue >> 2) & 0x01) octaveR = 3;  //R3
+  else if ((touchValue >> 1) & 0x01) octaveR = 2;  //R2
+  else if ((touchValue >> 0) & 0x01) octaveR = 1;  //R1
   
   // Valves and trill keys
+  K4=((touchValue >> 5) & 0x01);
   K1=((touchValue >> 6) & 0x01);
   K2=((touchValue >> 7) & 0x01);
   K3=((touchValue >> 8) & 0x01);
   K5=((touchValue >> 9) & 0x01);
   K6=((touchValue >> 10) & 0x01);
   K7=((touchValue >> 11) & 0x01); 
+  
   // Read touch pads (Teensy built in) and put value in variables
-  K4=touchRead(15) > touch_Thr;
+  //K4=touchRead(15) > touch_Thr;
 
   // Calculate midi note number from pressed keys  
-  fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octave*12;
+  fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12;
 }
 
 
