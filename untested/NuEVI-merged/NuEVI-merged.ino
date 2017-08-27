@@ -8,7 +8,7 @@
 /*
 NAME:                 NuEVI
 WRITTEN BY:           JOHAN BERGLUND
-DATE:                 2017-08-08
+DATE:                 2017-08-26
 FILE SAVED AS:        NuEVI.ino
 FOR:                  PJRC Teensy LC or 3.2 and a MPR121 capactive touch sensor board.
                       Uses an SSD1306 controlled OLED dispaly communicating over I2C.
@@ -313,7 +313,7 @@ int oldextrac=0;
 int pitchBend=0;
 int oldpb=8192;
 
-int vibDepth[8] = {0,31,63,127,254,1023,2047,4095};
+int vibDepth[8] = {0,31,63,127,254,1023,2047,4095}; // these values need too be looked over
 
 int vibThr=1800;
 int oldvibRead=0;
@@ -961,7 +961,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subTranspose = 0;
-            writeSetting(TRANSP_ADDR,transpose);
+            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
             break;
           case 4:
             // up
@@ -980,7 +980,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subTranspose = 0;
-            writeSetting(TRANSP_ADDR,transpose);
+            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
             break;
         }
       }  
@@ -1011,7 +1011,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subOctave = 0;
-            writeSetting(OCTAVE_ADDR,octave);
+            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
             break;
           case 4:
             // up
@@ -1030,7 +1030,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subOctave = 0;
-            writeSetting(OCTAVE_ADDR,octave);
+            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
             break;
         }
       } 
@@ -1061,7 +1061,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subMIDI = 0;
-            writeSetting(MIDI_ADDR,MIDIchannel);
+            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
             break;
           case 4:
             // up
@@ -1080,7 +1080,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subMIDI = 0;
-            writeSetting(MIDI_ADDR,MIDIchannel);
+            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
             break;
         }
       } 
@@ -1146,8 +1146,8 @@ void menu() {
           // down
           state = PORTAM_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(BREATH_THR_ADDR,breathThrVal);
-          writeSetting(breathMaxVal_ADDR,breathMaxVal);
+          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
+          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
           break;
         case 2:
           // enter
@@ -1157,15 +1157,15 @@ void menu() {
           // up
           state = EXTRAC_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(BREATH_THR_ADDR,breathThrVal);
-          writeSetting(breathMaxVal_ADDR,breathMaxVal);
+          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
+          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
           break;
         case 8:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          writeSetting(BREATH_THR_ADDR,breathThrVal);
-          writeSetting(breathMaxVal_ADDR,breathMaxVal);
+          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
+          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
           break;
       }
     }
@@ -1283,8 +1283,8 @@ void menu() {
           // down
           state = PITCHB_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(PORTAM_THR_ADDR,portamThrVal);  
-          writeSetting(PORTAM_MAX_ADDR,portamMaxVal); 
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
+          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal); 
           break;
         case 2:
           // enter
@@ -1294,15 +1294,15 @@ void menu() {
           // up
           state = BREATH_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(PORTAM_THR_ADDR,portamThrVal);  
-          writeSetting(PORTAM_MAX_ADDR,portamMaxVal); 
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
+          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
         case 8:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          writeSetting(PORTAM_THR_ADDR,portamThrVal);  
-          writeSetting(PORTAM_MAX_ADDR,portamMaxVal); 
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
+          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
       }
     }
@@ -1420,8 +1420,8 @@ void menu() {
           // down
           state = EXTRAC_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
         case 2:
           // enter
@@ -1431,15 +1431,15 @@ void menu() {
           // up
           state = PORTAM_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
         case 8:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
       }
     }
@@ -1558,8 +1558,8 @@ void menu() {
           // down
           state = BREATH_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(EXTRAC_THR_ADDR,pitchbThrVal);
-          writeSetting(EXTRAC_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
         case 2:
           // enter
@@ -1569,15 +1569,15 @@ void menu() {
           // up
           state = PITCHB_ADJ_IDL;
           stateFirstRun = 1;
-          writeSetting(EXTRAC_THR_ADDR,pitchbThrVal);
-          writeSetting(EXTRAC_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
         case 8:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          writeSetting(EXTRAC_THR_ADDR,pitchbThrVal);
-          writeSetting(EXTRAC_MAX_ADDR,pitchbMaxVal);
+          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
       }
     }
@@ -1719,7 +1719,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathCC = 0;
-            writeSetting(BREATH_CC_ADDR,breathCC);
+            if (readSetting(BREATH_CC_ADDR) != breathCC) writeSetting(BREATH_CC_ADDR,breathCC);
             break;
           case 4:
             // up
@@ -1745,7 +1745,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathCC = 0;
-            writeSetting(BREATH_CC_ADDR,breathCC);
+            if (readSetting(BREATH_CC_ADDR) != breathCC) writeSetting(BREATH_CC_ADDR,breathCC);
             break;
         }
       }  
@@ -1774,7 +1774,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathAT = 0;
-            writeSetting(MIDI_ADDR,MIDIchannel);
+            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
             break;
           case 4:
             // up
@@ -1791,7 +1791,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathAT = 0;
-            writeSetting(MIDI_ADDR,MIDIchannel);
+            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
             break;
         }
       } 
@@ -1822,7 +1822,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelocity = 0;
-            writeSetting(VELOCITY_ADDR,velocity);
+            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
             break;
           case 4:
             // up
@@ -1841,7 +1841,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelocity = 0;
-            writeSetting(VELOCITY_ADDR,velocity);
+            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
             break;
         }
       }   
@@ -1923,7 +1923,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPort = 0;
-            writeSetting(PORTAM_ADDR,portamento);
+            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
             break;
           case 4:
             // up
@@ -1942,7 +1942,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPort = 0;
-            writeSetting(PORTAM_ADDR,portamento);
+            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
             break;
         }
       }  
@@ -1973,7 +1973,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPB = 0;
-            writeSetting(PB_ADDR,PBdepth);
+            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
             break;
           case 4:
             // up
@@ -1992,7 +1992,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPB = 0;
-            writeSetting(PB_ADDR,PBdepth);
+            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
             break;
         }
       } 
@@ -2023,7 +2023,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subExtra = 0;
-            writeSetting(EXTRA_ADDR,extraCT);
+            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
             break;
           case 4:
             // up
@@ -2042,7 +2042,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subExtra = 0;
-            writeSetting(EXTRA_ADDR,extraCT);
+            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
             break;
         }
       }
@@ -2073,7 +2073,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibrato = 0;
-            writeSetting(VIBRATO_ADDR,vibrato);
+            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
             break;
           case 4:
             // up
@@ -2092,7 +2092,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibrato = 0;
-            writeSetting(VIBRATO_ADDR,vibrato);
+            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
             break;
         }
       } 
@@ -2123,7 +2123,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subDeglitch = 0;
-            writeSetting(DEGLITCH_ADDR,deglitch);
+            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
             break;
           case 4:
             // up
@@ -2142,7 +2142,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subDeglitch = 0;
-            writeSetting(DEGLITCH_ADDR,deglitch);
+            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
             break;
         }
       }    
