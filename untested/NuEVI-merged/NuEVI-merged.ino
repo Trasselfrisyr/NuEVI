@@ -21,7 +21,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
-#define touch_Thr 1800  // sensitivity for Teensy touch sensors
+#define touch_Thr 800  // sensitivity for Teensy touch sensors
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
 
@@ -70,7 +70,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 // EEPROM addresses for settings
 #define VERSION_ADDR 0
 #define BREATH_THR_ADDR 2
-#define breathMaxVal_ADDR 4
+#define BREATH_MAX_ADDR 4
 #define PORTAM_THR_ADDR 6
 #define PORTAM_MAX_ADDR 8
 #define PITCHB_THR_ADDR 10
@@ -91,9 +91,9 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define OCTAVE_ADDR 40
 
 //"factory" values for settings
-#define VERSION 12
+#define VERSION 13
 #define BREATH_THR_FACTORY 350
-#define breathMaxVal_FACTORY 1000
+#define BREATH_MAX_FACTORY 1000
 #define PORTAM_THR_FACTORY 1730
 #define PORTAM_MAX_FACTORY 3300
 #define PITCHB_THR_FACTORY 1200
@@ -261,6 +261,7 @@ byte subVibrato = 0;
 byte subDeglitch = 0;
 
 byte ccList[4] = {0,2,7,11};  // OFF, Breath, Volume, Expression
+int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
 byte cursorNow;
 
@@ -275,6 +276,8 @@ unsigned long buttonRepeatTime = 0;
 unsigned long buttonPressedTime = 0;
 unsigned long buttonRepeatInterval = 50;
 unsigned long buttonRepeatDelay = 400;
+unsigned long pixelUpdateTime = 0;
+unsigned long pixelUpdateInterval = 100;
 unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
 unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
 unsigned long patchViewTime = 0;
@@ -284,7 +287,6 @@ unsigned long menuTimeUp = 60000;           // menu shuts off after one minute o
 unsigned long lastDeglitchTime = 0;         // The last time the fingering was changed
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
-
 
 int lastFingering = 0;             // Keep the last fingering value for debouncing
 
@@ -300,18 +302,25 @@ int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
 
 int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
+int lastPressure;
 byte velocitySend;   // remapped midi velocity from breath sensor (or set to static value if selected)
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 int oldport=0;
+int lastBite=0;
 
 int exSensor=0;
 byte extracIsOn=0;
 int oldextrac=0;
+int lastEx=0;
 
 int pitchBend=0;
 int oldpb=8192;
+int pbUp=0;
+int pbDn=0;
+int lastPbUp=0;
+int lastPbDn=0;
 
 int vibDepth[8] = {0,31,63,127,254,1023,2047,4095}; // these values need too be looked over
 
@@ -336,7 +345,7 @@ void setup() {
   if (readSetting(VERSION_ADDR) != VERSION){
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
-    writeSetting(breathMaxVal_ADDR,breathMaxVal_FACTORY);
+    writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
     writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
     writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
     writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
@@ -358,7 +367,7 @@ void setup() {
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
-  breathMaxVal = readSetting(breathMaxVal_ADDR);
+  breathMaxVal = readSetting(BREATH_MAX_ADDR);
   portamThrVal = readSetting(PORTAM_THR_ADDR);
   portamMaxVal = readSetting(PORTAM_MAX_ADDR);
   pitchbThrVal = readSetting(PITCHB_THR_ADDR);
@@ -400,6 +409,7 @@ void setup() {
   display.drawBitmap(0,0,nuevi_logo_bmp,128,64,1);
   display.display();
   delay(5000);
+  state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
   if (!touchSensor.begin(0x5A)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
@@ -444,6 +454,7 @@ void loop() {
         } else velocitySend = velocity;
         breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);
         breath(); // send breath data
+        fingeredNote=noteValueCheck(fingeredNote);
         if ((fingeredNote >= 0) and (fingeredNote <= 127)){ // don't send midi out of range
           usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
           dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
@@ -459,6 +470,7 @@ void loop() {
   } else if (mainState == NOTE_ON) {
     if (pressureSensor < breathThrVal) {
       // Value has fallen below threshold - turn the note off
+      activeNote=noteValueCheck(activeNote);
       if ((activeNote >= 0) and (activeNote <= 127)){ // don't send midi out of range
         usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
         dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
@@ -475,15 +487,17 @@ void loop() {
       if ((millis() - lastDeglitchTime) > deglitch) {
       // whatever the reading is at, it's been there for longer
       // than the debounce delay, so take it as the actual current state
-        if (fingeredNote != activeNote) {
+        if (noteValueCheck(fingeredNote) != activeNote) {
           // Player has moved to a new fingering while still blowing.
           // Send a note off for the current note and a note on for
           // the new note.      
           velocity = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
+          fingeredNote=noteValueCheck(fingeredNote);
           if ((fingeredNote >= 0) and (fingeredNote <= 127)){ // don't send midi out of range
             usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note      
             dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);   
           }
+          activeNote=noteValueCheck(activeNote);
           if ((activeNote >= 0) and (activeNote <= 127)){ // don't send midi out of range
             usbMIDI.sendNoteOff(activeNote, 0, activeMIDIchannel); // send Note Off message for previous note (legato)
             dinMIDIsendNoteOff(activeNote, 0, activeMIDIchannel - 1);
@@ -495,15 +509,35 @@ void loop() {
   }
   // Is it time to send more CC data?
   if (millis() - ccSendTime > CC_INTERVAL) {
+    // Read touch pads (Teensy built in) and put value in variables 
+    specialKey=(touchRead(0) > touch_Thr);        //S2
+    halfPitchBendKey=(touchRead(1) > touch_Thr);  //S1
     // deal with Breath, Pitch Bend and Modulation
     breath();
     pitch_bend();
     portamento_();
+    extraController();
     ccSendTime = millis();
   }
+  if (millis() - pixelUpdateTime > pixelUpdateInterval){
+    drawSensorPixels();
+    pixelUpdateTime = millis();
+  }
   lastFingering=fingeredNote; 
+  //do menu stuff
+  menu();
 }
 //_______________________________________________________________________________________________ FUNCTIONS
+
+// MIDI note value check with out of range octave repeat
+int noteValueCheck(int note){
+  if (note > 127){
+    note = 115+(note-127)%12;
+  } else if (note < 0) {
+    note = 12-abs(note)%12;
+  }
+  return note;
+}
 
 //  Send a three byte din midi message  
 void midiSend3B(byte midistatus, byte data1, byte data2) {
@@ -569,12 +603,12 @@ void dinMIDIsendProgramChange(byte value, byte ch) {
 void breath(){
   int breathCCval;
   breathLevel = breathLevel*0.8+pressureSensor*0.2; // smoothing of breathLevel value
-  breathCC = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
-  if (breathCC != oldbreath){ // only send midi data if breath has changed from previous value
-    if (breathCC){
+  breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
+  if (breathCCval != oldbreath){ // only send midi data if breath has changed from previous value
+    if (breathCCval){
       // send midi cc
-      usbMIDI.sendControlChange(breathCC, breathCCval, activeMIDIchannel);
-      dinMIDIsendControlChange(breathCC, breathCCval, activeMIDIchannel - 1);
+      usbMIDI.sendControlChange(ccList[breathCC], breathCCval, activeMIDIchannel);
+      dinMIDIsendControlChange(ccList[breathCC], breathCCval, activeMIDIchannel - 1);
     }
     if (breathAT){
       // send aftertouch
@@ -589,9 +623,9 @@ void breath(){
 
 void pitch_bend(){
   int calculatedPBdepth;
-  int pbUp = touchRead(23);
-  int pbDn = touchRead(22);
-  int vibRead = touchRead(1);
+  pbUp = touchRead(23);
+  pbDn = touchRead(22);
+  int vibRead = touchRead(15);
   if ((vibRead > vibThr)&&(vibRead > (oldvibRead+7))){
     if (dirUp){
       pitchBend=oldpb*0.7+0.3*(8192 + vibDepth[vibrato]);
@@ -605,20 +639,20 @@ void pitch_bend(){
       pitchBend=oldpb*0.7+0.3*(8192 + vibDepth[vibrato]);
     }
   } else {
-    pitchBend = oldpb*0.7+8192*0.3; // released, so smooth your way back to zero
-    if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
+   // pitchBend = oldpb*0.7+8192*0.3; // released, so smooth your way back to zero
+   // if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   }
   oldvibRead = vibRead;
   if (PBdepth){
-    calculatedPBdepth = (1/PBdepth*8192);
-    if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth/2;
+    calculatedPBdepth = pbDepthList[PBdepth];
+    if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
   }
   if ((pbUp > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.8+0.2*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 + calculatedPBdepth));
+    pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
   } else if ((pbDn > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.8+0.2*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8191 - calculatedPBdepth));
+    pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
   } else if (oldvibRead < vibThr){
-    pitchBend = pitchBend*0.8+8192*0.2; // released, so smooth your way back to zero
+    pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   }
   pitchBend=constrain(pitchBend, 0, 16383);
@@ -632,13 +666,13 @@ void pitch_bend(){
 //***********************************************************
 
 void extraController(){
- exSensor=exSensor*0.6+0.4*touchRead(15);     // get sensor data, do some smoothing
- if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send portamento
+ exSensor=exSensor*0.6+0.4*touchRead(16);     // get sensor data, do some smoothing
+ if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send data
    if (!extracIsOn) {
      extracIsOn=1;
-     if (extraCT == 2){ //Sustan ON
-      usbMIDI.sendControlChange(65,127, activeMIDIchannel);
-      dinMIDIsendControlChange(65,127, activeMIDIchannel - 1); 
+     if (extraCT == 2){ //Sustain ON
+      usbMIDI.sendControlChange(64,127, activeMIDIchannel);
+      dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
      } 
     }
     if (extraCT == 1){ //Send modulation
@@ -658,15 +692,15 @@ void extraController(){
     oldextrac = 0;
    } else if (extraCT == 2){ //SUS
     //send sustain off
-    usbMIDI.sendControlChange(65,0, activeMIDIchannel);
-    dinMIDIsendControlChange(65,0, activeMIDIchannel - 1); 
+    usbMIDI.sendControlChange(64,0, activeMIDIchannel);
+    dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
    } 
   }
 }
 
 //***********************************************************
 void portamento_(){
- biteSensor=biteSensor*0.6+0.4*touchRead(0);     // get sensor data, do some smoothing
+ biteSensor=biteSensor*0.6+0.4*touchRead(17);     // get sensor data, do some smoothing
  if (portamento && (biteSensor >= portamThrVal)) {    // if we are enabled and over the threshold, send portamento
    if (!portIsOn) {
      portOn();
@@ -691,7 +725,7 @@ void portOn(){
 
 void port(){
   int portCC;
-  portCC = map(constrain(biteSensor,portamThrVal,portamMaxVal),portamThrVal,portamMaxVal,1,127);
+  portCC = map(constrain(biteSensor,portamThrVal,portamMaxVal),portamThrVal,portamMaxVal,0,127);
   if (portCC!=oldport){
     usbMIDI.sendControlChange(CCN_Port, portCC, activeMIDIchannel);
     dinMIDIsendControlChange(CCN_Port, portCC, activeMIDIchannel - 1);
@@ -731,26 +765,22 @@ void readSwitches(){
   uint16_t touchValue = touchSensor.touched();
   
   // Octave rollers
-  if      (((touchValue >> 2) & 0x01) && ((touchValue >> 4) & 0x01)) octaveR = 6; //R6 = R5 && R3
-  else if ((touchValue >> 4) & 0x01) octaveR = 5;  //R5
-  else if ((touchValue >> 3) & 0x01) octaveR = 4;  //R4
-  else if ((touchValue >> 2) & 0x01) octaveR = 3;  //R3
-  else if ((touchValue >> 1) & 0x01) octaveR = 2;  //R2
-  else if ((touchValue >> 0) & 0x01) octaveR = 1;  //R1
+  if      (((touchValue >> 6) & 0x01) && ((touchValue >> 8) & 0x01)) octaveR = 6; //R6 = R5 && R3
+  else if ((touchValue >> 6) & 0x01) octaveR = 5;  //R5
+  else if ((touchValue >> 9) & 0x01) octaveR = 4;  //R4
+  else if ((touchValue >> 8) & 0x01) octaveR = 3;  //R3
+  else if ((touchValue >> 11) & 0x01) octaveR = 2;  //R2
+  else if ((touchValue >> 10) & 0x01) octaveR = 1;  //R1
   
   // Valves and trill keys
-  K4=((touchValue >> 5) & 0x01);
-  K1=((touchValue >> 6) & 0x01);
-  K2=((touchValue >> 7) & 0x01);
-  K3=((touchValue >> 8) & 0x01);
-  K5=((touchValue >> 9) & 0x01);
-  K6=((touchValue >> 10) & 0x01);
-  K7=((touchValue >> 11) & 0x01); 
+  K4=((touchValue >> 7) & 0x01);
+  K1=((touchValue >> 4) & 0x01);
+  K2=((touchValue >> 5) & 0x01);
+  K3=((touchValue >> 2) & 0x01);
+  K5=((touchValue >> 3) & 0x01);
+  K6=((touchValue >> 0) & 0x01);
+  K7=((touchValue >> 1) & 0x01); 
   
-  // Read touch pads (Teensy built in) and put value in variables 
-  //K4=touchRead(15) > touch_Thr;        <<< this has been changed so K4 is now pin 5 on MPR121 (prev R6)
-  specialKey=touchRead(0) > touch_Thr;        //S2
-  halfPitchBendKey=touchRead(1) > touch_Thr;  //S1
 
   // Calculate midi note number from pressed keys  
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12;
@@ -2829,6 +2859,63 @@ void drawSetupCtMenuScreen(){
   display.println(""); 
 
   display.display();
+}
+
+void drawSensorPixels(){
+  int pos,oldpos;
+  int redraw=0;
+  if ((state == BREATH_ADJ_IDL) || (state == BREATH_ADJ_THR) || (state == BREATH_ADJ_MAX)){
+    pos = map(constrain(pressureSensor, breathLoLimit, breathHiLimit), breathLoLimit, breathHiLimit, 28, 118);
+    oldpos = map(constrain(lastPressure, breathLoLimit, breathHiLimit), breathLoLimit, breathHiLimit, 28, 118);
+    if (pos!=oldpos){
+      display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
+    }
+    lastPressure=pressureSensor;
+  }
+    if ((state == PORTAM_ADJ_IDL) || (state == PORTAM_ADJ_THR) || (state == PORTAM_ADJ_MAX)){
+    pos = map(constrain(biteSensor,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
+    oldpos = map(constrain(lastBite,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
+    if (pos!=oldpos){
+      display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
+    }
+    lastBite=biteSensor;
+  }
+  if ((state == PITCHB_ADJ_IDL) || (state == PITCHB_ADJ_THR) || (state == PITCHB_ADJ_MAX)){
+    pos = map(constrain(pbUp, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
+    oldpos = map(constrain(lastPbUp, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
+    if (pos!=oldpos){
+      display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      redraw=1;
+    }
+    pos = map(constrain(pbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
+    oldpos = map(constrain(lastPbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
+    if (pos!=oldpos){
+      display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      redraw=1;
+    }
+    if (redraw){
+      display.display();
+      redraw=0;
+    }
+    lastPbUp=pbUp;
+    lastPbDn=pbDn;
+  }
+  if ((state == EXTRAC_ADJ_IDL) || (state == EXTRAC_ADJ_THR) || (state == EXTRAC_ADJ_MAX)){
+    pos = map(constrain(exSensor, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
+    oldpos = map(constrain(lastEx, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
+    if (pos!=oldpos){
+      display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
+    }
+    lastEx=exSensor;
+  }
 }
 
 void writeSetting(byte address, unsigned short value){
