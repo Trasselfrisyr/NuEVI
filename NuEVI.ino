@@ -108,7 +108,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
 #define EXTRA_FACTORY 1     // 0 - OFF, 1 - ON->Modulation, 2 - Sustain 
-#define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 7 depth
+#define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 6 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
@@ -210,7 +210,7 @@ unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
 unsigned short PBdepth;   // OFF:1-12 divider
 unsigned short extraCT;   // OFF:MOD
-unsigned short vibrato;   // OFF:1-7
+unsigned short vibrato;   // OFF:1-6
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
 unsigned short octave;    // 
@@ -322,9 +322,10 @@ int pbDn=0;
 int lastPbUp=0;
 int lastPbDn=0;
 
-int vibDepth[7] = {0,127,254,511,1023,2047,4095}; // these values need too be looked over
+int vibDepth[7] = {0,127,254,511,1023,2047,4095}; // max pitch bend values (+/-) for the vibrato settings 
 
-int vibThr=1900;
+int vibThr=1900;     // this gets auto calibrated in setup
+byte vibDelta=7;     // sensitivity for vibrato movement detection, lower is more sensitive
 int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
 
@@ -433,7 +434,7 @@ void setup() {
 //_______________________________________________________________________________________________ MAIN LOOP
 
 void loop() {
-  pressureSensor = analogRead(A0); // Get the pressure sensor reading from analog pin A0
+  pressureSensor = analogRead(A0); // Get the pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
 
   if (mainState == NOTE_OFF) {
     if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
@@ -521,8 +522,8 @@ void loop() {
   // Is it time to send more CC data?
   if (millis() - ccSendTime > CC_INTERVAL) {
     // Read touch pads (Teensy built in) and put value in variables 
-    specialKey=(touchRead(0) > touch_Thr);        //S2
-    halfPitchBendKey=(touchRead(1) > touch_Thr);  //S1
+    specialKey=(touchRead(0) > touch_Thr);        //S2 - not yet used
+    halfPitchBendKey=(touchRead(1) > touch_Thr);  //S1 - hold for 1/2 pitchbend value
     // deal with Breath, Pitch Bend and Modulation
     breath();
     pitch_bend();
@@ -531,6 +532,8 @@ void loop() {
     ccSendTime = millis();
   }
   if (millis() - pixelUpdateTime > pixelUpdateInterval){
+    // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
+    // this is one of the big reasons the display is for setup use only
     drawSensorPixels();
     pixelUpdateTime = millis();
   }
@@ -633,12 +636,16 @@ void breath(){
 //**************************************************************
 
 void pitch_bend(){
+  // handle input from pitchbend touchpads and
+  // on-pcb variable capacitor for vibrato.
+  
   int calculatedPBdepth;
   byte vibratoMoved = 0;
-  pbUp = touchRead(23);
-  pbDn = touchRead(22);
-  int vibRead = touchRead(15);  // SENSOR PIN 15
-  if ((vibRead < vibThr)&&(vibRead > (oldvibRead+7))){
+  pbUp = touchRead(23);         // SENSOR PIN 23 - PCB PIN "Pu"
+  pbDn = touchRead(22);         // SENSOR PIN 22 - PCB PIN "Pd"
+  int vibRead = touchRead(15);  // SENSOR PIN 15 - built in var cap
+  
+  if ((vibRead < vibThr)&&(vibRead > (oldvibRead+vibDelta))){
     if (!dirUp){
       pitchBend=oldpb*0.7+0.3*(8192 + vibDepth[vibrato]);
       vibratoMoved = 1;
@@ -646,7 +653,7 @@ void pitch_bend(){
       pitchBend=oldpb*0.7+0.3*(8191 - vibDepth[vibrato]);
       vibratoMoved = 1;
     }
-  } else if ((vibRead < vibThr)&&(vibRead < (oldvibRead-7))){
+  } else if ((vibRead < vibThr)&&(vibRead < (oldvibRead-vibDelta))){
     if (!dirUp ){
       pitchBend=oldpb*0.7+0.3*(8191 - vibDepth[vibrato]);
       vibratoMoved = 1;
@@ -684,7 +691,8 @@ void pitch_bend(){
 //***********************************************************
 
 void extraController(){
- exSensor=exSensor*0.6+0.4*touchRead(16);     // get sensor data, do some smoothing - SENSOR PIN 16
+ // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
+ exSensor=exSensor*0.6+0.4*touchRead(16);     // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
  if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send data
    if (!extracIsOn) {
      extracIsOn=1;
@@ -718,7 +726,8 @@ void extraController(){
 
 //***********************************************************
 void portamento_(){
- biteSensor=biteSensor*0.6+0.4*touchRead(17);     // get sensor data, do some smoothing - SENSOR PIN 17
+ // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
+ biteSensor=biteSensor*0.6+0.4*touchRead(17);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
  if (portamento && (biteSensor >= portamThrVal)) {    // if we are enabled and over the threshold, send portamento
    if (!portIsOn) {
      portOn();
@@ -798,8 +807,17 @@ void readSwitches(){
   K5=((touchValue >> 3) & 0x01);
   K6=((touchValue >> 0) & 0x01);
   K7=((touchValue >> 1) & 0x01); 
-  
 
+/*
+ *    PINOUT ON PCB vs PINS ON MPR121
+ * 
+ *    (R2)  (R4)  (K4)  (K2)  (K5)  (K7)  <-> (11)  (09)  (07)  (05)  (03)  (01)
+ * 
+ *    (R1) (R3/6) (R5)  (K1)  (K3)  (K6)  <-> (10)  (08)  (06)  (04)  (02)  (00)
+ * 
+ */
+
+  
   // Calculate midi note number from pressed keys  
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12;
 }
