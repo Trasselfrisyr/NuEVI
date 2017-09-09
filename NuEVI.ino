@@ -64,6 +64,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VIBRAT_ADJ_IDL 50
 #define VIBRAT_ADJ_THR 51
 #define VIBRAT_ADJ_DPT 52
+#define CTOUCH_ADJ_IDL 60
+#define CTOUCH_ADJ_THR 61
 #define SETUP_BR_MENU 80
 #define SETUP_CT_MENU 90
 
@@ -89,14 +91,15 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define EXTRAC_MAX_ADDR 36
 #define PATCH_ADDR 38
 #define OCTAVE_ADDR 40
+#define CTOUCH_THR_ADDR 42
 
 //"factory" values for settings
-#define VERSION 13
+#define VERSION 15
 #define BREATH_THR_FACTORY 350
 #define BREATH_MAX_FACTORY 1000
 #define PORTAM_THR_FACTORY 1730
 #define PORTAM_MAX_FACTORY 3300
-#define PITCHB_THR_FACTORY 1200
+#define PITCHB_THR_FACTORY 1300
 #define PITCHB_MAX_FACTORY 2400
 #define EXTRAC_THR_FACTORY 1200
 #define EXTRAC_MAX_FACTORY 2400
@@ -112,6 +115,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
+#define CTOUCH_THR_FACTORY 120  // MPR121 touch threshold
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -202,6 +206,7 @@ unsigned short pitchbThrVal;// = 1200;
 unsigned short pitchbMaxVal;// = 2400;
 unsigned short extracThrVal;// = 1200;
 unsigned short extracMaxVal;// = 2400;
+unsigned short ctouchThrVal;// = 120;
 unsigned short transpose;
 unsigned short MIDIchannel;
 unsigned short breathCC;
@@ -215,6 +220,7 @@ unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
 unsigned short octave;    // 
 
+
 int breathLoLimit = 0;
 int breathHiLimit = 1023;
 int portamLoLimit = 1000;
@@ -223,11 +229,14 @@ int pitchbLoLimit = 500;
 int pitchbHiLimit = 4000;
 int extracLoLimit = 500;
 int extracHiLimit = 4000;
+int ctouchLoLimit = 50;
+int ctouchHiLimit = 350;
 
 int breathStep;
 int portamStep;
 int pitchbStep;
 int extracStep;
+int ctouchStep;
 
 int minOffset = 50;
 
@@ -368,6 +377,7 @@ void setup() {
     writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
     writeSetting(PATCH_ADDR,PATCH_FACTORY);
     writeSetting(OCTAVE_ADDR,OCTAVE_FACTORY);
+    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -390,11 +400,13 @@ void setup() {
   extracMaxVal = readSetting(EXTRAC_MAX_ADDR);
   patch        = readSetting(PATCH_ADDR);
   octave       = readSetting(OCTAVE_ADDR);
+  ctouchThrVal = readSetting(CTOUCH_THR_ADDR);
  
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
   pitchbStep = (pitchbHiLimit - pitchbLoLimit)/92;   
   extracStep = (extracHiLimit - extracLoLimit)/92;
+  ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
      
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -430,9 +442,7 @@ void setup() {
   int cv4=touchRead(15);
   vibThr=(cv1+cv2+cv3+cv4)/4-70;
   
-  delay(2000); // extra "boot time" to allow MPR121 auto calibration to settle
-
-  touchSensor.writeRegister(MPR121_ECR, 0x4F); // set MPR121 to run with baseline tracking disabled
+  delay(1000); 
   
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
@@ -816,24 +826,27 @@ void readSwitches(){
   byte octaveR = 0;
 
   // Read touch pads (MPR121) and put value in variables
-  uint16_t touchValue = touchSensor.touched();
-  
+  int touchValue[12]; 
+  for (byte i=0; i<12; i++){
+    touchValue[i]=touchSensor.filteredData(i);
+  }
+
   // Octave rollers
-  if      (((touchValue >> 6) & 0x01) && ((touchValue >> 8) & 0x01)) octaveR = 6; //R6 = R5 && R3
-  else if ((touchValue >> 6) & 0x01) octaveR = 5;  //R5
-  else if ((touchValue >> 9) & 0x01) octaveR = 4;  //R4
-  else if ((touchValue >> 8) & 0x01) octaveR = 3;  //R3
-  else if ((touchValue >> 11) & 0x01) octaveR = 2;  //R2
-  else if ((touchValue >> 10) & 0x01) octaveR = 1;  //R1
+  if      ((touchValue[6] < ctouchThrVal) && (touchValue[8] < ctouchThrVal)) octaveR = 6; //R6 = R5 && R3
+  else if (touchValue[6] < ctouchThrVal) octaveR = 5;  //R5
+  else if (touchValue[9] < ctouchThrVal) octaveR = 4;  //R4
+  else if (touchValue[8] < ctouchThrVal) octaveR = 3;  //R3
+  else if (touchValue[11] < ctouchThrVal) octaveR = 2;  //R2
+  else if (touchValue[10] < ctouchThrVal) octaveR = 1;  //R1
   
   // Valves and trill keys
-  K4=((touchValue >> 7) & 0x01);
-  K1=((touchValue >> 4) & 0x01);
-  K2=((touchValue >> 5) & 0x01);
-  K3=((touchValue >> 2) & 0x01);
-  K5=((touchValue >> 3) & 0x01);
-  K6=((touchValue >> 0) & 0x01);
-  K7=((touchValue >> 1) & 0x01); 
+  K4=(touchValue[7] < ctouchThrVal);
+  K1=(touchValue[4] < ctouchThrVal);
+  K2=(touchValue[5] < ctouchThrVal);
+  K3=(touchValue[2] < ctouchThrVal);
+  K5=(touchValue[3] < ctouchThrVal);
+  K6=(touchValue[0] < ctouchThrVal);
+  K7=(touchValue[1] < ctouchThrVal);
 
 /*
  *    PINOUT ON PCB vs PINS ON MPR121
@@ -1230,7 +1243,7 @@ void menu() {
           break;
         case 4:
           // up
-          state = EXTRAC_ADJ_IDL;
+          state = CTOUCH_ADJ_IDL;
           stateFirstRun = 1;
           if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
           if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
@@ -1631,7 +1644,7 @@ void menu() {
       switch (deumButtonState){
         case 1:
           // down
-          state = BREATH_ADJ_IDL;
+          state = CTOUCH_ADJ_IDL;
           stateFirstRun = 1;
           if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
           if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
@@ -1753,7 +1766,93 @@ void menu() {
       }
     }
 
-
+  } else if (state == CTOUCH_ADJ_IDL){
+    if (stateFirstRun) {
+      drawCtouchScreen();
+      stateFirstRun = 0;
+    }
+    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      drawAdjCursor(cursorNow);
+      display.display();
+      cursorBlinkTime = millis();
+    }
+    if (buttonPressedAndNotUsed){
+      buttonPressedAndNotUsed = 0;
+      switch (deumButtonState){
+        case 1:
+          // down
+          state = BREATH_ADJ_IDL;
+          stateFirstRun = 1;
+          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          break;
+        case 2:
+          // enter
+          state = CTOUCH_ADJ_THR;
+          break;
+        case 4:
+          // up
+          state = EXTRAC_ADJ_IDL;
+          stateFirstRun = 1;
+          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          break;
+        case 8:
+          // menu
+          state = MAIN_MENU;
+          stateFirstRun = 1;
+          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          break;
+      }
+    }
+  } else if (state == CTOUCH_ADJ_THR){
+    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      display.drawLine(pos1,20,pos1,26,cursorNow);
+      display.display();
+      cursorBlinkTime = millis();
+    }
+    if (buttonPressedAndNotUsed){
+      buttonPressedAndNotUsed = 0;
+      switch (deumButtonState){
+        case 1:
+          // down
+          if (ctouchThrVal - ctouchStep > ctouchLoLimit){
+            ctouchThrVal -= ctouchStep;
+            display.drawLine(pos1,20,pos1,26,BLACK);
+            pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
+            display.drawLine(pos1,20,pos1,26,WHITE);
+            display.display();
+            cursorBlinkTime = millis();
+            cursorNow = BLACK;
+          }
+          break;
+        case 2:
+          // enter
+          state = CTOUCH_ADJ_IDL;
+          display.drawLine(pos1,20,pos1,26,WHITE);
+          display.display();
+          break;
+        case 4:
+          // up
+          if (ctouchThrVal + ctouchStep < ctouchHiLimit){
+            ctouchThrVal += ctouchStep;
+            display.drawLine(pos1,20,pos1,26,BLACK);
+            pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
+            display.drawLine(pos1,20,pos1,26,WHITE);
+            display.display();
+            cursorBlinkTime = millis();
+            cursorNow = BLACK;
+          }
+          break;
+        case 8:
+          // menu
+          state = CTOUCH_ADJ_IDL;
+          display.drawLine(pos1,20,pos1,26,WHITE);
+          display.display();
+          break;
+      }
+    }
+  
     
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
     if (stateFirstRun) {
@@ -2542,6 +2641,40 @@ void drawExtracScreen(){
   display.display();
 }
 
+
+void drawCtouchScreen(){
+    // Clear the buffer.
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(25,2);
+  display.println("TOUCH SENSE");
+  //display.drawLine(0,10,127,10,WHITE);
+  display.setCursor(0,20);
+  display.println("THR"); 
+  display.drawLine(25,17,120,17,WHITE);
+  display.drawLine(25,18,25,19,WHITE);
+  display.drawLine(120,18,120,19,WHITE);
+  display.drawLine(25,29,120,29,WHITE);
+  display.drawLine(25,27,25,28,WHITE);
+  display.drawLine(120,27,120,28,WHITE);
+  display.setCursor(0,35);
+  display.println("SNS");
+  //display.drawLine(25,38,120,38,WHITE);
+  display.drawLine(25,36,25,40,WHITE);
+  display.drawLine(120,36,120,40,WHITE);
+
+  //display.drawLine(38,20,38,26,WHITE); // indikation thr
+  pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
+  display.drawLine(pos1,20,pos1,26,WHITE);
+  cursorNow = WHITE;
+
+  //display.drawPixel(34, 38, WHITE);
+  drawAdjCursor(WHITE);
+  display.display();
+}
+
 void drawMenuCursor(byte itemNo, byte color){
   byte xmid = 6 + 9 * itemNo;
   display.drawTriangle(57,xmid,61,xmid+2,61,xmid-2,color);
@@ -2960,6 +3093,14 @@ void drawSensorPixels(){
       display.display();
     }
     lastEx=exSensor;
+  }
+  if ((state == CTOUCH_ADJ_IDL) || (state == CTOUCH_ADJ_THR)){
+    display.drawLine(28,38,118,38,BLACK);
+    for (byte i=0; i<12; i++){
+      pos = map(constrain(touchSensor.filteredData(i), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      display.drawPixel(pos, 38, WHITE);
+    }
+    display.display();
   }
 }
 
