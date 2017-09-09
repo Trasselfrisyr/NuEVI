@@ -21,7 +21,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
-#define touch_Thr 800  // sensitivity for Teensy touch sensors
+#define touch_Thr 1200  // sensitivity for Teensy touch sensors
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
 
@@ -336,6 +336,9 @@ byte startNote=36;   // set startNote to C (change this value in steps of 12 to 
 byte halfPitchBendKey;
 byte specialKey;
 
+byte breathLedBrightness = 100; // up to 255, PWM
+byte portamLedBrightness = 100; // up to 255, PWM
+
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 
 
@@ -398,6 +401,13 @@ void setup() {
   pinMode(uPin, INPUT_PULLUP);
   pinMode(mPin, INPUT_PULLUP);
 
+  pinMode(10, OUTPUT); // breath indicator LED
+  pinMode(9, OUTPUT);  // portam indicator LED
+  
+  if (!touchSensor.begin(0x5A)) {
+    while (1);  // Touch sensor initialization failed - stop doing stuff
+  }
+
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
   // init done
@@ -420,12 +430,13 @@ void setup() {
   int cv4=touchRead(15);
   vibThr=(cv1+cv2+cv3+cv4)/4-70;
   
-  delay(1000);
+  delay(2000); // extra "boot time" to allow MPR121 auto calibration to settle
+
+  touchSensor.writeRegister(MPR121_ECR, 0x4F); // set MPR121 to run with baseline tracking disabled
+  
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
-  if (!touchSensor.begin(0x5A)) {
-    while (1);  // Touch sensor initialization failed - stop doing stuff
-  }
+  
   Serial3.begin(31250);   // start serial with midi baudrate 31250
   Serial3.flush();
   
@@ -529,12 +540,13 @@ void loop() {
     pitch_bend();
     portamento_();
     extraController();
+    statusLEDs();
     ccSendTime = millis();
   }
   if (millis() - pixelUpdateTime > pixelUpdateInterval){
     // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
     // this is one of the big reasons the display is for setup use only
-    drawSensorPixels();
+    drawSensorPixels(); // live sensor monitoring for the setup screens
     pixelUpdateTime = millis();
   }
   lastFingering=fingeredNote; 
@@ -610,6 +622,21 @@ void dinMIDIsendAfterTouch(byte value, byte ch) {
 //  Send din program change 
 void dinMIDIsendProgramChange(byte value, byte ch) {
     midiSend2B((0xC0 | ch), value);
+}
+
+//**************************************************************
+
+void statusLEDs() {
+  if (breathLevel > breathThrVal){ // breath indicator LED, labeled "B" on PCB
+    analogWrite(10, breathLedBrightness);
+  } else {
+    analogWrite(10, 0);
+  }
+  if (biteSensor > portamThrVal){ // portamento indicator LED, labeled "P" on PCB
+    analogWrite(9, portamLedBrightness);
+  } else {
+    analogWrite(9, 0);
+  }
 }
 
 //**************************************************************
