@@ -331,10 +331,9 @@ int pbDn=0;
 int lastPbUp=0;
 int lastPbDn=0;
 
-int vibDepth[7] = {0,127,254,511,1023,2047,4095}; // max pitch bend values (+/-) for the vibrato settings 
+int vibDepth[7] = {0,254,511,767,1023,1279,1535}; // max pitch bend values (+/-) for the vibrato settings 
 
 int vibThr=1900;     // this gets auto calibrated in setup
-byte vibDelta=7;     // sensitivity for vibrato movement detection, lower is more sensitive
 int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
 
@@ -675,32 +674,34 @@ void breath(){
 void pitch_bend(){
   // handle input from pitchbend touchpads and
   // on-pcb variable capacitor for vibrato.
-  
+  float nudge;
   int calculatedPBdepth;
   byte vibratoMoved = 0;
   pbUp = touchRead(23);         // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(22);         // SENSOR PIN 22 - PCB PIN "Pd"
   int vibRead = touchRead(15);  // SENSOR PIN 15 - built in var cap
-  
-  if ((vibRead < vibThr)&&(vibRead > (oldvibRead+vibDelta))){
+  if ((vibRead < vibThr)&&(vibRead > oldvibRead)){
+    nudge = 0.1*constrain(abs(vibRead - oldvibRead)/2,1,10);
     if (!dirUp){
-      pitchBend=oldpb*0.7+0.3*(8192 + vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8192 + vibDepth[vibrato]);
       vibratoMoved = 1;
     } else {
-      pitchBend=oldpb*0.7+0.3*(8191 - vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8191 - vibDepth[vibrato]);
       vibratoMoved = 1;
     }
-  } else if ((vibRead < vibThr)&&(vibRead < (oldvibRead-vibDelta))){
+  } else if ((vibRead < vibThr)&&(vibRead < oldvibRead)){
+    nudge = 0.1*constrain(abs(vibRead - oldvibRead)/2,1,10);
     if (!dirUp ){
-      pitchBend=oldpb*0.7+0.3*(8191 - vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8191 - vibDepth[vibrato]);
       vibratoMoved = 1;
     } else {
-      pitchBend=oldpb*0.7+0.3*(8192 + vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8192 + vibDepth[vibrato]);
       vibratoMoved = 1;
     }
   } else {
     vibratoMoved = 0;
   }
+
   oldvibRead = vibRead;
   if (PBdepth){
     calculatedPBdepth = pbDepthList[PBdepth];
