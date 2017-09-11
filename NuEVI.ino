@@ -462,6 +462,7 @@ void loop() {
       activePatch = patch;
       usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
       dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
+      if (readSetting(PATCH_ADDR) != activePatch) writeSetting(PATCH_ADDR,activePatch); 
       doPatchUpdate = 0;
     }
     if (pressureSensor > breathThrVal) {
