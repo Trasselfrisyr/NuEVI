@@ -324,7 +324,7 @@ byte extracIsOn=0;
 int oldextrac=0;
 int lastEx=0;
 
-int pitchBend=0;
+int pitchBend=8192;
 int oldpb=8192;
 int pbUp=0;
 int pbDn=0;
@@ -461,7 +461,7 @@ void loop() {
     if ((activePatch != patch) && doPatchUpdate){
       activePatch = patch;
       usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
-      dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel);
+      dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
       doPatchUpdate = 0;
     }
     if (pressureSensor > breathThrVal) {
@@ -681,7 +681,7 @@ void pitch_bend(){
   pbDn = touchRead(22);         // SENSOR PIN 22 - PCB PIN "Pd"
   int vibRead = touchRead(15);  // SENSOR PIN 15 - built in var cap
   if ((vibRead < vibThr)&&(vibRead > oldvibRead)){
-    nudge = 0.1*constrain(abs(vibRead - oldvibRead)/2,1,10);
+    nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp){
       pitchBend=oldpb*(1-nudge)+nudge*(8192 + vibDepth[vibrato]);
       vibratoMoved = 1;
@@ -690,7 +690,7 @@ void pitch_bend(){
       vibratoMoved = 1;
     }
   } else if ((vibRead < vibThr)&&(vibRead < oldvibRead)){
-    nudge = 0.1*constrain(abs(vibRead - oldvibRead)/2,1,10);
+    nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp ){
       pitchBend=oldpb*(1-nudge)+nudge*(8191 - vibDepth[vibrato]);
       vibratoMoved = 1;
@@ -715,7 +715,7 @@ void pitch_bend(){
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   } else if (!vibratoMoved){
-    pitchBend = oldpb*0.7+8192*0.3; // released, so smooth your way back to zero
+    pitchBend = oldpb*0.8+8192*0.2; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   }
   pitchBend=constrain(pitchBend, 0, 16383);
