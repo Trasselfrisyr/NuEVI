@@ -708,7 +708,7 @@ void loop() {
 
           if (slurSustain){
             addedIntervals++;
-            slurInterval[addedIntervals] = fingeredNote - slurBase;
+            slurInterval[addedIntervals-1] = fingeredNote - slurBase;
           }
           activeNote=fingeredNote;
         }
