@@ -23,6 +23,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 //#define BREATHCVOUTA14 // enables breath CV out on pin A14/DAC for Teensy 3.2
 //#define BREATHCVOUTA12 // enables breath CV out on pin A12/DAC for Teensy LC
+//#define REVB
 
 
 // Pin definitions
@@ -46,7 +47,36 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define bLedPin 10
 #define pLedPin 9 
 
-// MPR121 pins
+#if defined(REVB)
+
+// MPR121 pins Rev B (angled pins at top edge for main keys and rollers)
+
+#define R1Pin 0
+#define R2Pin 2
+#define R3Pin 4
+#define R4Pin 6
+#define R5Pin 8
+
+#define K4Pin 10
+#define K1Pin 1
+#define K2Pin 3
+#define K3Pin 5
+#define K5Pin 7
+#define K6Pin 9
+#define K7Pin 11
+
+/*
+ *    PINOUT ON PCB vs PINS ON MPR121 - Rev. B
+ * 
+ *    (R1)  (R2) (R3/6) (R4)  (R5)  (K4)  <-> (00)  (02)  (04)  (06)  (08)  (10)
+ * 
+ *    (K1)  (K2)  (K3)  (K5)  (K6)  (K7)  <-> (01)  (03)  (05)  (07)  (09)  (11)
+ * 
+ */
+ 
+# else
+
+// MPR121 pins Rev A (upright pins below MPR121 for main keys and rollers)
 
 #define R1Pin 10
 #define R2Pin 11
@@ -63,14 +93,15 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define K7Pin 1
 
 /*
- *    PINOUT ON PCB vs PINS ON MPR121
+ *    PINOUT ON PCB vs PINS ON MPR121 - Rev. A
  * 
  *    (R2)  (R4)  (K4)  (K2)  (K5)  (K7)  <-> (11)  (09)  (07)  (05)  (03)  (01)
  * 
  *    (R1) (R3/6) (R5)  (K1)  (K3)  (K6)  <-> (10)  (08)  (06)  (04)  (02)  (00)
  * 
  */
-
+ 
+#endif
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define touch_Thr 1200  // sensitivity for Teensy touch sensors
@@ -146,7 +177,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define CTOUCH_THR_ADDR 42
 
 //"factory" values for settings
-#define VERSION 16
+#define VERSION 18
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 1730
@@ -157,7 +188,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define EXTRAC_MAX_FACTORY 2400
 #define TRANSP_FACTORY 12   // 12 is 0 transpose
 #define MIDI_FACTORY 1      // 1-16
-#define BREATH_CC_FACTORY 1 //thats CC#2, see ccList
+#define BREATH_CC_FACTORY 2 //thats CC#2, see ccList
 #define BREATH_AT_FACTORY 0 //aftertouch default off
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
@@ -167,7 +198,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
-#define CTOUCH_THR_FACTORY 120  // MPR121 touch threshold
+#define CTOUCH_THR_FACTORY 110  // MPR121 touch threshold
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -476,7 +507,7 @@ void setup() {
   extracStep = (extracHiLimit - extracLoLimit)/92;
   ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
-  analogReadResolution(12);   // todo: adapt code for this first, then uncomment
+  analogReadResolution(12);   // set resolution of ADCs to 12 bit
      
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -656,7 +687,7 @@ void loop() {
           // Player has moved to a new fingering while still blowing.
           // Send a note off for the current note and a note on for
           // the new note.      
-          velocity = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
+          velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
 
           activeNote=noteValueCheck(activeNote);
           if (parallelChord || subOctaveDouble){ // poly playing, send old note off before new note on
