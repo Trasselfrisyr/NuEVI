@@ -686,9 +686,10 @@ void loop() {
         if (noteValueCheck(fingeredNote) != activeNote) {
           // Player has moved to a new fingering while still blowing.
           // Send a note off for the current note and a note on for
-          // the new note.      
-          velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
-
+          // the new note.
+          if (!velocity){      
+            velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
+          }
           activeNote=noteValueCheck(activeNote);
           if (parallelChord || subOctaveDouble){ // poly playing, send old note off before new note on
           usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
