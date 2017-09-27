@@ -30,8 +30,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Teensy pins
 
-#define specialKeyPin 0       // 0
-#define halfPitchBendKeyPin 1 // 1
+#define specialKeyPin 0       
+#define halfPitchBendKeyPin 1 
 
 #define bitePin 17
 #define extraPin 16
@@ -177,7 +177,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define CTOUCH_THR_ADDR 42
 
 //"factory" values for settings
-#define VERSION 18
+#define VERSION 19
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 1730
@@ -193,12 +193,12 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 1     // 0 - OFF, 1 - ON->Modulation, 2 - Sustain 
+#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Sustain pedal
 #define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 6 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
-#define CTOUCH_THR_FACTORY 110  // MPR121 touch threshold
+#define CTOUCH_THR_FACTORY 130  // MPR121 touch threshold
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -292,12 +292,12 @@ unsigned short extracMaxVal;// = 2400;
 unsigned short ctouchThrVal;// = 120;
 unsigned short transpose;
 unsigned short MIDIchannel;
-unsigned short breathCC;
+unsigned short breathCC;  // OFF:MW+:BR:VOL:EXP
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
 unsigned short PBdepth;   // OFF:1-12 divider
-unsigned short extraCT;   // OFF:MOD
+unsigned short extraCT;   // OFF:MW:FP:SP
 unsigned short vibrato;   // OFF:1-6
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
@@ -595,6 +595,7 @@ void loop() {
           } else parallelChord = 0;
         }
         if (K1) subOctaveDouble = !subOctaveDouble;
+        if (halfPitchBendKey) midiPanic();
       }
     }
     lastSpecialKey = specialKey;
@@ -780,6 +781,14 @@ int noteValueCheck(int note){
   return note;
 }
 
+//**************************************************************
+
+void midiPanic(){
+  for (int i = 0; i < 128; i++){
+    usbMIDI.sendNoteOff(i,0,activeMIDIchannel);
+    dinMIDIsendNoteOff(i,0,activeMIDIchannel - 1);
+  }
+}
 
 //**************************************************************
 
@@ -963,7 +972,7 @@ void extraController(){
  if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send data
    if (!extracIsOn) {
      extracIsOn=1;
-     if (extraCT == 2){ //Sustain ON
+     if (extraCT == 3){ //Sustain ON
       usbMIDI.sendControlChange(64,127, activeMIDIchannel);
       dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
      } 
@@ -976,18 +985,31 @@ void extraController(){
       }
       oldextrac = extracCC; 
     }
+    if (extraCT == 2){ //Send foot pedal (CC#4)
+      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
+      if (extracCC != oldextrac){
+        usbMIDI.sendControlChange(4,extracCC, activeMIDIchannel);
+        dinMIDIsendControlChange(4,extracCC, activeMIDIchannel - 1);      
+      }
+      oldextrac = extracCC; 
+    }
   } else if (extracIsOn) {                        // we have just gone below threshold, so send zero value
     extracIsOn=0;
-    if (extraCT == 1){ //MOD
-    //send modulation 0
-    usbMIDI.sendControlChange(1,0, activeMIDIchannel);
-    dinMIDIsendControlChange(1,0, activeMIDIchannel - 1);
-    oldextrac = 0;
-   } else if (extraCT == 2){ //SUS
-    //send sustain off
-    usbMIDI.sendControlChange(64,0, activeMIDIchannel);
-    dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
-   } 
+    if (extraCT == 1){ //MW
+      //send modulation 0
+      usbMIDI.sendControlChange(1,0, activeMIDIchannel);
+      dinMIDIsendControlChange(1,0, activeMIDIchannel - 1);
+      oldextrac = 0;
+    } else if (extraCT == 2){ //FP
+      //send foot pedal 0
+      usbMIDI.sendControlChange(4,0, activeMIDIchannel);
+      dinMIDIsendControlChange(4,0, activeMIDIchannel - 1);
+      oldextrac = 0;
+    } else if (extraCT == 3){ //SP
+      //send sustain off
+      usbMIDI.sendControlChange(64,0, activeMIDIchannel);
+      dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
+    } 
   }
 }
 
@@ -1211,6 +1233,7 @@ void menu() {
         case 2:
           // enter
           patchViewTime = millis();
+          midiPanic();
           break;
         case 4:
           // up
@@ -2396,7 +2419,7 @@ void menu() {
             plotExtra(BLACK);
             if (extraCT > 0){
               extraCT--;
-            } else extraCT = 2;
+            } else extraCT = 3;
             plotExtra(WHITE);
             cursorNow = BLACK;
             display.display();
@@ -2413,7 +2436,7 @@ void menu() {
           case 4:
             // up
             plotExtra(BLACK);
-            if (extraCT < 2){
+            if (extraCT < 3){
               extraCT++;
             } else extraCT = 0;
             plotExtra(WHITE);
@@ -3028,8 +3051,24 @@ void plotBreathCC(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   if (breathCC){
-    display.setCursor(90,33);
-    display.println(ccList[breathCC]); 
+    switch (breathCC){
+      case 1:
+        display.setCursor(79,33);
+        display.println("MW+");
+        break;
+      case 2:
+        display.setCursor(83,33);
+        display.println("BR");
+        break;
+      case 3:
+        display.setCursor(79,33);
+        display.println("VOL");
+        break;
+      case 4:
+        display.setCursor(79,33);
+        display.println("EXP");
+        break;
+    } 
   } else {
     display.setCursor(79,33);
     display.println("OFF"); 
@@ -3143,12 +3182,23 @@ void plotExtra(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(79,33);
-  if (extraCT == 1){
-    display.println("MOD"); 
-  } else if (extraCT == 2){
-    display.println("SUS");
-  } else {
-    display.println("OFF"); 
+  switch (extraCT){
+  case 0:
+    display.setCursor(79,33);
+    display.println("OFF");
+    break;
+  case 1:
+    display.setCursor(83,33);
+    display.println("MW");
+    break;
+  case 2:
+    display.setCursor(83,33);
+    display.println("FP");
+    break;
+  case 3:
+    display.setCursor(83,33);
+    display.println("SP");
+    break;
   }
 }
 
