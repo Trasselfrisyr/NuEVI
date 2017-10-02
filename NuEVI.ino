@@ -21,8 +21,6 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-//#define BREATHCVOUTA14 // enables breath CV out on pin A14/DAC for Teensy 3.2
-//#define BREATHCVOUTA12 // enables breath CV out on pin A12/DAC for Teensy LC
 //#define REVB
 
 
@@ -175,9 +173,10 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PATCH_ADDR 38
 #define OCTAVE_ADDR 40
 #define CTOUCH_THR_ADDR 42
+#define BREATHCURVE_ADDR 44
 
 //"factory" values for settings
-#define VERSION 19
+#define VERSION 22
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 1730
@@ -193,12 +192,13 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Sustain pedal
+#define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Sustain pedal
 #define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 6 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
-#define CTOUCH_THR_FACTORY 130  // MPR121 touch threshold
+#define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
+#define BREATHCURVE_FACTORY 2 // 0 to 4 (-2 to +2)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -301,7 +301,8 @@ unsigned short extraCT;   // OFF:MW:FP:SP
 unsigned short vibrato;   // OFF:1-6
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
-unsigned short octave;    // 
+unsigned short octave;      
+unsigned short curve;
 
 
 int breathLoLimit = 0;
@@ -341,13 +342,14 @@ byte subMIDI = 0;
 byte subBreathCC = 0;
 byte subBreathAT = 0;
 byte subVelocity = 0;
+byte subCurve = 0;
 byte subPort = 0;
 byte subPB = 0;
 byte subExtra = 0;
 byte subVibrato = 0;
 byte subDeglitch = 0;
 
-byte ccList[5] = {0,1,2,7,11};  // OFF, Modulation (Hi-res), Breath, Volume, Expression
+byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation (Hi-res), Breath, Volume, Expression (then same sent in hires)
 
 int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -413,6 +415,12 @@ int lastPbDn=0;
 
 int vibDepth[7] = {0,254,511,767,1023,1279,1535}; // max pitch bend values (+/-) for the vibrato settings 
 
+unsigned int curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
+unsigned int curveM2[] = {0,4300,7000,8700,9800,10800,11900,12500,13300,13900,14500,15000,15500,15700,16000,16250,16383};
+unsigned int curveM1[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
+unsigned int curveP1[] = {0,400,800,1300,2050,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
+unsigned int curveP2[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
+
 int vibThr=1900;     // this gets auto calibrated in setup
 int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
@@ -477,6 +485,7 @@ void setup() {
     writeSetting(PATCH_ADDR,PATCH_FACTORY);
     writeSetting(OCTAVE_ADDR,OCTAVE_FACTORY);
     writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
+    writeSetting(BREATHCURVE_ADDR,BREATHCURVE_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -500,6 +509,7 @@ void setup() {
   patch        = readSetting(PATCH_ADDR);
   octave       = readSetting(OCTAVE_ADDR);
   ctouchThrVal = readSetting(CTOUCH_THR_ADDR);
+  curve        = readSetting(BREATHCURVE_ADDR);
  
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
@@ -606,12 +616,14 @@ void loop() {
       if (millis() - breath_on_time > ON_Delay) {
         // Yes, so calculate MIDI note and velocity, then send a note on event
         readSwitches();
-        // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set        
-        // If initial value is greater than value after delay, go with initial value, constrain input to keep mapped output within 1 to 127
+        // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
         if (!velocity) {
-          velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
+          unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+          velocitySend = (breathValHires >>7) & 0x007F;
+          velocitySend = constrain(velocitySend,1,127);
+          //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
         } else velocitySend = velocity;
-        breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);
+        breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);           
         breath(); // send breath data
         fingeredNote=noteValueCheck(fingeredNote);
         usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
@@ -689,7 +701,10 @@ void loop() {
           // Send a note off for the current note and a note on for
           // the new note.
           if (!velocity){      
-            velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
+            unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+            velocitySend = (breathValHires >>7) & 0x007F;
+            velocitySend = constrain(velocitySend,1,127);
+            //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
           }
           activeNote=noteValueCheck(activeNote);
           if (parallelChord || subOctaveDouble){ // poly playing, send old note off before new note on
@@ -770,6 +785,57 @@ void loop() {
 }
 
 //_______________________________________________________________________________________________ FUNCTIONS
+
+// non linear mapping function (http://playground.arduino.cc/Main/MultiMap)
+// note: the _in array should have increasing values
+unsigned int multiMap(unsigned int val, unsigned int* _in, unsigned int* _out, uint8_t size)
+{
+  // take care the value is within range
+  // val = constrain(val, _in[0], _in[size-1]);
+  if (val <= _in[0]) return _out[0];
+  if (val >= _in[size-1]) return _out[size-1];
+
+  // search right interval
+  uint8_t pos = 1;  // _in[0] allready tested
+  while(val > _in[pos]) pos++;
+
+  // this will handle all exact "points" in the _in array
+  if (val == _in[pos]) return _out[pos];
+
+  // interpolate in the right segment for the rest
+  return (val - _in[pos-1]) * (_out[pos] - _out[pos-1]) / (_in[pos] - _in[pos-1]) + _out[pos-1];
+}
+
+//**************************************************************
+
+// map breath values to selected curve
+unsigned int breathCurve(unsigned int inputVal){
+  // 0 to 16383, moving mid value up or down
+  switch (curve){
+    case 0:
+      // -2
+      return multiMap(inputVal,curveIn,curveM2,17);
+      break;
+    case 1:
+      // -1
+      return multiMap(inputVal,curveIn,curveM1,17);
+      break;
+    case 2:
+      // 0, linear
+      return inputVal;
+      break;
+    case 3:
+      // +1
+      return multiMap(inputVal,curveIn,curveP1,17);
+      break;
+    case 4:
+      // +2
+      return multiMap(inputVal,curveIn,curveP2,17);
+      break;
+  }
+}
+
+
 
 // MIDI note value check with out of range octave repeat
 int noteValueCheck(int note){
@@ -869,13 +935,16 @@ void statusLEDs() {
 //**************************************************************
 
 void breath(){
-  int breathCCval;
+  int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
   breathLevel = breathLevel*0.8+pressureSensor*0.2; // smoothing of breathLevel value
-  breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
-  breathCCvalHires = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383);
+  //breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
+  breathCCvalHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+  breathCCval = (breathCCvalHires >>7) & 0x007F;
+  breathCCvalFine = breathCCvalHires & 0x007F;
+
   if (breathCCval != oldbreath){ // only send midi data if breath has changed from previous value
-    if (ccList[breathCC] > 1){
+    if (breathCC){
       // send midi cc
       usbMIDI.sendControlChange(ccList[breathCC], breathCCval, activeMIDIchannel);
       dinMIDIsendControlChange(ccList[breathCC], breathCCval, activeMIDIchannel - 1);
@@ -887,20 +956,11 @@ void breath(){
     }
     oldbreath = breathCCval;
   }
+  
   if (breathCCvalHires != oldbreathhires){
-    #if defined(BREATHCVOUTA14)
-    analogWrite(A14,breathCCvalHires); // Breath CV out at A14 on Teensy 3.2
-    #endif
-    #if defined(BREATHCVOUTA12)
-    analogWrite(A12,breathCCvalHires); // Breath CV out at A12 on Teensy LC
-    #endif
-    if (ccList[breathCC] == 1){ // if modulation cc is used, send high resolution midi
-        int fine = breathCCvalHires & 0x007F;
-        int coarse = (breathCCvalHires >>7) & 0x007F; 
-        usbMIDI.sendControlChange(ccList[breathCC], coarse, activeMIDIchannel);
-        dinMIDIsendControlChange(ccList[breathCC], coarse, activeMIDIchannel - 1);
-        usbMIDI.sendControlChange(ccList[breathCC]+32, fine, activeMIDIchannel);
-        dinMIDIsendControlChange(ccList[breathCC]+32, fine, activeMIDIchannel - 1);
+    if (breathCC > 4){ // send high resolution midi
+        usbMIDI.sendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel);
+        dinMIDIsendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel - 1);
     }
     oldbreathhires = breathCCvalHires;   
   }
@@ -2114,7 +2174,7 @@ void menu() {
               cursorBlinkTime = millis();
             } else {
               plotBreathCC(BLACK);
-              breathCC = 3;
+              breathCC = 8;
               plotBreathCC(WHITE);
               cursorNow = BLACK;
               display.display();
@@ -2131,7 +2191,7 @@ void menu() {
             break;
           case 4:
             // up
-            if (breathCC < 4){
+            if (breathCC < 8){
               plotBreathCC(BLACK);
               breathCC++;
               plotBreathCC(WHITE);
@@ -2253,6 +2313,60 @@ void menu() {
             break;
         }
       }   
+
+ 
+    } else if (subCurve) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotCurve(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            plotCurve(BLACK);
+            if (curve > 0){
+              curve--;
+            } else curve = 4;
+            plotCurve(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 2:
+            // enter
+            plotCurve(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subCurve = 0;
+            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
+            break;
+          case 4:
+            // up
+            plotCurve(BLACK);
+            if (curve < 4){
+              curve++;
+            } else curve = 0;
+            plotCurve(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 8:
+            // menu
+            plotCurve(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subCurve = 0;
+            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
+            break;
+        }
+      }   
+
+      
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
@@ -2265,7 +2379,7 @@ void menu() {
         switch (deumButtonState){
           case 1:
             // down
-            if (setupBrMenuCursor < 3){
+            if (setupBrMenuCursor < 4){
               drawMenuCursor(setupBrMenuCursor, BLACK);
               setupBrMenuCursor++;
               drawMenuCursor(setupBrMenuCursor, WHITE);
@@ -2662,6 +2776,14 @@ void selectSetupBrMenu(){
       display.display();
       cursorBlinkTime = millis();
       drawSubVelocity();
+      break;
+    case 4:
+      subCurve = 1;
+      drawMenuCursor(setupBrMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubCurve();
+      break;
   }
 }
 
@@ -3053,20 +3175,36 @@ void plotBreathCC(int color){
   if (breathCC){
     switch (breathCC){
       case 1:
-        display.setCursor(79,33);
-        display.println("MW+");
+        display.setCursor(83,33);
+        display.println("MW");
         break;
       case 2:
         display.setCursor(83,33);
         display.println("BR");
         break;
       case 3:
-        display.setCursor(79,33);
-        display.println("VOL");
+        display.setCursor(83,33);
+        display.println("VL");
         break;
       case 4:
+        display.setCursor(83,33);
+        display.println("EX");
+        break;
+      case 5:
         display.setCursor(79,33);
-        display.println("EXP");
+        display.println("MW+");
+        break;
+      case 6:
+        display.setCursor(79,33);
+        display.println("BR+");
+        break;
+      case 7:
+        display.setCursor(79,33);
+        display.println("VL+");
+        break;
+      case 8:
+        display.setCursor(79,33);
+        display.println("EX+");
         break;
     } 
   } else {
@@ -3118,6 +3256,46 @@ void plotVelocity(int color){
     display.println("DYN"); 
   }
 }
+
+
+void drawSubCurve(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(68,15);
+  display.println("CURVE");
+  plotCurve(WHITE);
+  display.display();
+}
+
+void plotCurve(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  switch (curve){
+    case 0:
+      display.setCursor(83,33);
+      display.println("-2");
+      break;
+    case 1:
+      display.setCursor(83,33);
+      display.println("-1");
+      break;
+    case 2:
+      display.setCursor(79,33);
+      display.println("LIN");
+      break;
+    case 3:
+      display.setCursor(83,33);
+      display.println("+1");
+      break;
+    case 4:
+      display.setCursor(83,33);
+      display.println("+2");
+      break;
+  } 
+}
+
 
 void drawSubPort(){
   display.fillRect(63,11,64,52,BLACK);
@@ -3266,7 +3444,7 @@ void drawSetupBrMenuScreen(){
   display.setCursor(0,30);
   display.println("VELOCITY"); 
   display.setCursor(0,39);
-  display.println(""); 
+  display.println("CURVE"); 
   display.setCursor(0,48);
   display.println(""); 
   display.setCursor(0,57);
