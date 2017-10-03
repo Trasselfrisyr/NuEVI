@@ -198,7 +198,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
-#define BREATHCURVE_FACTORY 2 // 0 to 4 (-2 to +2)
+#define BREATHCURVE_FACTORY 4 // 0 to 8 (-4 to +4)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -349,7 +349,7 @@ byte subExtra = 0;
 byte subVibrato = 0;
 byte subDeglitch = 0;
 
-byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation (Hi-res), Breath, Volume, Expression (then same sent in hires)
+byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
 int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -415,11 +415,15 @@ int lastPbDn=0;
 
 int vibDepth[7] = {0,254,511,767,1023,1279,1535}; // max pitch bend values (+/-) for the vibrato settings 
 
+unsigned int curveM4[] = {0,4300,7000,8700,9800,10800,11900,12500,13300,13900,14500,15000,15500,15700,16000,16250,16383};
+unsigned int curveM3[] = {0,3050,5100,6750,8200,9500,10550,11600,12300,13100,13800,14450,14950,15350,15750,16150,16383};
+unsigned int curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
+unsigned int curveM1[] = {0,1400,2850,4100,5800,6350,7500,8700,9300,10750,11600,12600,13300,14100,14950,15150,16838};
 unsigned int curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
-unsigned int curveM2[] = {0,4300,7000,8700,9800,10800,11900,12500,13300,13900,14500,15000,15500,15700,16000,16250,16383};
-unsigned int curveM1[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
-unsigned int curveP1[] = {0,400,800,1300,2050,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
-unsigned int curveP2[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
+unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8900,9900,11150,12300,13500,14850,16838};
+unsigned int curveP2[] = {0,400,800,1300,2050,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
+unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4300,5550,6550,8000,9500,11250,13400,16383};
+unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
 
 int vibThr=1900;     // this gets auto calibrated in setup
 int oldvibRead=0;
@@ -813,24 +817,40 @@ unsigned int breathCurve(unsigned int inputVal){
   // 0 to 16383, moving mid value up or down
   switch (curve){
     case 0:
+      // -4
+      return multiMap(inputVal,curveIn,curveM4,17);
+      break;
+    case 1:
+      // -3
+      return multiMap(inputVal,curveIn,curveM3,17);
+      break;
+    case 2:
       // -2
       return multiMap(inputVal,curveIn,curveM2,17);
       break;
-    case 1:
+    case 3:
       // -1
       return multiMap(inputVal,curveIn,curveM1,17);
       break;
-    case 2:
+    case 4:
       // 0, linear
       return inputVal;
       break;
-    case 3:
+    case 5:
       // +1
       return multiMap(inputVal,curveIn,curveP1,17);
       break;
-    case 4:
+    case 6:
       // +2
       return multiMap(inputVal,curveIn,curveP2,17);
+      break;
+    case 7:
+      // +3
+      return multiMap(inputVal,curveIn,curveP3,17);
+      break;
+    case 8:
+      // +4
+      return multiMap(inputVal,curveIn,curveP4,17);
       break;
   }
 }
@@ -2330,7 +2350,7 @@ void menu() {
             plotCurve(BLACK);
             if (curve > 0){
               curve--;
-            } else curve = 4;
+            } else curve = 8;
             plotCurve(WHITE);
             cursorNow = BLACK;
             display.display();
@@ -2347,7 +2367,7 @@ void menu() {
           case 4:
             // up
             plotCurve(BLACK);
-            if (curve < 4){
+            if (curve < 8){
               curve++;
             } else curve = 0;
             plotCurve(WHITE);
@@ -3275,23 +3295,39 @@ void plotCurve(int color){
   switch (curve){
     case 0:
       display.setCursor(83,33);
-      display.println("-2");
+      display.println("-4");
       break;
     case 1:
       display.setCursor(83,33);
-      display.println("-1");
+      display.println("-3");
       break;
     case 2:
-      display.setCursor(79,33);
-      display.println("LIN");
+      display.setCursor(83,33);
+      display.println("-2");
       break;
     case 3:
       display.setCursor(83,33);
-      display.println("+1");
+      display.println("-1");
       break;
     case 4:
+      display.setCursor(79,33);
+      display.println("LIN");
+      break;
+    case 5:
+      display.setCursor(83,33);
+      display.println("+1");
+      break;
+    case 6:
       display.setCursor(83,33);
       display.println("+2");
+      break;
+    case 7:
+      display.setCursor(83,33);
+      display.println("+3");
+      break;
+    case 8:
+      display.setCursor(83,33);
+      display.println("+4");
       break;
   } 
 }
