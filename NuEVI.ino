@@ -198,7 +198,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
-#define BREATHCURVE_FACTORY 4 // 0 to 8 (-4 to +4)
+#define BREATHCURVE_FACTORY 4 // 0 to 11 (-4 to +4, S1 to S3)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -292,7 +292,7 @@ unsigned short extracMaxVal;// = 2400;
 unsigned short ctouchThrVal;// = 120;
 unsigned short transpose;
 unsigned short MIDIchannel;
-unsigned short breathCC;  // OFF:MW+:BR:VOL:EXP
+unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
@@ -424,6 +424,9 @@ unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8900,990
 unsigned int curveP2[] = {0,400,800,1300,2050,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
 unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4300,5550,6550,8000,9500,11250,13400,16383};
 unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
+unsigned int curveS1[] = {0,100,2050,3100,7900,9500,10400,11250,12000,12700,13200,13900,14450,14950,15550,16100,16383};
+unsigned int curveS2[] = {0,600,1350,2150,3100,4100,5600,8200,11750,12600,13200,13900,14450,14950,15550,16100,16383};
+unsigned int curveS3[] = {0,400,800,1300,2050,2650,3500,4300,5300,6300,9200,13600,14300,14950,15550,16100,16383};
 
 int vibThr=1900;     // this gets auto calibrated in setup
 int oldvibRead=0;
@@ -851,6 +854,18 @@ unsigned int breathCurve(unsigned int inputVal){
     case 8:
       // +4
       return multiMap(inputVal,curveIn,curveP4,17);
+      break;
+    case 9:
+      // +2
+      return multiMap(inputVal,curveIn,curveS1,17);
+      break;
+    case 10:
+      // +3
+      return multiMap(inputVal,curveIn,curveS2,17);
+      break;
+    case 11:
+      // +4
+      return multiMap(inputVal,curveIn,curveS3,17);
       break;
   }
 }
@@ -2350,7 +2365,7 @@ void menu() {
             plotCurve(BLACK);
             if (curve > 0){
               curve--;
-            } else curve = 8;
+            } else curve = 11;
             plotCurve(WHITE);
             cursorNow = BLACK;
             display.display();
@@ -2367,7 +2382,7 @@ void menu() {
           case 4:
             // up
             plotCurve(BLACK);
-            if (curve < 8){
+            if (curve < 11){
               curve++;
             } else curve = 0;
             plotCurve(WHITE);
@@ -3328,6 +3343,18 @@ void plotCurve(int color){
     case 8:
       display.setCursor(83,33);
       display.println("+4");
+      break;
+    case 9:
+      display.setCursor(83,33);
+      display.println("S1");
+      break;
+    case 10:
+      display.setCursor(83,33);
+      display.println("S2");
+      break;
+    case 11:
+      display.setCursor(83,33);
+      display.println("S3");
       break;
   } 
 }
