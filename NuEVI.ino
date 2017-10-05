@@ -198,7 +198,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
-#define BREATHCURVE_FACTORY 4 // 0 to 11 (-4 to +4, S1 to S3)
+#define BREATHCURVE_FACTORY 4 // 0 to 12 (-4 to +4, S1 to S4)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -415,18 +415,19 @@ int lastPbDn=0;
 
 int vibDepth[7] = {0,254,511,767,1023,1279,1535}; // max pitch bend values (+/-) for the vibrato settings 
 
-unsigned int curveM4[] = {0,4300,7000,8700,9800,10800,11900,12500,13300,13900,14500,15000,15500,15700,16000,16250,16383};
-unsigned int curveM3[] = {0,3050,5100,6750,8200,9500,10550,11600,12300,13100,13800,14450,14950,15350,15750,16150,16383};
+unsigned int curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
+unsigned int curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
 unsigned int curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
-unsigned int curveM1[] = {0,1400,2850,4100,5800,6350,7500,8700,9300,10750,11600,12600,13300,14100,14950,15150,16838};
+unsigned int curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16838};
 unsigned int curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
-unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8900,9900,11150,12300,13500,14850,16838};
-unsigned int curveP2[] = {0,400,800,1300,2050,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
-unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4300,5550,6550,8000,9500,11250,13400,16383};
+unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16838};
+unsigned int curveP2[] = {0,400,800,1300,2000,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
+unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4600,5550,6550,8000,9500,11250,13400,16383};
 unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
-unsigned int curveS1[] = {0,100,2050,3100,7900,9500,10400,11250,12000,12700,13200,13900,14450,14950,15550,16100,16383};
-unsigned int curveS2[] = {0,600,1350,2150,3100,4100,5600,8200,11750,12600,13200,13900,14450,14950,15550,16100,16383};
-unsigned int curveS3[] = {0,400,800,1300,2050,2650,3500,4300,5300,6300,9200,13600,14300,14950,15550,16100,16383};
+unsigned int curveS1[] = {0,600,1350,2150,2900,3800,4700,6000,8700,11000,12400,13400,14300,14950,15500,16000,16383};
+unsigned int curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,11000,12100,12900,13700,14400,14950,15500,16000,16383};
+unsigned int curveS3[] = {0,600,1350,2300,3800,6200,8700,10200,11100,12100,12900,13700,14400,14950,15500,16000,16383};
+unsigned int curveS4[] = {0,600,1700,4000,6600,8550,9700,10550,11400,12200,12900,13700,14400,14950,15500,16000,16383};
 
 int vibThr=1900;     // this gets auto calibrated in setup
 int oldvibRead=0;
@@ -856,16 +857,20 @@ unsigned int breathCurve(unsigned int inputVal){
       return multiMap(inputVal,curveIn,curveP4,17);
       break;
     case 9:
-      // +2
+      // S1
       return multiMap(inputVal,curveIn,curveS1,17);
       break;
     case 10:
-      // +3
+      // S2
       return multiMap(inputVal,curveIn,curveS2,17);
       break;
     case 11:
-      // +4
+      // S3
       return multiMap(inputVal,curveIn,curveS3,17);
+      break;
+    case 12:
+      // S4
+      return multiMap(inputVal,curveIn,curveS4,17);
       break;
   }
 }
@@ -2365,7 +2370,7 @@ void menu() {
             plotCurve(BLACK);
             if (curve > 0){
               curve--;
-            } else curve = 11;
+            } else curve = 12;
             plotCurve(WHITE);
             cursorNow = BLACK;
             display.display();
@@ -2382,7 +2387,7 @@ void menu() {
           case 4:
             // up
             plotCurve(BLACK);
-            if (curve < 11){
+            if (curve < 12){
               curve++;
             } else curve = 0;
             plotCurve(WHITE);
@@ -3355,6 +3360,10 @@ void plotCurve(int color){
     case 11:
       display.setCursor(83,33);
       display.println("S3");
+      break;
+    case 12:
+      display.setCursor(83,33);
+      display.println("S4");
       break;
   } 
 }
