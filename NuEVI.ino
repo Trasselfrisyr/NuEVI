@@ -21,7 +21,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-//#define REVB
+#define REVB
 
 
 // Pin definitions
@@ -625,13 +625,13 @@ void loop() {
         // Yes, so calculate MIDI note and velocity, then send a note on event
         readSwitches();
         // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
+        breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal); 
         if (!velocity) {
           unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
           velocitySend = (breathValHires >>7) & 0x007F;
           velocitySend = constrain(velocitySend,1,127);
           //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
-        } else velocitySend = velocity;
-        breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);           
+        } else velocitySend = velocity;          
         breath(); // send breath data
         fingeredNote=noteValueCheck(fingeredNote);
         usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
