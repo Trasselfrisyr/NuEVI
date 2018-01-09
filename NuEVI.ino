@@ -413,7 +413,7 @@ int pbDn=0;
 int lastPbUp=0;
 int lastPbDn=0;
 
-int vibDepth[7] = {0,254,511,767,1023,1279,1535}; // max pitch bend values (+/-) for the vibrato settings 
+float vibDepth[7] = {0,0.05,0.1,0.15,0.2,0.25,0.3}; // max pitch bend values (+/-) for the vibrato settings 
 
 unsigned int curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
 unsigned int curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
@@ -553,15 +553,21 @@ void setup() {
   
   //auto-calibrate the vibrato threshold while showing splash screen
   int cv1=touchRead(15);
-  delay(1000);
+  delay(500);
   int cv2=touchRead(15);
-  delay(1000);
+  delay(500);
   int cv3=touchRead(15);
-  delay(1000);
+  delay(500);
   int cv4=touchRead(15);
   vibThr=(cv1+cv2+cv3+cv4)/4-70;
+
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(95,52);
+  display.println("v.1.0");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.display();
   
-  delay(1000); 
+  delay(2000); 
   
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
@@ -1018,22 +1024,26 @@ void pitch_bend(){
   pbDn = touchRead(pbDnPin);                                      // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey=(touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
   int vibRead = touchRead(vibratoPin);                            // SENSOR PIN 15 - built in var cap
+  if (PBdepth){
+    calculatedPBdepth = pbDepthList[PBdepth];
+    if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
+  }
   if ((vibRead < vibThr)&&(vibRead > oldvibRead)){
     nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp){
-      pitchBend=oldpb*(1-nudge)+nudge*(8192 + vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8192 + calculatedPBdepth*vibDepth[vibrato]);
       vibratoMoved = 1;
     } else {
-      pitchBend=oldpb*(1-nudge)+nudge*(8191 - vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
       vibratoMoved = 1;
     }
   } else if ((vibRead < vibThr)&&(vibRead < oldvibRead)){
     nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp ){
-      pitchBend=oldpb*(1-nudge)+nudge*(8191 - vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
       vibratoMoved = 1;
     } else {
-      pitchBend=oldpb*(1-nudge)+nudge*(8192 + vibDepth[vibrato]);
+      pitchBend=oldpb*(1-nudge)+nudge*(8192 + calculatedPBdepth*vibDepth[vibrato]);
       vibratoMoved = 1;
     }
   } else {
@@ -1041,10 +1051,7 @@ void pitch_bend(){
   }
 
   oldvibRead = vibRead;
-  if (PBdepth){
-    calculatedPBdepth = pbDepthList[PBdepth];
-    if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
-  }
+
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
   } else if ((pbDn > pitchbThrVal) && PBdepth){
