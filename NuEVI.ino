@@ -28,8 +28,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Teensy pins
 
-#define specialKeyPin 0       
-#define halfPitchBendKeyPin 1 
+#define specialKeyPin 0       // SK or S2
+#define halfPitchBendKeyPin 1 // PD or S1
 
 #define bitePin 17
 #define extraPin 16
@@ -44,6 +44,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 #define bLedPin 10
 #define pLedPin 9 
+
+#define vMeterPin A11
 
 #if defined(REVB)
 
@@ -174,15 +176,17 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define OCTAVE_ADDR 40
 #define CTOUCH_THR_ADDR 42
 #define BREATHCURVE_ADDR 44
+#define VEL_SMP_DL_ADDR 46
+#define VEL_BIAS_ADDR 48
 
 //"factory" values for settings
-#define VERSION 22
+#define VERSION 23
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
-#define PORTAM_THR_FACTORY 1730
+#define PORTAM_THR_FACTORY 2200
 #define PORTAM_MAX_FACTORY 3300
-#define PITCHB_THR_FACTORY 1300
-#define PITCHB_MAX_FACTORY 2400
+#define PITCHB_THR_FACTORY 1400
+#define PITCHB_MAX_FACTORY 2300
 #define EXTRAC_THR_FACTORY 1200
 #define EXTRAC_MAX_FACTORY 2400
 #define TRANSP_FACTORY 12   // 12 is 0 transpose
@@ -192,13 +196,15 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Sustain pedal
+#define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
 #define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 6 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
 #define BREATHCURVE_FACTORY 4 // 0 to 12 (-4 to +4, S1 to S4)
+#define VEL_SMP_DL_FACTORY 20 // 0 to 30 ms in steps of 5
+#define VEL_BIAS_FACTORY 0 // 0 to 9
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -297,13 +303,14 @@ unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
 unsigned short PBdepth;   // OFF:1-12 divider
-unsigned short extraCT;   // OFF:MW:FP:SP
+unsigned short extraCT;   // OFF:MW:FP:FC:SP
 unsigned short vibrato;   // OFF:1-6
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
 unsigned short octave;      
 unsigned short curve;
-
+unsigned short velSmpDl;  // 0-30 ms
+unsigned short velBias;   // 0-9
 
 int breathLoLimit = 0;
 int breathHiLimit = 4095;
@@ -348,12 +355,15 @@ byte subPB = 0;
 byte subExtra = 0;
 byte subVibrato = 0;
 byte subDeglitch = 0;
+byte subVelSmpDl = 0;
+byte subVelBias = 0;
 
 byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
 int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
 byte cursorNow;
+byte forcePix = 0;
 
 int pos1;
 int pos2;
@@ -386,7 +396,7 @@ int initial_breath_value;          // The breath value at the time we observed t
 
 byte activeMIDIchannel=1;          // MIDI channel
 byte activePatch=0;                
-byte doPatchUpdate=1;
+byte doPatchUpdate=0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
@@ -469,8 +479,21 @@ Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch s
 //_______________________________________________________________________________________________ SETUP
 
 void setup() {
-  // if stored settings are not for current version, they are replaced by factory settings
-  if (readSetting(VERSION_ADDR) != VERSION){
+  
+  analogReadResolution(12);   // set resolution of ADCs to 12 bit
+     
+  pinMode(dPin, INPUT_PULLUP);
+  pinMode(ePin, INPUT_PULLUP);
+  pinMode(uPin, INPUT_PULLUP);
+  pinMode(mPin, INPUT_PULLUP);
+
+  pinMode(bLedPin, OUTPUT);   // breath indicator LED
+  pinMode(pLedPin, OUTPUT);   // portam indicator LED
+  pinMode(13,OUTPUT);         // Teensy onboard LED  
+
+  
+  // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
+  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -494,6 +517,8 @@ void setup() {
     writeSetting(OCTAVE_ADDR,OCTAVE_FACTORY);
     writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
     writeSetting(BREATHCURVE_ADDR,BREATHCURVE_FACTORY);
+    writeSetting(VEL_SMP_DL_ADDR,VEL_SMP_DL_FACTORY);
+    writeSetting(VEL_BIAS_ADDR,VEL_BIAS_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -518,6 +543,10 @@ void setup() {
   octave       = readSetting(OCTAVE_ADDR);
   ctouchThrVal = readSetting(CTOUCH_THR_ADDR);
   curve        = readSetting(BREATHCURVE_ADDR);
+  velSmpDl     = readSetting(VEL_SMP_DL_ADDR);
+  velBias      = readSetting(VEL_BIAS_ADDR);
+
+  activePatch = patch;
  
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
@@ -525,16 +554,7 @@ void setup() {
   extracStep = (extracHiLimit - extracLoLimit)/92;
   ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
-  analogReadResolution(12);   // set resolution of ADCs to 12 bit
-     
-  pinMode(dPin, INPUT_PULLUP);
-  pinMode(ePin, INPUT_PULLUP);
-  pinMode(uPin, INPUT_PULLUP);
-  pinMode(mPin, INPUT_PULLUP);
 
-  pinMode(bLedPin, OUTPUT); // breath indicator LED
-  pinMode(pLedPin, OUTPUT);  // portam indicator LED
-  
   if (!touchSensor.begin(0x5A)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
@@ -553,18 +573,25 @@ void setup() {
   
   //auto-calibrate the vibrato threshold while showing splash screen
   int cv1=touchRead(15);
-  delay(500);
+  digitalWrite(13,HIGH);
+  delay(250);
   int cv2=touchRead(15);
-  delay(500);
+  digitalWrite(13,LOW);
+  delay(250);
   int cv3=touchRead(15);
-  delay(500);
+  digitalWrite(13,HIGH);
+  delay(250);
+  digitalWrite(13,LOW);
   int cv4=touchRead(15);
   vibThr=(cv1+cv2+cv3+cv4)/4-70;
-
+  delay(250);
+  digitalWrite(13,HIGH);
+  delay(250);
+  digitalWrite(13,LOW);
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(95,52);
-  display.println("v.1.0");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.setCursor(85,52);
+  display.println("v.1.0.1");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -574,6 +601,8 @@ void setup() {
   
   Serial3.begin(31250);   // start serial with midi baudrate 31250
   Serial3.flush();
+
+  digitalWrite(13,HIGH); // Switch on the onboard LED to indicate power on/ready
   
 }
 
@@ -595,7 +624,7 @@ void loop() {
       doPatchUpdate = 0;
     }
     if (pressureSensor > breathThrVal) {
-      // Value has risen above threshold. Move to the ON_Delay
+      // Value has risen above threshold. Move to the RISE_WAIT
       // state. Record time and initial breath value.
       breath_on_time = millis();
       initial_breath_value = pressureSensor;
@@ -627,7 +656,7 @@ void loop() {
     if (pressureSensor > breathThrVal) {
       // Has enough time passed for us to collect our second
       // sample?
-      if (millis() - breath_on_time > ON_Delay) {
+      if (millis() - breath_on_time > velSmpDl) {
         // Yes, so calculate MIDI note and velocity, then send a note on event
         readSwitches();
         // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
@@ -635,7 +664,7 @@ void loop() {
         if (!velocity) {
           unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
           velocitySend = (breathValHires >>7) & 0x007F;
-          velocitySend = constrain(velocitySend,1,127);
+          velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
           //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
         } else velocitySend = velocity;          
         breath(); // send breath data
@@ -668,7 +697,7 @@ void loop() {
         mainState = NOTE_ON;
       }
     } else {
-      // Value fell below threshold before ON_Delay passed. Return to
+      // Value fell below threshold before velocity sample delay time passed. Return to
       // NOTE_OFF state (e.g. we're ignoring a short blip of breath)
       mainState = NOTE_OFF;
     }
@@ -717,7 +746,7 @@ void loop() {
           if (!velocity){      
             unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
             velocitySend = (breathValHires >>7) & 0x007F;
-            velocitySend = constrain(velocitySend,1,127);
+            velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
             //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
           }
           activeNote=noteValueCheck(activeNote);
@@ -983,7 +1012,7 @@ void statusLEDs() {
 void breath(){
   int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
-  breathLevel = breathLevel*0.8+pressureSensor*0.2; // smoothing of breathLevel value
+  breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
   //breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
   breathCCvalHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
   breathCCval = (breathCCvalHires >>7) & 0x007F;
@@ -1079,7 +1108,7 @@ void extraController(){
  if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send data
    if (!extracIsOn) {
      extracIsOn=1;
-     if (extraCT == 3){ //Sustain ON
+     if (extraCT == 4){ //Sustain ON
       usbMIDI.sendControlChange(64,127, activeMIDIchannel);
       dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
      } 
@@ -1100,6 +1129,14 @@ void extraController(){
       }
       oldextrac = extracCC; 
     }
+    if (extraCT == 3){ //Send filter cutoff (CC#74)
+      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
+      if (extracCC != oldextrac){
+        usbMIDI.sendControlChange(74,extracCC, activeMIDIchannel);
+        dinMIDIsendControlChange(74,extracCC, activeMIDIchannel - 1);      
+      }
+      oldextrac = extracCC; 
+    }
   } else if (extracIsOn) {                        // we have just gone below threshold, so send zero value
     extracIsOn=0;
     if (extraCT == 1){ //MW
@@ -1112,7 +1149,12 @@ void extraController(){
       usbMIDI.sendControlChange(4,0, activeMIDIchannel);
       dinMIDIsendControlChange(4,0, activeMIDIchannel - 1);
       oldextrac = 0;
-    } else if (extraCT == 3){ //SP
+    } else if (extraCT == 3){ //FC
+      //send foot pedal 0
+      usbMIDI.sendControlChange(74,0, activeMIDIchannel);
+      dinMIDIsendControlChange(74,0, activeMIDIchannel - 1);
+      oldextrac = 0;
+    } else if (extraCT == 4){ //SP
       //send sustain off
       usbMIDI.sendControlChange(64,0, activeMIDIchannel);
       dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
@@ -1560,6 +1602,7 @@ void menu() {
   } else if (state == BREATH_ADJ_IDL){
     if (stateFirstRun) {
       drawBreathScreen();
+      forcePix = 1;
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -1697,6 +1740,7 @@ void menu() {
   } else if (state == PORTAM_ADJ_IDL){
     if (stateFirstRun) {
       drawPortamScreen();
+      forcePix = 1;
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -1834,6 +1878,7 @@ void menu() {
   } else if (state == PITCHB_ADJ_IDL){
     if (stateFirstRun) {
       drawPitchbScreen();
+      forcePix = 1;
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -1972,6 +2017,7 @@ void menu() {
   } else if (state == EXTRAC_ADJ_IDL){
     if (stateFirstRun) {
       drawExtracScreen();
+      forcePix = 1;
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -2110,6 +2156,7 @@ void menu() {
   } else if (state == CTOUCH_ADJ_IDL){
     if (stateFirstRun) {
       drawCtouchScreen();
+      forcePix = 1;
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -2413,6 +2460,107 @@ void menu() {
         }
       }   
 
+    } else if (subVelSmpDl) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVelSmpDl(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            plotVelSmpDl(BLACK);
+            if (velSmpDl > 0){
+              velSmpDl-=5;
+            } else velSmpDl = 30;
+            plotVelSmpDl(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 2:
+            // enter
+            plotVelSmpDl(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVelSmpDl = 0;
+            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
+            break;
+          case 4:
+            // up
+            plotVelSmpDl(BLACK);
+            if (velSmpDl < 30){
+              velSmpDl+=5;
+            } else velSmpDl = 0;
+            plotVelSmpDl(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 8:
+            // menu
+            plotVelSmpDl(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVelSmpDl = 0;
+            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
+            break;
+        }
+      }   
+
+     } else if (subVelBias) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVelBias(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            plotVelBias(BLACK);
+            if (velBias > 0){
+              velBias--;
+            } else velBias = 9;
+            plotVelBias(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 2:
+            // enter
+            plotVelBias(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVelBias = 0;
+            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
+            break;
+          case 4:
+            // up
+            plotVelBias(BLACK);
+            if (velBias < 9){
+              velBias++;
+            } else velBias = 0;
+            plotVelBias(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 8:
+            // menu
+            plotVelBias(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVelBias = 0;
+            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
+            break;
+        }
+      }   
       
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -2426,7 +2574,7 @@ void menu() {
         switch (deumButtonState){
           case 1:
             // down
-            if (setupBrMenuCursor < 4){
+            if (setupBrMenuCursor < 6){
               drawMenuCursor(setupBrMenuCursor, BLACK);
               setupBrMenuCursor++;
               drawMenuCursor(setupBrMenuCursor, WHITE);
@@ -2580,7 +2728,7 @@ void menu() {
             plotExtra(BLACK);
             if (extraCT > 0){
               extraCT--;
-            } else extraCT = 3;
+            } else extraCT = 4;
             plotExtra(WHITE);
             cursorNow = BLACK;
             display.display();
@@ -2597,7 +2745,7 @@ void menu() {
           case 4:
             // up
             plotExtra(BLACK);
-            if (extraCT < 3){
+            if (extraCT < 4){
               extraCT++;
             } else extraCT = 0;
             plotExtra(WHITE);
@@ -2830,6 +2978,20 @@ void selectSetupBrMenu(){
       display.display();
       cursorBlinkTime = millis();
       drawSubCurve();
+      break;
+    case 5:
+      subVelSmpDl = 1;
+      drawMenuCursor(setupBrMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVelSmpDl();
+      break;
+    case 6:
+      subVelBias = 1;
+      drawMenuCursor(setupBrMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVelBias();
       break;
   }
 }
@@ -3095,7 +3257,11 @@ void drawMenuScreen(){
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  display.println("MENU");
+  display.print("MENU         ");
+  int vMeterReading = analogRead(vMeterPin);
+  if (vMeterReading > 3000) display.print("USB "); else display.print("BAT ");
+  if (vMeterReading < 2294) display.print("LOW"); else display.print(map(vMeterReading,0,3100,0,50)*0.1,1);
+  display.print("V");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
   display.println("TRANSPOSE"); 
@@ -3166,7 +3332,7 @@ void drawSubOctave(){
   display.drawRect(63,11,64,52,WHITE);
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(74,15);
+  display.setCursor(77,15);
   display.println("OCTAVE");
   plotOctave(WHITE);
   display.display();
@@ -3310,7 +3476,7 @@ void drawSubCurve(){
   display.drawRect(63,11,64,52,WHITE);
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(68,15);
+  display.setCursor(80,15);
   display.println("CURVE");
   plotCurve(WHITE);
   display.display();
@@ -3454,6 +3620,10 @@ void plotExtra(int color){
     break;
   case 3:
     display.setCursor(83,33);
+    display.println("FC");
+    break;
+  case 4:
+    display.setCursor(83,33);
     display.println("SP");
     break;
   }
@@ -3507,6 +3677,54 @@ void plotDeglitch(int color){
   }
 }
 
+void drawSubVelSmpDl(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(69,15);
+  display.println("VEL DELAY");
+  plotVelSmpDl(WHITE);
+  display.display();
+}
+
+void plotVelSmpDl(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(79,33);
+  if (velSmpDl){
+    display.println(velSmpDl); 
+    display.setCursor(105,40);
+    display.setTextSize(1);
+    display.println("ms");
+  } else {
+    display.println("OFF"); 
+  }
+}
+
+void drawSubVelBias(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(72,15);
+  display.println("VEL BIAS");
+  plotVelBias(WHITE);
+  display.display();
+}
+
+void plotVelBias(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  if (velBias){
+    display.setCursor(90,33);
+    display.println(velBias); 
+  } else {
+    display.setCursor(79,33);
+    display.println("OFF"); 
+  }
+}
+
 void drawSetupBrMenuScreen(){
     // Clear the buffer.
   display.clearDisplay();
@@ -3525,9 +3743,9 @@ void drawSetupBrMenuScreen(){
   display.setCursor(0,39);
   display.println("CURVE"); 
   display.setCursor(0,48);
-  display.println(""); 
+  display.println("VEL DELAY"); 
   display.setCursor(0,57);
-  display.println(""); 
+  display.println("VEL BIAS"); 
 
   display.display();
 }
@@ -3567,6 +3785,9 @@ void drawSensorPixels(){
       display.drawPixel(oldpos, 38, BLACK);
       display.drawPixel(pos, 38, WHITE);
       display.display();
+    } else if (forcePix) {
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
     }
     lastPressure=pressureSensor;
   }
@@ -3575,6 +3796,9 @@ void drawSensorPixels(){
     oldpos = map(constrain(lastBite,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
     if (pos!=oldpos){
       display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
+    } else if (forcePix) {
       display.drawPixel(pos, 38, WHITE);
       display.display();
     }
@@ -3587,11 +3811,17 @@ void drawSensorPixels(){
       display.drawPixel(oldpos, 38, BLACK);
       display.drawPixel(pos, 38, WHITE);
       redraw=1;
+    } else if (forcePix) {
+      display.drawPixel(pos, 38, WHITE);
+      redraw=1;
     }
     pos = map(constrain(pbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
     oldpos = map(constrain(lastPbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
     if (pos!=oldpos){
       display.drawPixel(oldpos, 38, BLACK);
+      display.drawPixel(pos, 38, WHITE);
+      redraw=1;
+    } else if (forcePix) {
       display.drawPixel(pos, 38, WHITE);
       redraw=1;
     }
@@ -3609,6 +3839,9 @@ void drawSensorPixels(){
       display.drawPixel(oldpos, 38, BLACK);
       display.drawPixel(pos, 38, WHITE);
       display.display();
+    } else if (forcePix) {
+      display.drawPixel(pos, 38, WHITE);
+      display.display();
     }
     lastEx=exSensor;
   }
@@ -3620,6 +3853,7 @@ void drawSensorPixels(){
     }
     display.display();
   }
+  forcePix = 0;
 }
 
 void writeSetting(byte address, unsigned short value){
