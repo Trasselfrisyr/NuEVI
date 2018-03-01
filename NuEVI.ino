@@ -598,6 +598,11 @@ void setup() {
   
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
+
+  if (!digitalRead(ePin)) {
+    activePatch=0;                
+    doPatchUpdate=1;
+  }
   
   Serial3.begin(31250);   // start serial with midi baudrate 31250
   Serial3.flush();
@@ -3260,7 +3265,7 @@ void drawMenuScreen(){
   display.print("MENU         ");
   int vMeterReading = analogRead(vMeterPin);
   if (vMeterReading > 3000) display.print("USB "); else display.print("BAT ");
-  if (vMeterReading < 2294) display.print("LOW"); else display.print(map(vMeterReading,0,3100,0,50)*0.1,1);
+  if (vMeterReading < 2294) display.print("LOW"); else display.print(map(vMeterReading,0,3030,0,50)*0.1,1);
   display.print("V");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
