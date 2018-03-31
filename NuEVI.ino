@@ -4,6 +4,7 @@
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Filters.h>
 
 /*
 NAME:                 NuEVI
@@ -46,6 +47,9 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define pLedPin 9 
 
 #define vMeterPin A11
+
+//#define RTR 13
+#define PBD 12
 
 #if defined(REVB)
 
@@ -178,9 +182,10 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define BREATHCURVE_ADDR 44
 #define VEL_SMP_DL_ADDR 46
 #define VEL_BIAS_ADDR 48
+#define PINKY_KEY_ADDR 50
 
 //"factory" values for settings
-#define VERSION 23
+#define VERSION 24
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2200
@@ -197,14 +202,15 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
 #define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
-#define VIBRATO_FACTORY 3   // 0 - OFF, 1 - 6 depth
+#define VIBRATO_FACTORY 4   // 0 - OFF, 1 - 9 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
 #define BREATHCURVE_FACTORY 4 // 0 to 12 (-4 to +4, S1 to S4)
 #define VEL_SMP_DL_FACTORY 20 // 0 to 30 ms in steps of 5
-#define VEL_BIAS_FACTORY 0 // 0 to 9
+#define VEL_BIAS_FACTORY 0  // 0 to 9
+#define PINKY_KEY_FACTORY 12 // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 22 (QuickTranspose +1 to +12)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -304,13 +310,14 @@ unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
 unsigned short PBdepth;   // OFF:1-12 divider
 unsigned short extraCT;   // OFF:MW:FP:FC:SP
-unsigned short vibrato;   // OFF:1-6
+unsigned short vibrato;   // OFF:1-9
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
 unsigned short octave;      
 unsigned short curve;
 unsigned short velSmpDl;  // 0-30 ms
 unsigned short velBias;   // 0-9
+unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
 
 int breathLoLimit = 0;
 int breathHiLimit = 4095;
@@ -355,8 +362,10 @@ byte subPB = 0;
 byte subExtra = 0;
 byte subVibrato = 0;
 byte subDeglitch = 0;
+byte subPinky = 0;
 byte subVelSmpDl = 0;
 byte subVelBias = 0;
+byte reTrig = 0;
 
 byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
@@ -401,6 +410,7 @@ byte doPatchUpdate=0;
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
 unsigned int oldbreathhires=0;
+float filterFreq = 30.0;
 
 int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
 int lastPressure;
@@ -423,12 +433,14 @@ int pbDn=0;
 int lastPbUp=0;
 int lastPbDn=0;
 
-float vibDepth[7] = {0,0.05,0.1,0.15,0.2,0.25,0.3}; // max pitch bend values (+/-) for the vibrato settings 
+byte oldpkey = 0;
+
+float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings 
 
 unsigned int curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
 unsigned int curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
 unsigned int curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
-unsigned int curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16838};
+unsigned int curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16383};
 unsigned int curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
 unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16838};
 unsigned int curveP2[] = {0,400,800,1300,2000,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
@@ -436,8 +448,11 @@ unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4600,5550,6550,
 unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
 unsigned int curveS1[] = {0,600,1350,2150,2900,3800,4700,6000,8700,11000,12400,13400,14300,14950,15500,16000,16383};
 unsigned int curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,11000,12100,12900,13700,14400,14950,15500,16000,16383};
-unsigned int curveS3[] = {0,600,1350,2300,3800,6200,8700,10200,11100,12100,12900,13700,14400,14950,15500,16000,16383};
-unsigned int curveS4[] = {0,600,1700,4000,6600,8550,9700,10550,11400,12200,12900,13700,14400,14950,15500,16000,16383};
+//unsigned int curveS3[] = {0,600,1350,2300,3800,6200,8700,10200,11100,12100,12900,13700,14400,14950,15500,16000,16383};
+//unsigned int curveS4[] = {0,600,1700,4000,6600,8550,9700,10550,11400,12200,12900,13700,14400,14950,15500,16000,16383};
+
+unsigned int curveZ1[] = {0,1400,2100,2900,3200,3900,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
+unsigned int curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 
 int vibThr=1900;     // this gets auto calibrated in setup
 int oldvibRead=0;
@@ -519,6 +534,8 @@ void setup() {
     writeSetting(BREATHCURVE_ADDR,BREATHCURVE_FACTORY);
     writeSetting(VEL_SMP_DL_ADDR,VEL_SMP_DL_FACTORY);
     writeSetting(VEL_BIAS_ADDR,VEL_BIAS_FACTORY);
+    writeSetting(PINKY_KEY_ADDR,PINKY_KEY_FACTORY);
+    //writeSetting(QTRANSP_ADDR,QTRANSP_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -545,6 +562,7 @@ void setup() {
   curve        = readSetting(BREATHCURVE_ADDR);
   velSmpDl     = readSetting(VEL_SMP_DL_ADDR);
   velBias      = readSetting(VEL_BIAS_ADDR);
+  pinkySetting = readSetting(PINKY_KEY_ADDR);
 
   activePatch = patch;
  
@@ -558,6 +576,7 @@ void setup() {
   if (!touchSensor.begin(0x5A)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
+
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
@@ -591,7 +610,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.0.1");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.0.3");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -614,169 +633,77 @@ void setup() {
 //_______________________________________________________________________________________________ MAIN LOOP
 
 void loop() {
-  pressureSensor = analogRead(A0); // Get the pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
+  mainLoop();
+}
 
-  if (mainState == NOTE_OFF) {
-    if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
-    if ((activePatch != patch) && doPatchUpdate){
-      activePatch = patch;
-      usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
-      dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
-      if (readSetting(PATCH_ADDR) != activePatch) writeSetting(PATCH_ADDR,activePatch); 
-      slurSustain = 0;
-      parallelChord = 0;
-      subOctaveDouble = 0;
-      doPatchUpdate = 0;
-    }
-    if (pressureSensor > breathThrVal) {
-      // Value has risen above threshold. Move to the RISE_WAIT
-      // state. Record time and initial breath value.
-      breath_on_time = millis();
-      initial_breath_value = pressureSensor;
-      mainState = RISE_WAIT;  // Go to next state
-    }
-    specialKey=(touchRead(specialKeyPin) > touch_Thr);        //S2 on pcb
-    if (lastSpecialKey != specialKey){
-      if (specialKey){
-        // special key just pressed, check other keys
-        readSwitches();
-        if (K4) {
-          if (!slurSustain) {
-            slurSustain = 1;
-            parallelChord = 0;
-          } else slurSustain = 0;
-        }
-        if (K5) {
-          if (!parallelChord) {
-            parallelChord = 1;
+void mainLoop() {
+  FilterOnePole breathFilter( LOWPASS, filterFreq );   // create a one pole (RC) lowpass filter
+  while (1){
+    breathFilter.input(analogRead(A0));
+    pressureSensor = breathFilter.output(); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
+  
+    if (mainState == NOTE_OFF) {
+      if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
+      if ((activePatch != patch) && doPatchUpdate){
+        activePatch = patch;
+        usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
+        dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
+        if (readSetting(PATCH_ADDR) != activePatch) writeSetting(PATCH_ADDR,activePatch); 
+        slurSustain = 0;
+        parallelChord = 0;
+        subOctaveDouble = 0;
+        doPatchUpdate = 0;
+      }
+      if (pressureSensor > breathThrVal) {
+        // Value has risen above threshold. Move to the RISE_WAIT
+        // state. Record time and initial breath value.
+        breath_on_time = millis();
+        initial_breath_value = pressureSensor;
+        mainState = RISE_WAIT;  // Go to next state
+      }
+      specialKey=(touchRead(specialKeyPin) > touch_Thr);        //S2 on pcb
+      if (lastSpecialKey != specialKey){
+        if (specialKey){
+          // special key just pressed, check other keys
+          readSwitches();
+          if (K4) {
+            if (!slurSustain) {
+              slurSustain = 1;
+              parallelChord = 0;
+            } else slurSustain = 0;
+          }
+          if (K5) {
+            if (!parallelChord) {
+              parallelChord = 1;
+              slurSustain = 0;
+            } else parallelChord = 0;
+          }
+          if (K1) subOctaveDouble = !subOctaveDouble;
+          if (!K1 && !K4 && !K5){
             slurSustain = 0;
-          } else parallelChord = 0;
-        }
-        if (K1) subOctaveDouble = !subOctaveDouble;
-        if (halfPitchBendKey) midiPanic();
-      }
-    }
-    lastSpecialKey = specialKey;
-  } else if (mainState == RISE_WAIT) {
-    if (pressureSensor > breathThrVal) {
-      // Has enough time passed for us to collect our second
-      // sample?
-      if (millis() - breath_on_time > velSmpDl) {
-        // Yes, so calculate MIDI note and velocity, then send a note on event
-        readSwitches();
-        // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
-        breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal); 
-        if (!velocity) {
-          unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
-          velocitySend = (breathValHires >>7) & 0x007F;
-          velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
-          //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
-        } else velocitySend = velocity;          
-        breath(); // send breath data
-        fingeredNote=noteValueCheck(fingeredNote);
-        usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
-        dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
-        if (parallelChord){
-          for (int i=0; i < addedIntervals; i++){
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
-            dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
-          }
-        }
-        if (slurSustain){
-          usbMIDI.sendControlChange(64,127, activeMIDIchannel);
-          dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
-          slurBase = fingeredNote;
-          addedIntervals = 0;
-        }
-        if (subOctaveDouble){
-          usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel);
-          dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
-          if (parallelChord){
-            for (int i=0; i < addedIntervals; i++){
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
-              dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
-            }
-          }
-        }
-        activeNote=fingeredNote;
-        mainState = NOTE_ON;
-      }
-    } else {
-      // Value fell below threshold before velocity sample delay time passed. Return to
-      // NOTE_OFF state (e.g. we're ignoring a short blip of breath)
-      mainState = NOTE_OFF;
-    }
-  } else if (mainState == NOTE_ON) {
-    cursorBlinkTime = millis(); // keep display from updating with cursor blinking if note on
-    if (pressureSensor < breathThrVal) {
-      // Value has fallen below threshold - turn the note off
-      activeNote=noteValueCheck(activeNote);
-      usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
-      dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
-      if (parallelChord){
-        for (int i=0; i < addedIntervals; i++){
-          usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
-          dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+            parallelChord = 0;
+            subOctaveDouble = 0;
+            if (halfPitchBendKey) midiPanic();
+          }       
         }
       }
-      if (subOctaveDouble){
-        usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel);
-        dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
-        if (parallelChord){
-          for (int i=0; i < addedIntervals; i++){
-            usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
-            dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
-          }
-        }
-      }      
-      if (slurSustain){
-          usbMIDI.sendControlChange(64,0, activeMIDIchannel);
-          dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
-      }
-      breathLevel=0;
-      mainState = NOTE_OFF;
-    } else {
-      readSwitches();
-      if (fingeredNote != lastFingering){ //
-        // reset the debouncing timer
-        lastDeglitchTime = millis();
-      }
-      if ((millis() - lastDeglitchTime) > deglitch) {
-      // whatever the reading is at, it's been there for longer
-      // than the debounce delay, so take it as the actual current state
-        if (noteValueCheck(fingeredNote) != activeNote) {
-          // Player has moved to a new fingering while still blowing.
-          // Send a note off for the current note and a note on for
-          // the new note.
-          if (!velocity){      
+      lastSpecialKey = specialKey;
+    } else if (mainState == RISE_WAIT) {
+      if (pressureSensor > breathThrVal) {
+        // Has enough time passed for us to collect our second
+        // sample?
+        if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl)) {
+          // Yes, so calculate MIDI note and velocity, then send a note on event
+          readSwitches();
+          // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
+          breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal); 
+          if (!velocity) {
             unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
             velocitySend = (breathValHires >>7) & 0x007F;
             velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
-            //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
-          }
-          activeNote=noteValueCheck(activeNote);
-          if (parallelChord || subOctaveDouble){ // poly playing, send old note off before new note on
-          usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
-          dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
-          }
-          
-          if (parallelChord){
-            for (int i=0; i < addedIntervals; i++){
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note Off message for old note
-              dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
-            }
-          }
-          if (subOctaveDouble){
-            usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
-            dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
-            if (parallelChord){
-              for (int i=0; i < addedIntervals; i++){
-                usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
-                dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
-              }
-            }
-          }
-          
+            //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
+          } else velocitySend = velocity;          
+          breath(); // send breath data
           fingeredNote=noteValueCheck(fingeredNote);
           usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
           dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
@@ -786,8 +713,14 @@ void loop() {
               dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
             }
           }
+          if (slurSustain){
+            usbMIDI.sendControlChange(64,127, activeMIDIchannel);
+            dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
+            slurBase = fingeredNote;
+            addedIntervals = 0;
+          }
           if (subOctaveDouble){
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel);
             dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
             if (parallelChord){
               for (int i=0; i < addedIntervals; i++){
@@ -796,40 +729,139 @@ void loop() {
               }
             }
           }
-
-          if (!parallelChord && !subOctaveDouble){ // mono playing, send old note off after new note on
-            usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
-            dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
-          }
-
-          if (slurSustain){
-            addedIntervals++;
-            slurInterval[addedIntervals-1] = fingeredNote - slurBase;
-          }
           activeNote=fingeredNote;
+          mainState = NOTE_ON;
+        }
+      } else {
+        // Value fell below threshold before velocity sample delay time passed. Return to
+        // NOTE_OFF state (e.g. we're ignoring a short blip of breath)
+        mainState = NOTE_OFF;
+      }
+    } else if (mainState == NOTE_ON) {
+      cursorBlinkTime = millis(); // keep display from updating with cursor blinking if note on
+      if (pressureSensor < breathThrVal) {
+        // Value has fallen below threshold - turn the note off
+        activeNote=noteValueCheck(activeNote);
+        usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
+        dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
+        if (parallelChord){
+          for (int i=0; i < addedIntervals; i++){
+            usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+            dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+          }
+        }
+        if (subOctaveDouble){
+          usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel);
+          dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
+          if (parallelChord){
+            for (int i=0; i < addedIntervals; i++){
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
+            }
+          }
+        }      
+        if (slurSustain){
+            usbMIDI.sendControlChange(64,0, activeMIDIchannel);
+            dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
+        }
+        breathLevel=0;
+        mainState = NOTE_OFF;
+      } else {
+        readSwitches();
+        if (fingeredNote != lastFingering){ //
+          // reset the debouncing timer
+          lastDeglitchTime = millis();
+        }
+        if ((millis() - lastDeglitchTime) > deglitch) {
+        // whatever the reading is at, it's been there for longer
+        // than the debounce delay, so take it as the actual current state
+          if (noteValueCheck(fingeredNote) != activeNote) {
+            // Player has moved to a new fingering while still blowing.
+            // Send a note off for the current note and a note on for
+            // the new note.
+            if (!velocity){      
+              unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+              velocitySend = (breathValHires >>7) & 0x007F;
+              velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
+              //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
+            }
+            activeNote=noteValueCheck(activeNote);
+            if (parallelChord || subOctaveDouble){ // poly playing, send old note off before new note on
+            usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
+            dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
+            }
+            
+            if (parallelChord){
+              for (int i=0; i < addedIntervals; i++){
+                usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note Off message for old note
+                dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+              }
+            }
+            if (subOctaveDouble){
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
+              dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
+              if (parallelChord){
+                for (int i=0; i < addedIntervals; i++){
+                  usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
+                  dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
+                }
+              }
+            }
+            
+            fingeredNote=noteValueCheck(fingeredNote);
+            usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
+            dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
+            if (parallelChord){
+              for (int i=0; i < addedIntervals; i++){
+                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+                dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+              }
+            }
+            if (subOctaveDouble){
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
+              if (parallelChord){
+                for (int i=0; i < addedIntervals; i++){
+                  usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+                  dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
+                }
+              }
+            }
+  
+            if (!parallelChord && !subOctaveDouble){ // mono playing, send old note off after new note on
+              usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
+              dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
+            }
+  
+            if (slurSustain){
+              addedIntervals++;
+              slurInterval[addedIntervals-1] = fingeredNote - slurBase;
+            }
+            activeNote=fingeredNote;
+          }
         }
       }
     }
+    // Is it time to send more CC data?
+    if (millis() - ccSendTime > CC_INTERVAL) {
+      // deal with Breath, Pitch Bend, Modulation, etc.
+      breath();
+      pitch_bend();
+      portamento_();
+      extraController();
+      statusLEDs();
+      ccSendTime = millis();
+    }
+    if (millis() - pixelUpdateTime > pixelUpdateInterval){
+      // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
+      // this is one of the big reasons the display is for setup use only
+      drawSensorPixels(); // live sensor monitoring for the setup screens
+      pixelUpdateTime = millis();
+    }
+    lastFingering=fingeredNote; 
+    //do menu stuff
+    menu();
   }
-  // Is it time to send more CC data?
-  if (millis() - ccSendTime > CC_INTERVAL) {
-    // deal with Breath, Pitch Bend, Modulation, etc.
-    breath();
-    pitch_bend();
-    portamento_();
-    extraController();
-    statusLEDs();
-    ccSendTime = millis();
-  }
-  if (millis() - pixelUpdateTime > pixelUpdateInterval){
-    // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
-    // this is one of the big reasons the display is for setup use only
-    drawSensorPixels(); // live sensor monitoring for the setup screens
-    pixelUpdateTime = millis();
-  }
-  lastFingering=fingeredNote; 
-  //do menu stuff
-  menu();
 }
 
 //_______________________________________________________________________________________________ FUNCTIONS
@@ -905,12 +937,12 @@ unsigned int breathCurve(unsigned int inputVal){
       return multiMap(inputVal,curveIn,curveS2,17);
       break;
     case 11:
-      // S3
-      return multiMap(inputVal,curveIn,curveS3,17);
+      // Z1
+      return multiMap(inputVal,curveIn,curveZ1,17);
       break;
     case 12:
-      // S4
-      return multiMap(inputVal,curveIn,curveS4,17);
+      // Z2
+      return multiMap(inputVal,curveIn,curveZ2,17);
       break;
   }
 }
@@ -1017,8 +1049,9 @@ void statusLEDs() {
 void breath(){
   int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
-  breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
-  //breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
+  breathLevel = pressureSensor;
+  //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
+  ////////breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
   breathCCvalHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
   breathCCval = (breathCCvalHires >>7) & 0x007F;
   breathCCvalFine = breathCCvalHires & 0x007F;
@@ -1054,10 +1087,10 @@ void pitch_bend(){
   float nudge;
   int calculatedPBdepth;
   byte vibratoMoved = 0;
-  pbUp = touchRead(pbUpPin);                                      // SENSOR PIN 23 - PCB PIN "Pu"
-  pbDn = touchRead(pbDnPin);                                      // SENSOR PIN 22 - PCB PIN "Pd"
-  halfPitchBendKey=(touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
-  int vibRead = touchRead(vibratoPin);                            // SENSOR PIN 15 - built in var cap
+  pbUp = touchRead(pbUpPin);                                                                 // SENSOR PIN 23 - PCB PIN "Pu"
+  pbDn = touchRead(pbDnPin);                                                                 // SENSOR PIN 22 - PCB PIN "Pd"
+  halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
+  int vibRead = touchRead(vibratoPin);                                                       // SENSOR PIN 15 - built in var cap
   if (PBdepth){
     calculatedPBdepth = pbDepthList[PBdepth];
     if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
@@ -1220,7 +1253,7 @@ void portOff(){
 //***********************************************************
 
 void readSwitches(){  
-  
+  int qTransp;
   // Read touch pads (MPR121) and put value in variables
   int touchValue[12]; 
   for (byte i=0; i<12; i++){
@@ -1244,9 +1277,21 @@ void readSwitches(){
   K5=(touchValue[K5Pin] < ctouchThrVal);
   K6=(touchValue[K6Pin] < ctouchThrVal);
   K7=(touchValue[K7Pin] < ctouchThrVal);
-  
+
+  int pKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
+
+ if ((pinkySetting < 12) && pKey){
+  qTransp = pinkySetting - 12;
+ } else if ((pinkySetting > 12) && pKey){
+  qTransp = pinkySetting - 12;
+ } else {
+  qTransp = 0;
+ }
+
+ //reTrig = ((pinkySetting == RTR) && pKey);
+
   // Calculate midi note number from pressed keys  
-  fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12;
+  fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
 }
 
 
@@ -1322,6 +1367,9 @@ void menu() {
     subExtra = 0;
     subVibrato = 0;
     subDeglitch = 0;
+    subPinky = 0;
+    subVelSmpDl = 0;
+    subVelBias = 0;
   }
 
 
@@ -1360,6 +1408,9 @@ void menu() {
           state = MAIN_MENU;
           stateFirstRun = 1;
           break;
+        case 15:
+          //all keys depressed, reboot to programming mode
+          _reboot_Teensyduino_();
       }
     }
   } else if (state == PATCH_VIEW){ 
@@ -2799,7 +2850,7 @@ void menu() {
             break;
           case 4:
             // up
-            if (vibrato < 6){
+            if (vibrato < 9){
               plotVibrato(BLACK);
               vibrato++;
               plotVibrato(WHITE);
@@ -2868,6 +2919,56 @@ void menu() {
             break;
         }
       }    
+    } else if (subPinky) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotPinkyKey(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            if (pinkySetting > 0){
+              plotPinkyKey(BLACK);
+              pinkySetting-=1;
+              plotPinkyKey(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 2:
+            // enter
+            plotPinkyKey(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subPinky = 0;
+            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
+            break;
+          case 4:
+            // up
+            if (pinkySetting < 24){
+              plotPinkyKey(BLACK);
+              pinkySetting+=1;
+              plotPinkyKey(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 8:
+            // menu
+            plotPinkyKey(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subPinky = 0;
+            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
+            break;
+        }
+      }    
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
@@ -2880,7 +2981,7 @@ void menu() {
         switch (deumButtonState){
           case 1:
             // down
-            if (setupCtMenuCursor < 5){
+            if (setupCtMenuCursor < 6){
               drawMenuCursor(setupCtMenuCursor, BLACK);
               setupCtMenuCursor++;
               drawMenuCursor(setupCtMenuCursor, WHITE);
@@ -3037,6 +3138,13 @@ void selectSetupCtMenu(){
       display.display();
       cursorBlinkTime = millis();
       drawSubDeglitch();
+      break;
+    case 6:
+      subPinky = 1;
+      drawMenuCursor(setupCtMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubPinkyKey();
   }
 }
 void drawBreathScreen(){
@@ -3537,11 +3645,11 @@ void plotCurve(int color){
       break;
     case 11:
       display.setCursor(83,33);
-      display.println("S3");
+      display.println("Z1");
       break;
     case 12:
       display.setCursor(83,33);
-      display.println("S4");
+      display.println("Z2");
       break;
   } 
 }
@@ -3681,7 +3789,30 @@ void plotDeglitch(int color){
     display.println("OFF"); 
   }
 }
+void drawSubPinkyKey(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(68,15);
+  display.println("PINKY KEY");
+  plotPinkyKey(WHITE);
+  display.display();
+}
 
+void plotPinkyKey(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(79,33);
+  if (pinkySetting < 12){
+    display.println(pinkySetting - 12); 
+  } else if (pinkySetting == PBD) {
+    display.println("PBD"); 
+  } else {
+    display.print("+");
+    display.println(pinkySetting - 12); 
+  }
+}
 void drawSubVelSmpDl(){
   display.fillRect(63,11,64,52,BLACK);
   display.drawRect(63,11,64,52,WHITE);
@@ -3775,7 +3906,7 @@ void drawSetupCtMenuScreen(){
   display.setCursor(0,48);
   display.println("DEGLITCH"); 
   display.setCursor(0,57);
-  display.println(""); 
+  display.println("PINKY KEY"); 
 
   display.display();
 }
