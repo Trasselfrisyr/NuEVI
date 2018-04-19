@@ -4,15 +4,15 @@
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <Filters.h>
+#include <Filters.h>  // for the breath signal LP filtering, https://github.com/edgar-bonet/Filters
 
 /*
 NAME:                 NuEVI
 WRITTEN BY:           JOHAN BERGLUND
-DATE:                 2017-08-26
+DATE:                 2018-04-19
 FILE SAVED AS:        NuEVI.ino
-FOR:                  PJRC Teensy LC or 3.2 and a MPR121 capactive touch sensor board.
-                      Uses an SSD1306 controlled OLED dispaly communicating over I2C.
+FOR:                  PJRC Teensy 3.2 and a MPR121 capactive touch sensor board.
+                      Uses an SSD1306 controlled OLED display communicating over I2C.
 PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath sensor
                       and capacitive touch keys. Output to both USB MIDI and DIN MIDI.  
   
@@ -412,6 +412,8 @@ int oldbreath=0;
 unsigned int oldbreathhires=0;
 float filterFreq = 30.0;
 
+float filterVal = 0.15;
+float smoothedVal;
 int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
 int lastPressure;
 byte velocitySend;   // remapped midi velocity from breath sensor (or set to static value if selected)
@@ -442,10 +444,10 @@ unsigned int curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,138
 unsigned int curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
 unsigned int curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16383};
 unsigned int curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
-unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16838};
+unsigned int curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 unsigned int curveP2[] = {0,400,800,1300,2000,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
 unsigned int curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4600,5550,6550,8000,9500,11250,13400,16383};
-unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16282};
+unsigned int curveP4[] = {0,100,200,400,700,1050,1500,1950,2550,3200,4000,4900,6050,7500,9300,12100,16383};
 unsigned int curveS1[] = {0,600,1350,2150,2900,3800,4700,6000,8700,11000,12400,13400,14300,14950,15500,16000,16383};
 unsigned int curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,11000,12100,12900,13700,14400,14950,15500,16000,16383};
 //unsigned int curveS3[] = {0,600,1350,2300,3800,6200,8700,10200,11100,12100,12900,13700,14400,14950,15500,16000,16383};
@@ -610,7 +612,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.0.3");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.0.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -640,8 +642,9 @@ void mainLoop() {
   FilterOnePole breathFilter( LOWPASS, filterFreq );   // create a one pole (RC) lowpass filter
   while (1){
     breathFilter.input(analogRead(A0));
-    pressureSensor = breathFilter.output(); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
-  
+    pressureSensor = constrain((int)breathFilter.output(),0,4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
+    //pressureSensor = analogRead(A0);
+    //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth 
     if (mainState == NOTE_OFF) {
       if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
       if ((activePatch != patch) && doPatchUpdate){
@@ -947,7 +950,25 @@ unsigned int breathCurve(unsigned int inputVal){
   }
 }
 
+//**************************************************************
 
+int smooth(int data, float filterVal, float smoothedVal){
+
+
+  if (filterVal > 1){      // check to make sure param's are within range
+    filterVal = .99;
+  }
+  else if (filterVal <= 0){
+    filterVal = 0;
+  }
+
+  smoothedVal = (data * (1 - filterVal)) + (smoothedVal  *  filterVal);
+
+  return (int)smoothedVal;
+}
+
+
+//**************************************************************
 
 // MIDI note value check with out of range octave repeat
 int noteValueCheck(int note){
@@ -1049,8 +1070,8 @@ void statusLEDs() {
 void breath(){
   int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
-  breathLevel = pressureSensor;
-  //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
+  breathLevel = constrain(pressureSensor,breathThrVal,breathMaxVal);
+  //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value      
   ////////breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
   breathCCvalHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
   breathCCval = (breathCCvalHires >>7) & 0x007F;
@@ -3373,8 +3394,10 @@ void drawMenuScreen(){
   display.print("MENU         ");
   int vMeterReading = analogRead(vMeterPin);
   if (vMeterReading > 3000) display.print("USB "); else display.print("BAT ");
-  if (vMeterReading < 2294) display.print("LOW"); else display.print(map(vMeterReading,0,3030,0,50)*0.1,1);
-  display.print("V");
+  if (vMeterReading < 2294) display.print("LOW"); else {
+    display.print(map(vMeterReading,0,3030,0,50)*0.1,1);
+    display.print("V");
+  }
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
   display.println("TRANSPOSE"); 
