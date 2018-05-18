@@ -48,7 +48,6 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 #define vMeterPin A11
 
-//#define RTR 13
 #define PBD 12
 
 #if defined(REVB)
@@ -183,12 +182,20 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VEL_SMP_DL_ADDR 46
 #define VEL_BIAS_ADDR 48
 #define PINKY_KEY_ADDR 50
+#define FP1_ADDR 52
+#define FP2_ADDR 54
+#define FP3_ADDR 56
+#define FP4_ADDR 58
+#define FP5_ADDR 60
+#define FP6_ADDR 62
+#define FP7_ADDR 64
+#define DIPSW_BITS_ADDR 66
 
 //"factory" values for settings
-#define VERSION 24
+#define VERSION 26
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
-#define PORTAM_THR_FACTORY 2200
+#define PORTAM_THR_FACTORY 2000
 #define PORTAM_MAX_FACTORY 3300
 #define PITCHB_THR_FACTORY 1400
 #define PITCHB_MAX_FACTORY 2300
@@ -211,6 +218,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VEL_SMP_DL_FACTORY 20 // 0 to 30 ms in steps of 5
 #define VEL_BIAS_FACTORY 0  // 0 to 9
 #define PINKY_KEY_FACTORY 12 // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 22 (QuickTranspose +1 to +12)
+#define DIPSW_BITS_FACTORY 0 // virtual dip switch settings for special modes (work in progress)
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -318,6 +326,9 @@ unsigned short curve;
 unsigned short velSmpDl;  // 0-30 ms
 unsigned short velBias;   // 0-9
 unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
+unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
+
+unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
 int breathLoLimit = 0;
 int breathHiLimit = 4095;
@@ -380,7 +391,7 @@ int pos2;
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
 unsigned long lastDebounceTime = 0;         // the last time the output pin was toggled
-unsigned long debounceDelay = 20;           // the debounce time; increase if the output flickers
+unsigned long debounceDelay = 30;           // the debounce time; increase if the output flickers
 unsigned long buttonRepeatTime = 0;
 unsigned long buttonPressedTime = 0;
 unsigned long buttonRepeatInterval = 50;
@@ -406,6 +417,8 @@ int initial_breath_value;          // The breath value at the time we observed t
 byte activeMIDIchannel=1;          // MIDI channel
 byte activePatch=0;                
 byte doPatchUpdate=0;
+
+byte FPD = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
@@ -510,7 +523,8 @@ void setup() {
 
   
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
+  
+  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){ 
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -518,6 +532,14 @@ void setup() {
     writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
     writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
     writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
+    writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
+    writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
+    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
+  }
+  
+  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
+    writeSetting(VERSION_ADDR,VERSION);
+    
     writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
     writeSetting(MIDI_ADDR,MIDI_FACTORY);
     writeSetting(BREATH_CC_ADDR,BREATH_CC_FACTORY);
@@ -528,16 +550,20 @@ void setup() {
     writeSetting(EXTRA_ADDR,EXTRA_FACTORY);
     writeSetting(VIBRATO_ADDR,VIBRATO_FACTORY);
     writeSetting(DEGLITCH_ADDR,DEGLITCH_FACTORY);
-    writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
-    writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
     writeSetting(PATCH_ADDR,PATCH_FACTORY);
     writeSetting(OCTAVE_ADDR,OCTAVE_FACTORY);
-    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
     writeSetting(BREATHCURVE_ADDR,BREATHCURVE_FACTORY);
     writeSetting(VEL_SMP_DL_ADDR,VEL_SMP_DL_FACTORY);
     writeSetting(VEL_BIAS_ADDR,VEL_BIAS_FACTORY);
     writeSetting(PINKY_KEY_ADDR,PINKY_KEY_FACTORY);
-    //writeSetting(QTRANSP_ADDR,QTRANSP_FACTORY);
+    writeSetting(FP1_ADDR,0);
+    writeSetting(FP2_ADDR,0);
+    writeSetting(FP3_ADDR,0);
+    writeSetting(FP4_ADDR,0);
+    writeSetting(FP5_ADDR,0);
+    writeSetting(FP6_ADDR,0);
+    writeSetting(FP7_ADDR,0);
+    writeSetting(DIPSW_BITS_ADDR,DIPSW_BITS_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -565,6 +591,14 @@ void setup() {
   velSmpDl     = readSetting(VEL_SMP_DL_ADDR);
   velBias      = readSetting(VEL_BIAS_ADDR);
   pinkySetting = readSetting(PINKY_KEY_ADDR);
+  fastPatch[0] = readSetting(FP1_ADDR);
+  fastPatch[1] = readSetting(FP2_ADDR);
+  fastPatch[2] = readSetting(FP3_ADDR);
+  fastPatch[3] = readSetting(FP4_ADDR);
+  fastPatch[4] = readSetting(FP5_ADDR);
+  fastPatch[5] = readSetting(FP6_ADDR);
+  fastPatch[6] = readSetting(FP7_ADDR);
+  dipSwBits    = readSetting(DIPSW_BITS_ADDR);
 
   activePatch = patch;
  
@@ -612,7 +646,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.0.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.1.1");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -629,6 +663,8 @@ void setup() {
   Serial3.flush();
 
   digitalWrite(13,HIGH); // Switch on the onboard LED to indicate power on/ready
+
+  midiReset();
   
 }
 
@@ -686,7 +722,6 @@ void mainLoop() {
             slurSustain = 0;
             parallelChord = 0;
             subOctaveDouble = 0;
-            if (halfPitchBendKey) midiPanic();
           }       
         }
       }
@@ -951,7 +986,7 @@ unsigned int breathCurve(unsigned int inputVal){
 }
 
 //**************************************************************
-
+/*
 int smooth(int data, float filterVal, float smoothedVal){
 
 
@@ -967,7 +1002,7 @@ int smooth(int data, float filterVal, float smoothedVal){
   return (int)smoothedVal;
 }
 
-
+*/
 //**************************************************************
 
 // MIDI note value check with out of range octave repeat
@@ -982,11 +1017,16 @@ int noteValueCheck(int note){
 
 //**************************************************************
 
-void midiPanic(){
-  for (int i = 0; i < 128; i++){
-    usbMIDI.sendNoteOff(i,0,activeMIDIchannel);
-    dinMIDIsendNoteOff(i,0,activeMIDIchannel - 1);
-  }
+void midiPanic(){ // all notes off
+  usbMIDI.sendControlChange(123, 0, activeMIDIchannel);
+  dinMIDIsendControlChange(123, 0, activeMIDIchannel - 1);
+}
+
+//**************************************************************
+
+void midiReset(){ // reset all controllers
+  usbMIDI.sendControlChange(121, 0, activeMIDIchannel);
+  dinMIDIsendControlChange(121, 0, activeMIDIchannel - 1);
 }
 
 //**************************************************************
@@ -1054,12 +1094,14 @@ void dinMIDIsendProgramChange(byte value, byte ch) {
 
 void statusLEDs() {
   if (breathLevel > breathThrVal){ // breath indicator LED, labeled "B" on PCB
-    analogWrite(bLedPin, breathLedBrightness);
+    //analogWrite(bLedPin, map(breathLevel,0,4096,5,breathLedBrightness));
+    analogWrite(bLedPin, map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,5,breathLedBrightness));
   } else {
     analogWrite(bLedPin, 0);
   }
   if (biteSensor > portamThrVal){ // portamento indicator LED, labeled "P" on PCB
-    analogWrite(pLedPin, portamLedBrightness);
+    //analogWrite(pLedPin, map(biteSensor,0,4096,5,portamLedBrightness));
+    analogWrite(pLedPin, map(constrain(biteSensor,portamThrVal,portamMaxVal),portamThrVal,portamMaxVal,5,portamLedBrightness));
   } else {
     analogWrite(pLedPin, 0);
   }
@@ -1309,19 +1351,33 @@ void readSwitches(){
   qTransp = 0;
  }
 
- //reTrig = ((pinkySetting == RTR) && pKey);
 
   // Calculate midi note number from pressed keys  
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
 }
 
+//***********************************************************
 
+int readTrills(){
+  readSwitches();
+  return K5+2*K6+4*K7;
+}
 
+//***********************************************************
 
+void setFPS(int trills){
+  fastPatch[trills-1] = patch;
+  writeSetting(FP1_ADDR+2*(trills-1),patch);
+  FPD = 2;
+}
 
+//***********************************************************
 
-
-
+void clearFPS(int trills){
+  fastPatch[trills-1] = 0;
+  writeSetting(FP1_ADDR+2*(trills-1),0);
+  FPD = 3;
+}
 
 
 // MENU STUFF FROM THIS POINT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -1402,22 +1458,34 @@ void menu() {
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
+      int trills = readTrills();
       switch (deumButtonState){
         case 1:
           // down
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+          } else if (!trills) buttonPressedAndNotUsed = 1;
           display.ssd1306_command(SSD1306_DISPLAYON);
           state = PATCH_VIEW;
-          buttonPressedAndNotUsed = 1;
           stateFirstRun = 1;
           break;
         case 2:
           // enter
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+          }
           display.ssd1306_command(SSD1306_DISPLAYON);
           state = PATCH_VIEW;
           stateFirstRun = 1;
           break;
         case 4:
           // up
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+          } else if (!trills) buttonPressedAndNotUsed = 1;
           display.ssd1306_command(SSD1306_DISPLAYON);
           state = PATCH_VIEW;
           buttonPressedAndNotUsed = 1;
@@ -1444,37 +1512,75 @@ void menu() {
       state = DISPLAYOFF_IDL;
       stateFirstRun = 1;
       doPatchUpdate = 1;
+      FPD = 0;
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
+      int trills = readTrills();
       switch (deumButtonState){
         case 1:
           // down
-          if (patch > 1){
-            patch--;
-          } else patch = 128;
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+          } else if (!trills){
+            if (patch > 1){
+              patch--;
+            } else patch = 128;
+            FPD = 0;
+          }
           drawPatchView();
           patchViewTime = millis();
           break;
         case 2:
           // enter
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+            drawPatchView();
+          }
           patchViewTime = millis();
-          midiPanic();
           break;
         case 4:
           // up
-          if (patch < 128){
-            patch++;
-          } else patch = 1;
+          if (trills && (fastPatch[trills-1] > 0)){
+            patch = fastPatch[trills-1];
+            FPD = 1;
+          } else if (!trills){
+            if (patch < 128){
+              patch++;
+            } else patch = 1;
+            FPD = 0;
+          }
           drawPatchView();
           patchViewTime = millis();
           break;
         case 8:
           // menu
-          state = DISPLAYOFF_IDL;
-          stateFirstRun = 1;
-          doPatchUpdate = 1;
+          if (FPD < 2){
+            state = DISPLAYOFF_IDL;
+            stateFirstRun = 1;
+            doPatchUpdate = 1;
+          }
+          FPD = 0;
           break;
+        case 10:
+          // enter + menu
+            midiPanic();
+            midiReset();
+            display.clearDisplay();
+            display.setTextColor(WHITE);
+            display.setTextSize(2);
+            display.setCursor(35,15);
+            display.println("DON'T");
+            display.setCursor(35,30);
+            display.println("PANIC");
+            display.display();
+            patchViewTime = millis();
+            break;
+          case 15:
+          //all keys depressed, reboot to programming mode
+          _reboot_Teensyduino_();
       }
     }
   } else if (state == MAIN_MENU){    // MAIN MENU HERE <<<<<<<<<<<<<<<
@@ -1641,6 +1747,7 @@ void menu() {
       }
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
+        int trills = readTrills();
         switch (deumButtonState){
           case 1:
             // down
@@ -1672,6 +1779,27 @@ void menu() {
             // menu
             state = DISPLAYOFF_IDL;
             stateFirstRun = 1;
+            break;
+          case 9:
+            //menu+down
+
+            break;
+          case 10:
+            //menu+enter
+            if (trills){
+              state = PATCH_VIEW;
+              stateFirstRun = 1;
+              setFPS(trills);
+            }
+            break;
+          case 12:
+            //menu+up
+            if (trills){
+              state = PATCH_VIEW;
+              stateFirstRun = 1;
+              clearFPS(trills);
+              
+            }
             break;
         }
       }
@@ -3417,20 +3545,41 @@ void drawMenuScreen(){
 
 void drawPatchView(){
   display.clearDisplay();
-  display.setTextColor(WHITE);
-  display.setTextSize(6);
-  if (patch < 10){
-    // 1-9
-    display.setCursor(48,10);
-  } else if (patch < 100){
-    // 10-99
-    display.setCursor(31,10);
-  } else {
-    // 99-128
-    display.setCursor(10,10);
+  if (FPD){
+    drawTrills();
   }
-  display.println(patch);
+  if (FPD < 2){
+    display.setTextColor(WHITE);
+    display.setTextSize(6);
+    if (patch < 10){
+      // 1-9
+      display.setCursor(48,10);
+    } else if (patch < 100){
+      // 10-99
+      display.setCursor(31,10);
+    } else {
+      // 99-128
+      display.setCursor(10,10);
+    }
+    display.println(patch);
+  } else if (FPD == 2){
+    display.setTextColor(WHITE);
+    display.setTextSize(6);
+    display.setCursor(10,10);
+    display.println("SET");
+  } else {
+    display.setTextColor(WHITE);
+    display.setTextSize(6);
+    display.setCursor(10,10);
+    display.println("CLR");
+  }
   display.display();
+}
+
+void drawTrills(){
+  if (K5) display.fillRect(0,0,5,5,WHITE); else display.drawRect(0,0,5,5,WHITE);
+  if (K6) display.fillRect(10,0,5,5,WHITE); else display.drawRect(10,0,5,5,WHITE);
+  if (K7) display.fillRect(20,0,5,5,WHITE); else display.drawRect(20,0,5,5,WHITE);
 }
 
 void clearSub(){
