@@ -202,7 +202,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define VERSION 28
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
-#define PORTAM_THR_FACTORY 2000
+#define PORTAM_THR_FACTORY 2600
 #define PORTAM_MAX_FACTORY 3300
 #define PITCHB_THR_FACTORY 1400
 #define PITCHB_MAX_FACTORY 2300
@@ -492,7 +492,8 @@ unsigned int curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,11000,12100,12900,
 unsigned int curveZ1[] = {0,1400,2100,2900,3200,3900,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 unsigned int curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 
-int vibThr=1900;     // this gets auto calibrated in setup
+int vibThr;          // this gets auto calibrated in setup
+int vibThrLo;
 int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
 
@@ -674,7 +675,8 @@ void setup() {
   delay(250);
   digitalWrite(13,LOW);
   int cv4=touchRead(15);
-  vibThr=(cv1+cv2+cv3+cv4)/4-70;
+  vibThr=(cv1+cv2+cv3+cv4)/4-30;
+  vibThrLo=(cv1+cv2+cv3+cv4)/4+30;
   delay(250);
   digitalWrite(13,HIGH);
   delay(250);
@@ -682,7 +684,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.1.4");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.1.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -1129,6 +1131,10 @@ void midiPanic(){ // all notes off
 void midiReset(){ // reset all controllers
   usbMIDI.sendControlChange(121, 0, activeMIDIchannel);
   dinMIDIsendControlChange(121, 0, activeMIDIchannel - 1);
+  usbMIDI.sendControlChange(7, 100, activeMIDIchannel);
+  dinMIDIsendControlChange(7, 100, activeMIDIchannel - 1);
+  usbMIDI.sendControlChange(11, 127, activeMIDIchannel);
+  dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
 }
 
 //**************************************************************
@@ -1260,7 +1266,7 @@ void pitch_bend(){
     calculatedPBdepth = pbDepthList[PBdepth];
     if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
   }
-  if ((vibRead < vibThr)&&(vibRead > oldvibRead)){
+  if (((vibRead < vibThr) || (vibRead > vibThrLo))&&(vibRead > oldvibRead)){
     nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp){
       pitchBend=oldpb*(1-nudge)+nudge*(8192 + calculatedPBdepth*vibDepth[vibrato]);
@@ -1269,7 +1275,7 @@ void pitch_bend(){
       pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
       vibratoMoved = 1;
     }
-  } else if ((vibRead < vibThr)&&(vibRead < oldvibRead)){
+  } else if (((vibRead < vibThr) || (vibRead > vibThrLo))&&(vibRead < oldvibRead)){
     nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
     if (!dirUp ){
       pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
@@ -2830,7 +2836,10 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathCC = 0;
-            if (readSetting(BREATH_CC_ADDR) != breathCC) writeSetting(BREATH_CC_ADDR,breathCC);
+            if (readSetting(BREATH_CC_ADDR) != breathCC) {
+              writeSetting(BREATH_CC_ADDR,breathCC);
+              midiReset();
+            }
             break;
           case 4:
             // up
@@ -2856,7 +2865,10 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathCC = 0;
-            if (readSetting(BREATH_CC_ADDR) != breathCC) writeSetting(BREATH_CC_ADDR,breathCC);
+            if (readSetting(BREATH_CC_ADDR) != breathCC) {
+              writeSetting(BREATH_CC_ADDR,breathCC);
+              midiReset();
+            }
             break;
         }
       }  
@@ -2885,7 +2897,10 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathAT = 0;
-            if (readSetting(BREATH_AT_ADDR) != breathAT) writeSetting(BREATH_AT_ADDR,breathAT);
+            if (readSetting(BREATH_AT_ADDR) != breathAT){
+              writeSetting(BREATH_AT_ADDR,breathAT);
+              midiReset();
+            }
             break;
           case 4:
             // up
@@ -2902,7 +2917,10 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subBreathAT = 0;
-            if (readSetting(BREATH_AT_ADDR) != breathAT) writeSetting(BREATH_AT_ADDR,breathAT);
+            if (readSetting(BREATH_AT_ADDR) != breathAT){
+              writeSetting(BREATH_AT_ADDR,breathAT);
+              midiReset();
+            }
             break;
         }
       } 
