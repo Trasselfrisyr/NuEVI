@@ -23,6 +23,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 // Compile options, comment/uncomment to change
 
 #define REVB
+//#define NEWTEENSYDUINO
 
 
 // Pin definitions
@@ -107,7 +108,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #endif
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
-#define touch_Thr 1200  // sensitivity for Teensy touch sensors
+//#define touch_Thr 1200  // sensitivity for Teensy touch sensors
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
 
@@ -325,12 +326,12 @@ unsigned short extracMaxVal;// = 2400;
 unsigned short ctouchThrVal;// = 120;
 unsigned short transpose;
 unsigned short MIDIchannel;
-unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+
+unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
 unsigned short PBdepth;   // OFF:1-12 divider
-unsigned short extraCT;   // OFF:MW:FP:FC:SP
+unsigned short extraCT;   // OFF:MW:FP:CF:SP
 unsigned short vibrato;   // OFF:1-9
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
@@ -359,6 +360,11 @@ int extracLoLimit = 500;
 int extracHiLimit = 4000;
 int ctouchLoLimit = 50;
 int ctouchHiLimit = 350;
+int ttouchLoLimit = 50;
+int ttouchHiLimit = 1900;
+
+int touch_Thr = 1300;
+
 
 int breathStep;
 int portamStep;
@@ -400,7 +406,7 @@ byte subParallel = 0;
 byte subRotator = 0;
 byte subPriority = 0;
 
-byte ccList[9] = {0,1,2,7,11,1,2,7,11};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
+byte ccList[10] = {0,1,2,7,11,1,2,7,11,74};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
 int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -440,6 +446,8 @@ int initial_breath_value;          // The breath value at the time we observed t
 byte activeMIDIchannel=1;          // MIDI channel
 byte activePatch=0;                
 byte doPatchUpdate=0;
+
+byte legacy = 0;
 
 byte FPD = 0;
 
@@ -498,6 +506,7 @@ int oldvibRead=0;
 byte dirUp=0;        // direction of first vibrato wave
 
 int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
+int fingeredNoteUntransposed; // note calculated from fingering (switches), for on the fly settings
 byte activeNote;     // note playing
 byte startNote=36;   // set startNote to C (change this value in steps of 12 to start in other octaves)
 int slurBase;        // first note in slur sustain chord
@@ -637,6 +646,7 @@ void setup() {
   rotations[3] = readSetting(ROTN4_ADDR)-24;
   priority     = readSetting(PRIO_ADDR);
 
+  legacy = dipSwBits & (1<<1);
   activePatch = patch;
  
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
@@ -645,6 +655,7 @@ void setup() {
   extracStep = (extracHiLimit - extracLoLimit)/92;
   ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
+  touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
 
   if (!touchSensor.begin(0x5A)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
@@ -684,7 +695,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.1.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.1.7");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(2000); 
@@ -737,6 +748,48 @@ void mainLoop() {
         breath_on_time = millis();
         initial_breath_value = pressureSensor;
         mainState = RISE_WAIT;  // Go to next state
+      }
+      if (legacy){
+        if ((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2))){  // both pb pads touched
+          readSwitches();
+          fingeredNoteUntransposed=patchLimit(fingeredNoteUntransposed+1);
+          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // instant midi setting     
+            if ((fingeredNoteUntransposed >= 72) && (fingeredNoteUntransposed <= 88)) { 
+              MIDIchannel = fingeredNoteUntransposed - 72;  // Mid C and up 
+              digitalWrite(13,LOW);
+              delay(150);
+              digitalWrite(13,HIGH);
+            }
+          } else {        
+            if (!pinkyKey){ // note number to patch number
+              if (patch != fingeredNoteUntransposed){
+                patch = fingeredNoteUntransposed;
+                doPatchUpdate = 1;
+                digitalWrite(13,LOW);
+                delay(150);
+                digitalWrite(13,HIGH);
+              }
+            } else { // hi and lo patch numbers
+              if (fingeredNoteUntransposed > 75){
+                if (patch != patchLimit(fingeredNoteUntransposed + 24)){
+                  patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
+                  doPatchUpdate = 1;
+                  digitalWrite(13,LOW);
+                  delay(150);
+                  digitalWrite(13,HIGH);
+                }
+              } else {
+                if (patch != patchLimit(fingeredNoteUntransposed - 36)){
+                  patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
+                  doPatchUpdate = 1;
+                  digitalWrite(13,LOW);
+                  delay(150);
+                  digitalWrite(13,HIGH);
+                }
+              }
+            }
+          }
+        }
       }
       specialKey=(touchRead(specialKeyPin) > touch_Thr);        //S2 on pcb
       if (lastSpecialKey != specialKey){
@@ -1121,6 +1174,10 @@ int noteValueCheck(int note){
 
 //**************************************************************
 
+int patchLimit(int value){
+  if (value < 1) return 1; else if (value > 128) return 128; else return value;
+}
+
 void midiPanic(){ // all notes off
   usbMIDI.sendControlChange(123, 0, activeMIDIchannel);
   dinMIDIsendControlChange(123, 0, activeMIDIchannel - 1);
@@ -1242,7 +1299,7 @@ void breath(){
   }
   
   if (breathCCvalHires != oldbreathhires){
-    if (breathCC > 4){ // send high resolution midi
+    if ((breathCC > 4) && (breathCC < 9)){ // send high resolution midi
         usbMIDI.sendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel);
         dinMIDIsendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel - 1);
     }
@@ -1303,7 +1360,11 @@ void pitch_bend(){
   }
   pitchBend=constrain(pitchBend, 0, 16383);
   if (pitchBend != oldpb){// only send midi data if pitch bend has changed from previous value
+    #if defined(NEWTEENSYDUINO)
+    usbMIDI.sendPitchBend(pitchBend-8192, activeMIDIchannel); // newer teensyduino "pitchBend-8192" older just "pitchBend"... strange thing to change
+    #else
     usbMIDI.sendPitchBend(pitchBend, activeMIDIchannel);
+    #endif
     dinMIDIsendPitchBend(pitchBend, activeMIDIchannel - 1);
     oldpb=pitchBend;
   }
@@ -1338,7 +1399,7 @@ void extraController(){
       }
       oldextrac = extracCC; 
     }
-    if (extraCT == 3){ //Send filter cutoff (CC#74)
+    if ((extraCT == 3) && (breathCC != 9)){ //Send filter cutoff (CC#74)
       int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
       if (extracCC != oldextrac){
         usbMIDI.sendControlChange(74,extracCC, activeMIDIchannel);
@@ -1358,8 +1419,8 @@ void extraController(){
       usbMIDI.sendControlChange(4,0, activeMIDIchannel);
       dinMIDIsendControlChange(4,0, activeMIDIchannel - 1);
       oldextrac = 0;
-    } else if (extraCT == 3){ //FC
-      //send foot pedal 0
+    } else if ((extraCT == 3) && (breathCC != 9)){ //CF
+      //send filter cutoff 0
       usbMIDI.sendControlChange(74,0, activeMIDIchannel);
       dinMIDIsendControlChange(74,0, activeMIDIchannel - 1);
       oldextrac = 0;
@@ -1462,6 +1523,7 @@ void readSwitches(){
 
   // Calculate midi note number from pressed keys  
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
+  fingeredNoteUntransposed=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12;
 }
 
 //***********************************************************
@@ -1606,14 +1668,27 @@ void menu() {
           stateFirstRun = 1;
           break;
         case 8:
-          // menu
-          display.ssd1306_command(SSD1306_DISPLAYON);
-          if (pinkyKey){
+          // menu   
+          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // switch legacy settings control on/off     
+            legacy = !legacy;
+            dipSwBits = dipSwBits ^ (1<<1);
+            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+            digitalWrite(13,LOW);
+            delay(150);
+            digitalWrite(13,HIGH);
+            delay(150);
+            digitalWrite(13,LOW);
+            delay(150);
+            digitalWrite(13,HIGH);
+          } else if (pinkyKey){
+            display.ssd1306_command(SSD1306_DISPLAYON);
             state = ROTATOR_MENU;
+            stateFirstRun = 1;
           } else {
+            display.ssd1306_command(SSD1306_DISPLAYON);
             state = MAIN_MENU;
+            stateFirstRun = 1;
           }
-          stateFirstRun = 1;
           break;
         case 15:
           //all keys depressed, reboot to programming mode
@@ -2761,6 +2836,7 @@ void menu() {
           // down
           if (ctouchThrVal - ctouchStep > ctouchLoLimit){
             ctouchThrVal -= ctouchStep;
+            touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
             display.drawLine(pos1,20,pos1,26,BLACK);
             pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
             display.drawLine(pos1,20,pos1,26,WHITE);
@@ -2779,6 +2855,7 @@ void menu() {
           // up
           if (ctouchThrVal + ctouchStep < ctouchHiLimit){
             ctouchThrVal += ctouchStep;
+            touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
             display.drawLine(pos1,20,pos1,26,BLACK);
             pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
             display.drawLine(pos1,20,pos1,26,WHITE);
@@ -2823,7 +2900,7 @@ void menu() {
               cursorBlinkTime = millis();
             } else {
               plotBreathCC(BLACK);
-              breathCC = 8;
+              breathCC = 9;
               plotBreathCC(WHITE);
               cursorNow = BLACK;
               display.display();
@@ -2843,7 +2920,7 @@ void menu() {
             break;
           case 4:
             // up
-            if (breathCC < 8){
+            if (breathCC < 9){
               plotBreathCC(BLACK);
               breathCC++;
               plotBreathCC(WHITE);
@@ -3962,7 +4039,7 @@ void drawRotatorMenuScreen(){
   display.print("ROTATOR SETUP");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("INTERVAL"); 
+  display.println("PARALLEL"); 
   display.setCursor(0,21);
   display.println("ROTATE 1");
   display.setCursor(0,30);
@@ -4089,7 +4166,7 @@ void plotPriority(int color){
   if (priority){
     display.println("ROT"); 
   } else {
-    display.println("BAS"); 
+    display.println("MEL"); 
   }
 }
 
@@ -4185,6 +4262,10 @@ void plotBreathCC(int color){
       case 8:
         display.setCursor(79,33);
         display.println("EX+");
+        break;
+      case 9:
+        display.setCursor(83,33);
+        display.println("CF");
         break;
     } 
   } else {
@@ -4387,7 +4468,7 @@ void plotExtra(int color){
     break;
   case 3:
     display.setCursor(83,33);
-    display.println("FC");
+    display.println("CF");
     break;
   case 4:
     display.setCursor(83,33);
@@ -4641,6 +4722,12 @@ void drawSensorPixels(){
       pos = map(constrain(touchSensor.filteredData(i), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
       display.drawPixel(pos, 38, WHITE);
     }
+    int posRead = map(touchRead(halfPitchBendKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+    pos = map(constrain(posRead, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+    display.drawPixel(pos, 38, WHITE);
+    posRead = map(touchRead(specialKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+    pos = map(constrain(posRead, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+    display.drawPixel(pos, 38, WHITE);
     display.display();
   }
   forcePix = 0;
