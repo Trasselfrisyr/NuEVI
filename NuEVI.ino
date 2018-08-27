@@ -520,6 +520,7 @@ unsigned int curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,99
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
 int vibZero;
+int dz=15;
 byte dirUp=0;        // direction of first vibrato wave
 
 int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
@@ -713,6 +714,8 @@ void setup() {
   int cv4=touchRead(15);
   int bc4=analogRead(A0);
   vibZero=(cv1+cv2+cv3+cv4)/4;
+  vibThr=vibZero-dz;
+  vibThrLo=vibZero+dz;
   breathCalZero=(bc1+bc2+bc3+bc4)/4;
   delay(250);
   digitalWrite(13,HIGH);
@@ -721,7 +724,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.2.2");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.2.3");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(1500); 
@@ -1336,7 +1339,6 @@ void pitch_bend(){
   // on-pcb variable capacitor for vibrato.
   int vibMax;
   int calculatedPBdepth;
-  byte vibratoMoved = 0;
   pbUp = touchRead(pbUpPin);                                                                 // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin);                                                                 // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
@@ -1344,21 +1346,6 @@ void pitch_bend(){
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
   
-  switch(vibRetn){ // moving baseline
-    case 1:
-      vibZero = vibZero*0.95+vibRead*0.05; 
-      break;
-    case 2:
-      vibZero = vibZero*0.9+vibRead*0.1; 
-      break;
-    case 3:
-      vibZero = vibZero*0.8+vibRead*0.2; 
-      break;
-    case 4:
-      vibZero = vibZero*0.6+vibRead*0.4; 
-  }
-  vibThr=vibZero-20;
-  vibThrLo=vibZero+20;
   switch(vibSens){
     case 1:
       vibMax = 200;
@@ -1390,6 +1377,21 @@ void pitch_bend(){
     vibSignal = vibSignal*0.5;
   }
 
+  switch(vibRetn){ // moving baseline
+    case 1:
+      vibZero = vibZero*0.95+vibRead*0.05; 
+      break;
+    case 2:
+      vibZero = vibZero*0.9+vibRead*0.1; 
+      break;
+    case 3:
+      vibZero = vibZero*0.8+vibRead*0.2; 
+      break;
+    case 4:
+      vibZero = vibZero*0.6+vibRead*0.4; 
+  }
+  vibThr=vibZero-dz;
+  vibThrLo=vibZero+dz;
 
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
@@ -3832,7 +3834,7 @@ void menu() {
         switch (deumButtonState){
           case 1:
             // down
-            if (vibratoMenuCursor < 6){
+            if (vibratoMenuCursor < 3){
               drawMenuCursor(vibratoMenuCursor, BLACK);
               vibratoMenuCursor++;
               drawMenuCursor(vibratoMenuCursor, WHITE);
