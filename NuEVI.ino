@@ -156,6 +156,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define SETUP_BR_MENU 80
 #define SETUP_CT_MENU 90
 #define ROTATOR_MENU 100
+#define VIBRATO_MENU 110
 
 // EEPROM addresses for settings
 #define VERSION_ADDR 0
@@ -198,9 +199,11 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define ROTN3_ADDR 74
 #define ROTN4_ADDR 76
 #define PRIO_ADDR 78
+#define VIB_SENS_ADDR 80
+#define VIB_RETN_ADDR 82
 
 //"factory" values for settings
-#define VERSION 28
+#define VERSION 29
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -233,6 +236,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define ROTN3_FACTORY 17 // -7 (+24) Rotation 3
 #define ROTN4_FACTORY 10 // -14 (+24) Rotation 4
 #define PRIO_FACTORY 0 // Mono priority 0 - BAS(e note), 1 - ROT(ating note)
+#define VIB_SENS_FACTORY 2 // 1 least sensitive, higher more sensitive
+#define VIB_RETN_FACTORY 2 // 1 fast return, higher slower return
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -343,12 +348,17 @@ unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13
 unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 unsigned short priority; // mono priority for rotator chords
 
+unsigned short vibSens = 2; // vibrato sensitivity 
+unsigned short vibRetn = 1; // vibrato return speed
+
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
 byte rotatorOn = 0;
 byte currentRotation = 0;
 int rotations[4] = { -5, -10, -7, -14 }; // semitones { -5, -10, -7, -14 };
 int parallel = 7; // semitones
+
+byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
 int breathLoLimit = 0;
 int breathHiLimit = 4095;
@@ -383,6 +393,7 @@ byte mainMenuCursor = 1;
 byte setupBrMenuCursor = 1;
 byte setupCtMenuCursor = 1;
 byte rotatorMenuCursor = 1;
+byte vibratoMenuCursor = 1;
 
 byte state = 0;
 byte stateFirstRun = 1;
@@ -405,10 +416,12 @@ byte subVelBias = 0;
 byte subParallel = 0;
 byte subRotator = 0;
 byte subPriority = 0;
+byte subVibSens = 0;
+byte subVibRetn = 0;
 
 byte ccList[10] = {0,1,2,7,11,1,2,7,11,74};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
-int pbDepthList[13] = {0,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
+int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
 byte cursorNow;
 byte forcePix = 0;
@@ -448,6 +461,7 @@ byte activePatch=0;
 byte doPatchUpdate=0;
 
 byte legacy = 0;
+byte legacyBrAct = 0;
 
 byte FPD = 0;
 
@@ -461,6 +475,8 @@ float smoothedVal;
 int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
 int lastPressure;
 byte velocitySend;   // remapped midi velocity from breath sensor (or set to static value if selected)
+int breathCalZero;
+
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
@@ -474,6 +490,7 @@ int lastEx=0;
 
 int pitchBend=8192;
 int oldpb=8192;
+int vibSignal=0;
 int pbUp=0;
 int pbDn=0;
 int lastPbUp=0;
@@ -502,7 +519,7 @@ unsigned int curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,99
 
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
-int oldvibRead=0;
+int vibZero;
 byte dirUp=0;        // direction of first vibrato wave
 
 int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
@@ -604,6 +621,8 @@ void setup() {
     writeSetting(ROTN3_ADDR,ROTN3_FACTORY);
     writeSetting(ROTN4_ADDR,ROTN4_FACTORY);
     writeSetting(PRIO_ADDR,PRIO_FACTORY);
+    writeSetting(VIB_SENS_ADDR,VIB_SENS_FACTORY);
+    writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -645,8 +664,11 @@ void setup() {
   rotations[2] = readSetting(ROTN3_ADDR)-24;
   rotations[3] = readSetting(ROTN4_ADDR)-24;
   priority     = readSetting(PRIO_ADDR);
+  vibSens      = readSetting(VIB_SENS_ADDR);
+  vibRetn      = readSetting(VIB_RETN_ADDR);
 
   legacy = dipSwBits & (1<<1);
+  legacyBrAct = dipSwBits & (1<<2);
   activePatch = patch;
  
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
@@ -676,18 +698,22 @@ void setup() {
   
   //auto-calibrate the vibrato threshold while showing splash screen
   int cv1=touchRead(15);
+  int bc1=analogRead(A0);
   digitalWrite(13,HIGH);
   delay(250);
   int cv2=touchRead(15);
+  int bc2=analogRead(A0);
   digitalWrite(13,LOW);
   delay(250);
   int cv3=touchRead(15);
+  int bc3=analogRead(A0);
   digitalWrite(13,HIGH);
   delay(250);
   digitalWrite(13,LOW);
   int cv4=touchRead(15);
-  vibThr=(cv1+cv2+cv3+cv4)/4-30;
-  vibThrLo=(cv1+cv2+cv3+cv4)/4+30;
+  int bc4=analogRead(A0);
+  vibZero=(cv1+cv2+cv3+cv4)/4;
+  breathCalZero=(bc1+bc2+bc3+bc4)/4;
   delay(250);
   digitalWrite(13,HIGH);
   delay(250);
@@ -695,10 +721,10 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.1.7");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.2.2");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
-  delay(2000); 
+  delay(1500); 
   
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
@@ -712,8 +738,6 @@ void setup() {
   Serial3.flush();
 
   digitalWrite(13,HIGH); // Switch on the onboard LED to indicate power on/ready
-
-  midiReset();
   
 }
 
@@ -736,25 +760,24 @@ void mainLoop() {
         activePatch = patch;
         usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
         dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
-        if (readSetting(PATCH_ADDR) != activePatch) writeSetting(PATCH_ADDR,activePatch); 
         slurSustain = 0;
         parallelChord = 0;
         subOctaveDouble = 0;
         doPatchUpdate = 0;
       }
-      if (pressureSensor > breathThrVal) {
+      if ((pressureSensor > breathThrVal) || gateOpen) {
         // Value has risen above threshold. Move to the RISE_WAIT
         // state. Record time and initial breath value.
         breath_on_time = millis();
         initial_breath_value = pressureSensor;
         mainState = RISE_WAIT;  // Go to next state
       }
-      if (legacy){
-        if ((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2))){  // both pb pads touched
+      if (legacy || legacyBrAct){
+        if (((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) && legacy) || ((analogRead(0) < (breathCalZero - 500)) && legacyBrAct)){  // both pb pads touched
           readSwitches();
           fingeredNoteUntransposed=patchLimit(fingeredNoteUntransposed+1);
           if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // instant midi setting     
-            if ((fingeredNoteUntransposed >= 72) && (fingeredNoteUntransposed <= 88)) { 
+            if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) { 
               MIDIchannel = fingeredNoteUntransposed - 72;  // Mid C and up 
               digitalWrite(13,LOW);
               delay(150);
@@ -834,7 +857,7 @@ void mainLoop() {
       }
       lastSpecialKey = specialKey;
     } else if (mainState == RISE_WAIT) {
-      if (pressureSensor > breathThrVal) {
+      if ((pressureSensor > breathThrVal) || gateOpen) {
         // Has enough time passed for us to collect our second
         // sample?
         if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl)) {
@@ -896,8 +919,7 @@ void mainLoop() {
         mainState = NOTE_OFF;
       }
     } else if (mainState == NOTE_ON) {
-      cursorBlinkTime = millis(); // keep display from updating with cursor blinking if note on
-      if (pressureSensor < breathThrVal) {
+      if ((pressureSensor < breathThrVal) && !gateOpen) {
         // Value has fallen below threshold - turn the note off
         activeNote=noteValueCheck(activeNote);
         if (priority){
@@ -1036,6 +1058,7 @@ void mainLoop() {
           }
         }
       }
+      if (pressureSensor > breathThrVal) cursorBlinkTime = millis(); // keep display from updating with cursor blinking if breath is over thr
     }
     // Is it time to send more CC data?
     if (millis() - ccSendTime > CC_INTERVAL) {
@@ -1045,6 +1068,7 @@ void mainLoop() {
       portamento_();
       extraController();
       statusLEDs();
+      doorKnobCheck();
       ccSendTime = millis();
     }
     if (millis() - pixelUpdateTime > pixelUpdateInterval){
@@ -1185,9 +1209,7 @@ void midiPanic(){ // all notes off
 
 //**************************************************************
 
-void midiReset(){ // reset all controllers
-  usbMIDI.sendControlChange(121, 0, activeMIDIchannel);
-  dinMIDIsendControlChange(121, 0, activeMIDIchannel - 1);
+void midiReset(){ // reset controllers
   usbMIDI.sendControlChange(7, 100, activeMIDIchannel);
   dinMIDIsendControlChange(7, 100, activeMIDIchannel - 1);
   usbMIDI.sendControlChange(11, 127, activeMIDIchannel);
@@ -1312,52 +1334,74 @@ void breath(){
 void pitch_bend(){
   // handle input from pitchbend touchpads and
   // on-pcb variable capacitor for vibrato.
-  float nudge;
+  int vibMax;
   int calculatedPBdepth;
   byte vibratoMoved = 0;
   pbUp = touchRead(pbUpPin);                                                                 // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin);                                                                 // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
   int vibRead = touchRead(vibratoPin);                                                       // SENSOR PIN 15 - built in var cap
-  if (PBdepth){
-    calculatedPBdepth = pbDepthList[PBdepth];
-    if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
+  calculatedPBdepth = pbDepthList[PBdepth];
+  if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
+  
+  switch(vibRetn){ // moving baseline
+    case 1:
+      vibZero = vibZero*0.95+vibRead*0.05; 
+      break;
+    case 2:
+      vibZero = vibZero*0.9+vibRead*0.1; 
+      break;
+    case 3:
+      vibZero = vibZero*0.8+vibRead*0.2; 
+      break;
+    case 4:
+      vibZero = vibZero*0.6+vibRead*0.4; 
   }
-  if (((vibRead < vibThr) || (vibRead > vibThrLo))&&(vibRead > oldvibRead)){
-    nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
-    if (!dirUp){
-      pitchBend=oldpb*(1-nudge)+nudge*(8192 + calculatedPBdepth*vibDepth[vibrato]);
-      vibratoMoved = 1;
-    } else {
-      pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
-      vibratoMoved = 1;
-    }
-  } else if (((vibRead < vibThr) || (vibRead > vibThrLo))&&(vibRead < oldvibRead)){
-    nudge = 0.01*constrain(abs(vibRead - oldvibRead),0,100);
-    if (!dirUp ){
-      pitchBend=oldpb*(1-nudge)+nudge*(8191 - calculatedPBdepth*vibDepth[vibrato]);
-      vibratoMoved = 1;
-    } else {
-      pitchBend=oldpb*(1-nudge)+nudge*(8192 + calculatedPBdepth*vibDepth[vibrato]);
-      vibratoMoved = 1;
-    }
-  } else {
-    vibratoMoved = 0;
+  vibThr=vibZero-20;
+  vibThrLo=vibZero+20;
+  switch(vibSens){
+    case 1:
+      vibMax = 200;
+      break;
+    case 2:
+      vibMax = 100;
+      break;
+    case 3:
+      vibMax = 50;
+      break;
+    case 4:
+      vibMax = 25;
   }
 
-  oldvibRead = vibRead;
+  
+  if (vibRead < vibThr){
+    if (dirUp){
+      vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
+    } else {
+      vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,(0 - calculatedPBdepth*vibDepth[vibrato]));
+    }
+  } else if (vibRead > vibThrLo){
+    if (dirUp ){
+      vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,vibThrLo,(vibZero+vibMax)),vibThrLo,(vibZero+vibMax),0,(0 - calculatedPBdepth*vibDepth[vibrato]));
+    } else {
+      vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,vibThrLo,(vibZero+vibMax)),vibThrLo,(vibZero+vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
+    }
+  } else {
+    vibSignal = vibSignal*0.5;
+  }
+
 
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
   } else if ((pbDn > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
-  } else if (oldvibRead > vibThr){
+  } else {
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
-  } else if (!vibratoMoved){
-    pitchBend = oldpb*0.8+8192*0.2; // released, so smooth your way back to zero
-    if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
-  }
+  } 
+
+  pitchBend=pitchBend+vibSignal;
+  
   pitchBend=constrain(pitchBend, 0, 16383);
   if (pitchBend != oldpb){// only send midi data if pitch bend has changed from previous value
     #if defined(NEWTEENSYDUINO)
@@ -1367,6 +1411,40 @@ void pitch_bend(){
     #endif
     dinMIDIsendPitchBend(pitchBend, activeMIDIchannel - 1);
     oldpb=pitchBend;
+  }
+}
+
+//***********************************************************
+
+void doorKnobCheck(){
+  int touchValue[12]; 
+  for (byte i=0; i<12; i++){
+    touchValue[i]=touchSensor.filteredData(i);
+  }
+  if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)){ // doorknob grip on canister
+    if (pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) {
+      gateOpen = 1;
+      digitalWrite(13,LOW);
+      delay(50);
+      digitalWrite(13,HIGH);
+      delay(50);
+    }
+    else if (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) {
+      gateOpen = 0;      
+      midiPanic();
+      digitalWrite(13,LOW);
+      delay(50);
+      digitalWrite(13,HIGH);
+      delay(50);      
+      digitalWrite(13,LOW);
+      delay(50);
+      digitalWrite(13,HIGH);
+      delay(50);
+      digitalWrite(13,LOW);
+      delay(50);
+      digitalWrite(13,HIGH);
+      delay(700);
+    }
   }
 }
 
@@ -1410,20 +1488,26 @@ void extraController(){
   } else if (extracIsOn) {                        // we have just gone below threshold, so send zero value
     extracIsOn=0;
     if (extraCT == 1){ //MW
-      //send modulation 0
-      usbMIDI.sendControlChange(1,0, activeMIDIchannel);
-      dinMIDIsendControlChange(1,0, activeMIDIchannel - 1);
-      oldextrac = 0;
+      if (oldextrac != 0){
+        //send modulation 0
+        usbMIDI.sendControlChange(1,0, activeMIDIchannel);
+        dinMIDIsendControlChange(1,0, activeMIDIchannel - 1);
+        oldextrac = 0;
+      }
     } else if (extraCT == 2){ //FP
-      //send foot pedal 0
-      usbMIDI.sendControlChange(4,0, activeMIDIchannel);
-      dinMIDIsendControlChange(4,0, activeMIDIchannel - 1);
-      oldextrac = 0;
+      if (oldextrac != 0){
+        //send foot pedal 0
+        usbMIDI.sendControlChange(4,0, activeMIDIchannel);
+        dinMIDIsendControlChange(4,0, activeMIDIchannel - 1);
+        oldextrac = 0;
+      }
     } else if ((extraCT == 3) && (breathCC != 9)){ //CF
-      //send filter cutoff 0
-      usbMIDI.sendControlChange(74,0, activeMIDIchannel);
-      dinMIDIsendControlChange(74,0, activeMIDIchannel - 1);
-      oldextrac = 0;
+      if (oldextrac != 0){
+        //send filter cutoff 0
+        usbMIDI.sendControlChange(74,0, activeMIDIchannel);
+        dinMIDIsendControlChange(74,0, activeMIDIchannel - 1);
+        oldextrac = 0;
+      }
     } else if (extraCT == 4){ //SP
       //send sustain off
       usbMIDI.sendControlChange(64,0, activeMIDIchannel);
@@ -1436,7 +1520,7 @@ void extraController(){
 
 void portamento_(){
  // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
- biteSensor=biteSensor*0.6+0.4*touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+ biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
  if (portamento && (biteSensor >= portamThrVal)) {    // if we are enabled and over the threshold, send portamento
    if (!portIsOn) {
      portOn();
@@ -1472,8 +1556,10 @@ void port(){
 //***********************************************************
 
 void portOff(){
-  usbMIDI.sendControlChange(CCN_Port, 0, activeMIDIchannel);
-  dinMIDIsendControlChange(CCN_Port, 0, activeMIDIchannel - 1);
+  if (oldport != 0){ //did a zero get sent? if not, then send one
+    usbMIDI.sendControlChange(CCN_Port, 0, activeMIDIchannel);
+    dinMIDIsendControlChange(CCN_Port, 0, activeMIDIchannel - 1);
+  }
   if (portamento == 2){ // if portamento midi switching is enabled
     usbMIDI.sendControlChange(CCN_PortOnOff, 0, activeMIDIchannel);
     dinMIDIsendControlChange(CCN_PortOnOff, 0, activeMIDIchannel - 1);
@@ -1617,6 +1703,11 @@ void menu() {
     subPinky = 0;
     subVelSmpDl = 0;
     subVelBias = 0;
+    subParallel = 0;
+    subRotator = 0;
+    subPriority = 0;
+    subVibSens = 0;
+    subVibRetn = 0;
   }
 
 
@@ -1668,8 +1759,19 @@ void menu() {
           stateFirstRun = 1;
           break;
         case 8:
-          // menu   
-          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // switch legacy settings control on/off     
+          // menu
+          if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch breath activated legacy settings on/off
+            legacyBrAct = !legacyBrAct;   
+            dipSwBits = dipSwBits ^ (1<<2);
+            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+            digitalWrite(13,LOW);
+            delay(150);
+            digitalWrite(13,HIGH);
+            delay(150);
+            digitalWrite(13,LOW);
+            delay(150);
+            digitalWrite(13,HIGH);
+          } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch pb pad activated legacy settings control on/off     
             legacy = !legacy;
             dipSwBits = dipSwBits ^ (1<<1);
             writeSetting(DIPSW_BITS_ADDR,dipSwBits);
@@ -1706,6 +1808,7 @@ void menu() {
       stateFirstRun = 1;
       doPatchUpdate = 1;
       FPD = 0;
+      if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
@@ -1718,10 +1821,13 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
+            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
           } else if (!trills){
             if (patch > 1){
               patch--;
             } else patch = 128;
+            activePatch = 0;
+            doPatchUpdate = 1;
             FPD = 0;
           }
           drawPatchView();
@@ -1745,10 +1851,13 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
+            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
           } else if (!trills){
             if (patch < 128){
               patch++;
             } else patch = 1;
+            activePatch = 0;
+            doPatchUpdate = 1;
             FPD = 0;
           }
           drawPatchView();
@@ -1761,12 +1870,12 @@ void menu() {
             stateFirstRun = 1;
             doPatchUpdate = 1;
           }
+          if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
           FPD = 0;
           break;
         case 10:
           // enter + menu
             midiPanic();
-            midiReset();
             display.clearDisplay();
             display.setTextColor(WHITE);
             display.setTextSize(2);
@@ -3406,56 +3515,6 @@ void menu() {
             if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
             break;
         }
-      }
-    } else if (subVibrato) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
-        plotVibrato(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (vibrato > 0){
-              plotVibrato(BLACK);
-              vibrato--;
-              plotVibrato(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotVibrato(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
-            break;
-          case 4:
-            // up
-            if (vibrato < 9){
-              plotVibrato(BLACK);
-              vibrato++;
-              plotVibrato(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotVibrato(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
-            break;
-        }
       } 
     } else if (subDeglitch) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
@@ -3601,7 +3660,213 @@ void menu() {
         }
       }
     } 
+  
+
+
+
+
+  } else if (state == VIBRATO_MENU) {  // VIBRATO MENU HERE <<<<<<<<<<<<<
+   if (stateFirstRun) {
+      drawVibratoMenuScreen();
+      stateFirstRun = 0;
+    }
+    if (subVibrato) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVibrato(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            if (vibrato > 0){
+              plotVibrato(BLACK);
+              vibrato--;
+              plotVibrato(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 2:
+            // enter
+            plotVibrato(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibrato = 0;
+            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
+            break;
+          case 4:
+            // up
+            if (vibrato < 9){
+              plotVibrato(BLACK);
+              vibrato++;
+              plotVibrato(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 8:
+            // menu
+            plotVibrato(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibrato = 0;
+            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
+            break;
+        }
+      } 
+    } else if (subVibSens) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVibSens(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            if (vibSens > 1){
+              plotVibSens(BLACK);
+              vibSens--;
+              plotVibSens(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 2:
+            // enter
+            plotVibSens(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibSens = 0;
+            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
+            break;
+          case 4:
+            // up
+            if (vibSens < 4){
+              plotVibSens(BLACK);
+              vibSens++;
+              plotVibSens(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 8:
+            // menu
+            plotVibSens(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibSens = 0;
+            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
+            break;
+        }
+      } 
+    } else if (subVibRetn) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVibRetn(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            plotVibRetn(BLACK);
+            if (vibRetn > 1){
+              vibRetn--;
+            }
+            plotVibRetn(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 2:
+            // enter
+            plotVibRetn(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibRetn = 0;
+            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
+            break;
+          case 4:
+            // up
+            plotVibRetn(BLACK);
+            if (vibRetn < 4){
+              vibRetn++;
+            }
+            plotVibRetn(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 8:
+            // menu
+            plotVibRetn(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibRetn = 0;
+            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
+            break;
+        }
+      }     
+    } else {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        drawMenuCursor(vibratoMenuCursor, cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            if (vibratoMenuCursor < 6){
+              drawMenuCursor(vibratoMenuCursor, BLACK);
+              vibratoMenuCursor++;
+              drawMenuCursor(vibratoMenuCursor, WHITE);
+              cursorNow = BLACK;
+              clearSub();
+              display.display();
+            }
+            break;
+          case 2:
+            // enter
+            selectVibratoMenu();
+            break;
+          case 4:
+            // up
+            if (vibratoMenuCursor > 1){
+              drawMenuCursor(vibratoMenuCursor, BLACK);
+              vibratoMenuCursor--;
+              drawMenuCursor(vibratoMenuCursor, WHITE);
+              cursorNow = BLACK;
+              clearSub();
+              display.display();
+            }
+            break;
+          case 8:
+            // menu
+            state = SETUP_CT_MENU;
+            stateFirstRun = 1;
+            break;
+        }
+      }
+    } 
   }
+
+
   
 }
 
@@ -3761,11 +4026,13 @@ void selectSetupCtMenu(){
       drawSubExtra();
       break;
     case 4:
-      subVibrato = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibrato();
+      //subVibrato = 1;
+      //drawMenuCursor(setupCtMenuCursor, WHITE);
+      //display.display();
+      //cursorBlinkTime = millis();
+      //drawSubVibrato();
+      state = VIBRATO_MENU;
+      stateFirstRun = 1;
       break;
     case 5:
       subDeglitch = 1;
@@ -3782,6 +4049,34 @@ void selectSetupCtMenu(){
       drawSubPinkyKey();
   }
 }
+
+void selectVibratoMenu(){
+  switch (vibratoMenuCursor){
+    case 1:
+      subVibrato = 1;
+      drawMenuCursor(vibratoMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVibrato();
+      break;
+    case 2:
+      subVibSens = 1;
+      drawMenuCursor(vibratoMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVibSens();
+      break;
+    case 3:
+      subVibRetn = 1;
+      drawMenuCursor(vibratoMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVibRetn();
+      break;
+  }
+}
+
+
 void drawBreathScreen(){
     // Clear the buffer.
   display.clearDisplay();
@@ -4482,8 +4777,8 @@ void drawSubVibrato(){
   display.drawRect(63,11,64,52,WHITE);
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(74,15);
-  display.println("VIBRATO");
+  display.setCursor(81,15);
+  display.println("LEVEL");
   plotVibrato(WHITE);
   display.display();
 }
@@ -4499,6 +4794,43 @@ void plotVibrato(int color){
     display.println("OFF"); 
   }
 }
+
+void drawSubVibSens(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(81,15);
+  display.println("LEVEL");
+  plotVibSens(WHITE);
+  display.display();
+}
+
+void plotVibSens(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(90,33);
+  display.println(vibSens); 
+}
+
+void drawSubVibRetn(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(81,15);
+  display.println("LEVEL");
+  plotVibRetn(WHITE);
+  display.display();
+}
+
+void plotVibRetn(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(90,33);
+  display.println(vibRetn); 
+}
+
 
 void drawSubDeglitch(){
   display.fillRect(63,11,64,52,BLACK);
@@ -4645,6 +4977,32 @@ void drawSetupCtMenuScreen(){
 
   display.display();
 }
+
+void drawVibratoMenuScreen(){
+    // Clear the buffer.
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.println("VIBRATO");
+  display.drawLine(0,9,127,9,WHITE);
+  display.setCursor(0,12);
+  display.println("DEPTH"); 
+  display.setCursor(0,21);
+  display.println("SENSE");
+  display.setCursor(0,30);
+  display.println("RETURN"); 
+  display.setCursor(0,39);
+  display.println(""); 
+  display.setCursor(0,48);
+  display.println(""); 
+  display.setCursor(0,57);
+  display.println(""); 
+
+  display.display();
+}
+
 
 void drawSensorPixels(){
   int pos,oldpos;
