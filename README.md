@@ -52,5 +52,5 @@ once that is complete press the reset button on the Teensy chip (you have to rem
 on the NuEVI to access this). Upon resetting, it should upload the new firmware onto the NuEVI.
 
 After uploading new firmware, you may need to reset the config memory of the NuEVI. It's a good idea
-to do between version upgrades, since if the config parameter format often changes. To do this, press
+to do between version upgrades, since the config parameter format often changes. To do this, press
 and hold the MENU and ENTER buttons while turning on the NuEVI.
