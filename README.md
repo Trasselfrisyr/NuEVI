@@ -50,3 +50,7 @@ Connect the NuEVI via USB to your computer, open the Teensy application and make
 option is selected (the green round icon). In Arduino IDE, select "Sketch -> Verify/Compile" and
 once that is complete press the reset button on the Teensy chip (you have to remove the top cover
 on the NuEVI to access this). Upon resetting, it should upload the new firmware onto the NuEVI.
+
+After uploading new firmware, you may need to reset the config memory of the NuEVI. It's a good idea
+to do between version upgrades, since if the config parameter format often changes. To do this, press
+and hold the MENU and ENTER buttons while turning on the NuEVI.
