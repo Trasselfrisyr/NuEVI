@@ -50,6 +50,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define vMeterPin A11
 
 #define PBD 12
+#define UPWD 1
+#define DNWD 0
 
 #if defined(REVB)
 
@@ -201,9 +203,11 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PRIO_ADDR 78
 #define VIB_SENS_ADDR 80
 #define VIB_RETN_ADDR 82
+#define VIB_SQUELCH_ADDR 84
+#define VIB_DIRECTION_ADDR 86
 
 //"factory" values for settings
-#define VERSION 29
+#define VERSION 31
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -238,6 +242,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define PRIO_FACTORY 0 // Mono priority 0 - BAS(e note), 1 - ROT(ating note)
 #define VIB_SENS_FACTORY 2 // 1 least sensitive, higher more sensitive
 #define VIB_RETN_FACTORY 2 // 1 fast return, higher slower return
+#define VIB_SQUELCH_FACTORY 15 // 0 to 30, vib signal squelch
+#define VIB_DIRECTION_FACTORY 0
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -350,6 +356,8 @@ unsigned short priority; // mono priority for rotator chords
 
 unsigned short vibSens = 2; // vibrato sensitivity 
 unsigned short vibRetn = 1; // vibrato return speed
+unsigned short vibSquelch = 15; //vibrato signal squelch
+unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DNWD
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
@@ -418,6 +426,8 @@ byte subRotator = 0;
 byte subPriority = 0;
 byte subVibSens = 0;
 byte subVibRetn = 0;
+byte subVibSquelch = 0;
+byte subVibDirection = 0;
 
 byte ccList[10] = {0,1,2,7,11,1,2,7,11,74};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
 
@@ -495,7 +505,7 @@ int pbUp=0;
 int pbDn=0;
 int lastPbUp=0;
 int lastPbDn=0;
-
+byte vibLedOff = 0;
 byte oldpkey = 0;
 
 float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings 
@@ -520,8 +530,7 @@ unsigned int curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,99
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
 int vibZero;
-int dz=15;
-byte dirUp=0;        // direction of first vibrato wave
+
 
 int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
 int fingeredNoteUntransposed; // note calculated from fingering (switches), for on the fly settings
@@ -624,6 +633,8 @@ void setup() {
     writeSetting(PRIO_ADDR,PRIO_FACTORY);
     writeSetting(VIB_SENS_ADDR,VIB_SENS_FACTORY);
     writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
+    writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
+    writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -714,8 +725,8 @@ void setup() {
   int cv4=touchRead(15);
   int bc4=analogRead(A0);
   vibZero=(cv1+cv2+cv3+cv4)/4;
-  vibThr=vibZero-dz;
-  vibThrLo=vibZero+dz;
+  vibThr=vibZero-vibSquelch;
+  vibThrLo=vibZero+vibSquelch;
   breathCalZero=(bc1+bc2+bc3+bc4)/4;
   delay(250);
   digitalWrite(13,HIGH);
@@ -724,7 +735,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.2.3");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.2.4");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(1500); 
@@ -1362,13 +1373,13 @@ void pitch_bend(){
 
   
   if (vibRead < vibThr){
-    if (dirUp){
+    if (UPWD == vibDirection){
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
     } else {
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,(0 - calculatedPBdepth*vibDepth[vibrato]));
     }
   } else if (vibRead > vibThrLo){
-    if (dirUp ){
+    if (UPWD == vibDirection){
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,vibThrLo,(vibZero+vibMax)),vibThrLo,(vibZero+vibMax),0,(0 - calculatedPBdepth*vibDepth[vibrato]));
     } else {
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,vibThrLo,(vibZero+vibMax)),vibThrLo,(vibZero+vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
@@ -1390,8 +1401,8 @@ void pitch_bend(){
     case 4:
       vibZero = vibZero*0.6+vibRead*0.4; 
   }
-  vibThr=vibZero-dz;
-  vibThrLo=vibZero+dz;
+  vibThr=vibZero-vibSquelch;
+  vibThrLo=vibZero+vibSquelch;
 
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
@@ -1405,6 +1416,15 @@ void pitch_bend(){
   pitchBend=pitchBend+vibSignal;
   
   pitchBend=constrain(pitchBend, 0, 16383);
+
+  if (subVibSquelch && (8192 != pitchBend)){
+    digitalWrite(13,LOW);
+    vibLedOff = 1;
+  } else if (vibLedOff){
+    digitalWrite(13,HIGH);
+    vibLedOff = 0;
+  }
+  
   if (pitchBend != oldpb){// only send midi data if pitch bend has changed from previous value
     #if defined(NEWTEENSYDUINO)
     usbMIDI.sendPitchBend(pitchBend-8192, activeMIDIchannel); // newer teensyduino "pitchBend-8192" older just "pitchBend"... strange thing to change
@@ -1710,6 +1730,8 @@ void menu() {
     subPriority = 0;
     subVibSens = 0;
     subVibRetn = 0;
+    subVibSquelch = 0;
+    subVibDirection = 0;
   }
 
 
@@ -3821,7 +3843,103 @@ void menu() {
             if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
         }
-      }     
+      }  
+    } else if (subVibSquelch) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVibSquelch(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            if (vibSquelch > 1){
+              plotVibSquelch(BLACK);
+              vibSquelch--;
+              plotVibSquelch(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 2:
+            // enter
+            plotVibSquelch(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibSquelch = 0;
+            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
+            break;
+          case 4:
+            // up
+            if (vibSquelch < 30){
+              plotVibSquelch(BLACK);
+              vibSquelch++;
+              plotVibSquelch(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              cursorBlinkTime = millis();
+            }
+            break;
+          case 8:
+            // menu
+            plotVibSquelch(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibSquelch = 0;
+            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
+            break;
+        }
+      } 
+    } else if (subVibDirection) {
+      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        plotVibDirection(cursorNow);
+        display.display();
+        cursorBlinkTime = millis();
+      }
+      if (buttonPressedAndNotUsed){
+        buttonPressedAndNotUsed = 0;
+        switch (deumButtonState){
+          case 1:
+            // down
+            plotVibDirection(BLACK);
+            vibDirection = !vibDirection;
+            plotVibDirection(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 2:
+            // enter
+            plotVibDirection(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibDirection = 0;
+            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
+            break;
+          case 4:
+            // up
+            plotVibDirection(BLACK);
+            vibDirection = !vibDirection;
+            plotVibDirection(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            cursorBlinkTime = millis();
+            break;
+          case 8:
+            // menu
+            plotVibDirection(WHITE);
+            cursorNow = BLACK;
+            display.display();
+            subVibDirection = 0;
+            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
+            break;
+        }
+      }   
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
@@ -3834,7 +3952,7 @@ void menu() {
         switch (deumButtonState){
           case 1:
             // down
-            if (vibratoMenuCursor < 3){
+            if (vibratoMenuCursor < 5){
               drawMenuCursor(vibratoMenuCursor, BLACK);
               vibratoMenuCursor++;
               drawMenuCursor(vibratoMenuCursor, WHITE);
@@ -4074,6 +4192,20 @@ void selectVibratoMenu(){
       display.display();
       cursorBlinkTime = millis();
       drawSubVibRetn();
+      break;
+    case 4:
+      subVibSquelch = 1;
+      drawMenuCursor(vibratoMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVibSquelch();
+      break;
+    case 5:
+      subVibDirection = 1;
+      drawMenuCursor(vibratoMenuCursor, WHITE);
+      display.display();
+      cursorBlinkTime = millis();
+      drawSubVibDirection();
       break;
   }
 }
@@ -4833,6 +4965,52 @@ void plotVibRetn(int color){
   display.println(vibRetn); 
 }
 
+void drawSubVibSquelch(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(81,15);
+  display.println("LEVEL");
+  plotVibSquelch(WHITE);
+  display.display();
+}
+
+void plotVibSquelch(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(83,33);
+  display.println(vibSquelch); 
+}
+
+
+
+void drawSubVibDirection(){
+  display.fillRect(63,11,64,52,BLACK);
+  display.drawRect(63,11,64,52,WHITE);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(68,15);
+  display.println("DIRECTION");
+  plotVibDirection(WHITE);
+  display.display();
+}
+
+void plotVibDirection(int color){
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(83,33);
+  if (DNWD == vibDirection){
+    display.println("DN"); 
+  } else {
+    display.println("UP"); 
+  }
+}
+
+
+
+
+
 
 void drawSubDeglitch(){
   display.fillRect(63,11,64,52,BLACK);
@@ -4996,9 +5174,9 @@ void drawVibratoMenuScreen(){
   display.setCursor(0,30);
   display.println("RETURN"); 
   display.setCursor(0,39);
-  display.println(""); 
+  display.println("SQUELCH"); 
   display.setCursor(0,48);
-  display.println(""); 
+  display.println("DIRECTION"); 
   display.setCursor(0,57);
   display.println(""); 
 
