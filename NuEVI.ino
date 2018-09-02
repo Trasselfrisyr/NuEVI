@@ -25,7 +25,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define REVB
 
 //Uncomment the following line if you have Teensyduino 1.4.1 or later, to make pitch bend over USB-MIDI work.
-//#define NEWTEENSYDUINO
+#define NEWTEENSYDUINO
 
 
 // Pin definitions
@@ -474,7 +474,7 @@ byte doPatchUpdate=0;
 
 byte legacy = 0;
 byte legacyBrAct = 0;
-
+byte halfTime = 0;
 byte FPD = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
@@ -740,7 +740,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.2.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.2.6");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(1500); 
@@ -1083,11 +1083,15 @@ void mainLoop() {
     if (millis() - ccSendTime > CC_INTERVAL) {
       // deal with Breath, Pitch Bend, Modulation, etc.
       breath();
-      pitch_bend();
-      portamento_();
-      extraController();
-      statusLEDs();
-      doorKnobCheck();
+      halfTime = !halfTime;
+      if (halfTime){
+        pitch_bend();
+        portamento_();
+      } else {
+        extraController();
+        statusLEDs();
+        doorKnobCheck();
+      }  
       ccSendTime = millis();
     }
     if (millis() - pixelUpdateTime > pixelUpdateInterval){
