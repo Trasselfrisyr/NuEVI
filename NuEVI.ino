@@ -242,8 +242,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define ROTN3_FACTORY 17 // -7 (+24) Rotation 3
 #define ROTN4_FACTORY 10 // -14 (+24) Rotation 4
 #define PRIO_FACTORY 0 // Mono priority 0 - BAS(e note), 1 - ROT(ating note)
-#define VIB_SENS_FACTORY 2 // 1 least sensitive, higher more sensitive
-#define VIB_RETN_FACTORY 2 // 1 fast return, higher slower return
+#define VIB_SENS_FACTORY 6 // 1 least sensitive, higher more sensitive
+#define VIB_RETN_FACTORY 2 // 0, no return, 1 slow return, higher faster return
 #define VIB_SQUELCH_FACTORY 15 // 0 to 30, vib signal squelch
 #define VIB_DIRECTION_FACTORY 0
 
@@ -357,7 +357,7 @@ unsigned short dipSwBits; // virtual dip switch settings for special modes (work
 unsigned short priority; // mono priority for rotator chords
 
 unsigned short vibSens = 2; // vibrato sensitivity 
-unsigned short vibRetn = 1; // vibrato return speed
+unsigned short vibRetn = 2; // vibrato return speed
 unsigned short vibSquelch = 15; //vibrato signal squelch
 unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DNWD
 
@@ -511,6 +511,7 @@ byte vibLedOff = 0;
 byte oldpkey = 0;
 
 float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings 
+int vibMaxList[12] = {300,275,250,225,200,175,150,125,100,75,50,25};
 
 unsigned int curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
 unsigned int curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
@@ -680,6 +681,8 @@ void setup() {
   priority     = readSetting(PRIO_ADDR);
   vibSens      = readSetting(VIB_SENS_ADDR);
   vibRetn      = readSetting(VIB_RETN_ADDR);
+  vibSquelch   = readSetting(VIB_SQUELCH_ADDR);
+  vibDirection = readSetting(VIB_DIRECTION_ADDR);
 
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
@@ -737,7 +740,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.2.4");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.println("v.1.2.5");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
   
   delay(1500); 
@@ -1359,21 +1362,8 @@ void pitch_bend(){
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
   
-  switch(vibSens){
-    case 1:
-      vibMax = 200;
-      break;
-    case 2:
-      vibMax = 100;
-      break;
-    case 3:
-      vibMax = 50;
-      break;
-    case 4:
-      vibMax = 25;
-  }
+  vibMax = vibMaxList[vibSens-1];
 
-  
   if (vibRead < vibThr){
     if (UPWD == vibDirection){
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
@@ -1391,6 +1381,9 @@ void pitch_bend(){
   }
 
   switch(vibRetn){ // moving baseline
+    case 0:
+      //keep vibZero value
+      break;
     case 1:
       vibZero = vibZero*0.95+vibRead*0.05; 
       break;
@@ -3777,7 +3770,7 @@ void menu() {
             break;
           case 4:
             // up
-            if (vibSens < 4){
+            if (vibSens < 12){
               plotVibSens(BLACK);
               vibSens++;
               plotVibSens(WHITE);
@@ -3809,7 +3802,7 @@ void menu() {
           case 1:
             // down
             plotVibRetn(BLACK);
-            if (vibRetn > 1){
+            if (vibRetn > 0){
               vibRetn--;
             }
             plotVibRetn(WHITE);
@@ -5001,11 +4994,11 @@ void drawSubVibDirection(){
 void plotVibDirection(int color){
   display.setTextColor(color);
   display.setTextSize(2);
-  display.setCursor(83,33);
+  display.setCursor(79,33);
   if (DNWD == vibDirection){
-    display.println("DN"); 
+    display.println("NRM"); 
   } else {
-    display.println("UP"); 
+    display.println("REV"); 
   }
 }
 
