@@ -591,19 +591,6 @@ void setup() {
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 
-  if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))){
-    writeSetting(VERSION_ADDR,VERSION);
-    writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
-    writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-    writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);
-    writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY);
-    writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
-    writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
-    writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
-    writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
-    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
-  }
-
   if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
 
@@ -641,6 +628,21 @@ void setup() {
     writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
     writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
     writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
+
+    //Set threshold/max sensor values only if upgrading from something before version 24
+    //In other cases, these values are saved between factory resets
+    if (readSetting(VERSION_ADDR) < 24) {
+      writeSetting(VERSION_ADDR,VERSION);
+      writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
+      writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
+      writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);
+      writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY);
+      writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
+      writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
+      writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
+      writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
+      writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
+    }
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
