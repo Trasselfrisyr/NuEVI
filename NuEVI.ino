@@ -43,6 +43,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define pbDnPin 22
 #define vibratoPin 15
 
+#define breathSensorPin A0
+
 #define dPin 3
 #define ePin 4
 #define uPin 5
@@ -718,20 +720,20 @@ void setup() {
 
   //auto-calibrate the vibrato threshold while showing splash screen
   int cv1=touchRead(vibratoPin);
-  int bc1=analogRead(A0);
+  int bc1=analogRead(breathSensorPin);
   digitalWrite(statusLedPin,HIGH);
   delay(250);
   int cv2=touchRead(vibratoPin);
-  int bc2=analogRead(A0);
+  int bc2=analogRead(breathSensorPin);
   digitalWrite(statusLedPin,LOW);
   delay(250);
   int cv3=touchRead(vibratoPin);
-  int bc3=analogRead(A0);
+  int bc3=analogRead(breathSensorPin);
   digitalWrite(statusLedPin,HIGH);
   delay(250);
   digitalWrite(statusLedPin,LOW);
   int cv4=touchRead(vibratoPin);
-  int bc4=analogRead(A0);
+  int bc4=analogRead(breathSensorPin);
   vibZero=(cv1+cv2+cv3+cv4)/4;
   vibThr=vibZero-vibSquelch;
   vibThrLo=vibZero+vibSquelch;
@@ -773,7 +775,7 @@ void loop() {
 void mainLoop() {
   FilterOnePole breathFilter( LOWPASS, filterFreq );   // create a one pole (RC) lowpass filter
   while (1){
-    breathFilter.input(analogRead(A0));
+    breathFilter.input(analogRead(breathSensorPin));
     pressureSensor = constrain((int)breathFilter.output(),0,4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
     //pressureSensor = analogRead(A0);
     //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth
