@@ -322,8 +322,8 @@ static const unsigned char PROGMEM nuevi_logo_bmp[] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#ifndef SSD1306_128_64
+#error("Incorrect display type, please fix Adafruit_SSD1306.h!");
 #endif
 
 
