@@ -22,6 +22,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
+#define FIRMWARE_VERSION "1.2.6"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+
 #define REVB
 
 //Uncomment the following line if you have Teensyduino 1.4.0 or earlier, to make pitch bend over USB-MIDI work.
@@ -741,7 +743,8 @@ void setup() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
-  display.println("v.1.2.6");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+  display.print("v.");
+  display.println(FIRMWARE_VERSION);
   display.display();
 
   delay(1500);
