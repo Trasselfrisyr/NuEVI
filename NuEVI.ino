@@ -589,7 +589,7 @@ void setup() {
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 
-  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){
+  if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -1186,6 +1186,9 @@ unsigned int breathCurve(unsigned int inputVal){
     case 12:
       // Z2
       return multiMap(inputVal,curveIn,curveZ2,17);
+      break;
+    default: //Fallback option that should never be reached, use linear
+      return inputVal;
       break;
   }
 }
