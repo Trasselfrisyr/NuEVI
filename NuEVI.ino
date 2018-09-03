@@ -253,8 +253,6 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-#define LOGO16_GLCD_HEIGHT 16
-#define LOGO16_GLCD_WIDTH  16
 
  // 'NuEVI' logo
 static const unsigned char PROGMEM nuevi_logo_bmp[] = {
