@@ -14,8 +14,8 @@ FILE SAVED AS:        NuEVI.ino
 FOR:                  PJRC Teensy 3.2 and a MPR121 capactive touch sensor board.
                       Uses an SSD1306 controlled OLED display communicating over I2C.
 PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath sensor
-                      and capacitive touch keys. Output to both USB MIDI and DIN MIDI.  
-  
+                      and capacitive touch keys. Output to both USB MIDI and DIN MIDI.
+
 */
 
 //_______________________________________________________________________________________________ DECLARATIONS
@@ -47,7 +47,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define mPin 6
 
 #define bLedPin 10
-#define pLedPin 9 
+#define pLedPin 9
+#define statusLedPin 13
 
 #define vMeterPin A11
 
@@ -75,13 +76,13 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 /*
  *    PINOUT ON PCB vs PINS ON MPR121 - Rev. B
- * 
+ *
  *    (R1)  (R2) (R3/6) (R4)  (R5)  (K4)  <-> (00)  (02)  (04)  (06)  (08)  (10)
- * 
+ *
  *    (K1)  (K2)  (K3)  (K5)  (K6)  (K7)  <-> (01)  (03)  (05)  (07)  (09)  (11)
- * 
+ *
  */
- 
+
 # else
 
 // MPR121 pins Rev A (upright pins below MPR121 for main keys and rollers)
@@ -102,13 +103,13 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 /*
  *    PINOUT ON PCB vs PINS ON MPR121 - Rev. A
- * 
+ *
  *    (R2)  (R4)  (K4)  (K2)  (K5)  (K7)  <-> (11)  (09)  (07)  (05)  (03)  (01)
- * 
+ *
  *    (R1) (R3/6) (R5)  (K1)  (K3)  (K6)  <-> (10)  (08)  (06)  (04)  (02)  (00)
- * 
+ *
  */
- 
+
 #endif
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
@@ -119,7 +120,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Send CC data no more than every CC_INTERVAL
 // milliseconds
-#define CC_INTERVAL 5 
+#define CC_INTERVAL 5
 
 
 // The three states of our main state machine
@@ -223,7 +224,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define BREATH_CC_FACTORY 2 //thats CC#2, see ccList
 #define BREATH_AT_FACTORY 0 //aftertouch default off
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
-#define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW 
+#define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
 #define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
 #define VIBRATO_FACTORY 4   // 0 - OFF, 1 - 9 depth
@@ -250,74 +251,74 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-#define LOGO16_GLCD_HEIGHT 16 
-#define LOGO16_GLCD_WIDTH  16 
+#define LOGO16_GLCD_HEIGHT 16
+#define LOGO16_GLCD_WIDTH  16
 
  // 'NuEVI' logo
 static const unsigned char PROGMEM nuevi_logo_bmp[] = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x07, 0x73, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x0e, 0xe3, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00, 0x00, 0x03, 0x60, 0x00, 0x1d, 0xc3, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x3b, 0x83, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x77, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x00, 0xee, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x01, 0xdc, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x03, 0xb8, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x20, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x07, 0x70, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x60, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x0e, 0xe0, 0x03, 0x60, 0x00, 
-0x00, 0x00, 0x00, 0x60, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x1d, 0xc0, 0x03, 0x60, 0x00, 
-0x00, 0x03, 0x00, 0x60, 0x00, 0x01, 0x80, 0x00, 0x00, 0x03, 0x60, 0x3b, 0x80, 0x03, 0x60, 0x00, 
-0x00, 0x03, 0x00, 0xe0, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x77, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x03, 0x00, 0xc0, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0xee, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x03, 0x80, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x61, 0xdc, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x07, 0x80, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x63, 0xb8, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x07, 0xc0, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x67, 0x70, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x06, 0xc0, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x6e, 0xe0, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x06, 0x60, 0xc1, 0x01, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x7d, 0xc0, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x06, 0x30, 0xc3, 0x03, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x7b, 0x80, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x0c, 0x30, 0xc3, 0x07, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x77, 0x00, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x0c, 0x1c, 0xc3, 0x06, 0x01, 0x80, 0x00, 0x00, 0x03, 0x0e, 0x00, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x0c, 0x0c, 0xc2, 0x0e, 0x01, 0xff, 0xff, 0xff, 0xe3, 0xfc, 0x00, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x0c, 0x0e, 0xc6, 0x1e, 0x01, 0xff, 0xff, 0xff, 0xe3, 0xf8, 0x00, 0x00, 0x03, 0x60, 0x00, 
-0x00, 0x0c, 0x07, 0xc6, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x03, 0xc6, 0x76, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x01, 0xc7, 0xe6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x00, 0xc7, 0xc6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x00, 0x03, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x07, 0x73, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x0e, 0xe3, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00, 0x00, 0x03, 0x60, 0x00, 0x1d, 0xc3, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x3b, 0x83, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x00, 0x77, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x00, 0xee, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x01, 0xdc, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x03, 0xb8, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x20, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x60, 0x07, 0x70, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x60, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x0e, 0xe0, 0x03, 0x60, 0x00,
+0x00, 0x00, 0x00, 0x60, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x1d, 0xc0, 0x03, 0x60, 0x00,
+0x00, 0x03, 0x00, 0x60, 0x00, 0x01, 0x80, 0x00, 0x00, 0x03, 0x60, 0x3b, 0x80, 0x03, 0x60, 0x00,
+0x00, 0x03, 0x00, 0xe0, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0x77, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x03, 0x00, 0xc0, 0x00, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x60, 0xee, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x03, 0x80, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x61, 0xdc, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x07, 0x80, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x63, 0xb8, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x07, 0xc0, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x67, 0x70, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x06, 0xc0, 0xc0, 0x00, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x6e, 0xe0, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x06, 0x60, 0xc1, 0x01, 0x01, 0xb0, 0x00, 0x00, 0x03, 0x7d, 0xc0, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x06, 0x30, 0xc3, 0x03, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x7b, 0x80, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x0c, 0x30, 0xc3, 0x07, 0x01, 0xbf, 0xff, 0xff, 0xe3, 0x77, 0x00, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x0c, 0x1c, 0xc3, 0x06, 0x01, 0x80, 0x00, 0x00, 0x03, 0x0e, 0x00, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x0c, 0x0c, 0xc2, 0x0e, 0x01, 0xff, 0xff, 0xff, 0xe3, 0xfc, 0x00, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x0c, 0x0e, 0xc6, 0x1e, 0x01, 0xff, 0xff, 0xff, 0xe3, 0xf8, 0x00, 0x00, 0x03, 0x60, 0x00,
+0x00, 0x0c, 0x07, 0xc6, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x03, 0xc6, 0x76, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x01, 0xc7, 0xe6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x00, 0xc7, 0xc6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x00, 0x03, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
@@ -348,7 +349,7 @@ unsigned short extraCT;   // OFF:MW:FP:CF:SP
 unsigned short vibrato;   // OFF:1-9
 unsigned short deglitch;  // 0-70 ms in steps of 5
 unsigned short patch;     // 1-128
-unsigned short octave;      
+unsigned short octave;
 unsigned short curve;
 unsigned short velSmpDl;  // 0-30 ms
 unsigned short velBias;   // 0-9
@@ -356,7 +357,7 @@ unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13
 unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 unsigned short priority; // mono priority for rotator chords
 
-unsigned short vibSens = 2; // vibrato sensitivity 
+unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
 unsigned short vibSquelch = 15; //vibrato signal squelch
 unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DNWD
@@ -469,7 +470,7 @@ int mainState;                         // The state of the main state machine
 int initial_breath_value;          // The breath value at the time we observed the transition
 
 byte activeMIDIchannel=1;          // MIDI channel
-byte activePatch=0;                
+byte activePatch=0;
 byte doPatchUpdate=0;
 
 byte legacy = 0;
@@ -510,7 +511,7 @@ int lastPbDn=0;
 byte vibLedOff = 0;
 byte oldpkey = 0;
 
-float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings 
+float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings
 int vibMaxList[12] = {300,275,250,225,200,175,150,125,100,75,50,25};
 
 unsigned int curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
@@ -545,7 +546,7 @@ int slurInterval[9] = {-5,0,0,0,0,0,0,0,0};
 byte addedIntervals = 1;
 
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
-byte K1;   // Valve 1 (pitch change -2) 
+byte K1;   // Valve 1 (pitch change -2)
 byte K2;   // Valve 2 (pitch change -1)
 byte K3;   // Valve 3 (pitch change -3)
 byte K4;   // Left Hand index finger (pitch change -5)
@@ -573,9 +574,9 @@ Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch s
 //_______________________________________________________________________________________________ SETUP
 
 void setup() {
-  
+
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
-     
+
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
   pinMode(uPin, INPUT_PULLUP);
@@ -583,27 +584,27 @@ void setup() {
 
   pinMode(bLedPin, OUTPUT);   // breath indicator LED
   pinMode(pLedPin, OUTPUT);   // portam indicator LED
-  pinMode(13,OUTPUT);         // Teensy onboard LED  
+  pinMode(statusLedPin,OUTPUT);         // Teensy onboard LED
 
-  
+
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-  
-  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){ 
+
+  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-    writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
-    writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
+    writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);
+    writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY);
     writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
     writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
     writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
     writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
     writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
   }
-  
+
   if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
-    
+
     writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
     writeSetting(MIDI_ADDR,MIDI_FACTORY);
     writeSetting(BREATH_CC_ADDR,BREATH_CC_FACTORY);
@@ -687,10 +688,10 @@ void setup() {
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
   activePatch = patch;
- 
+
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
-  pitchbStep = (pitchbHiLimit - pitchbLoLimit)/92;   
+  pitchbStep = (pitchbHiLimit - pitchbLoLimit)/92;
   extracStep = (extracHiLimit - extracLoLimit)/92;
   ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
@@ -704,7 +705,7 @@ void setup() {
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
   // init done
-  
+
   // Show image buffer on the display hardware.
   // Since the buffer is intialized with an Adafruit splashscreen
   // internally, this will display the splashscreen.
@@ -712,52 +713,52 @@ void setup() {
   display.clearDisplay();
   display.drawBitmap(0,0,nuevi_logo_bmp,128,64,1);
   display.display();
-  
+
   //auto-calibrate the vibrato threshold while showing splash screen
-  int cv1=touchRead(15);
+  int cv1=touchRead(vibratoPin);
   int bc1=analogRead(A0);
-  digitalWrite(13,HIGH);
+  digitalWrite(statusLedPin,HIGH);
   delay(250);
-  int cv2=touchRead(15);
+  int cv2=touchRead(vibratoPin);
   int bc2=analogRead(A0);
-  digitalWrite(13,LOW);
+  digitalWrite(statusLedPin,LOW);
   delay(250);
-  int cv3=touchRead(15);
+  int cv3=touchRead(vibratoPin);
   int bc3=analogRead(A0);
-  digitalWrite(13,HIGH);
+  digitalWrite(statusLedPin,HIGH);
   delay(250);
-  digitalWrite(13,LOW);
-  int cv4=touchRead(15);
+  digitalWrite(statusLedPin,LOW);
+  int cv4=touchRead(vibratoPin);
   int bc4=analogRead(A0);
   vibZero=(cv1+cv2+cv3+cv4)/4;
   vibThr=vibZero-vibSquelch;
   vibThrLo=vibZero+vibSquelch;
   breathCalZero=(bc1+bc2+bc3+bc4)/4;
   delay(250);
-  digitalWrite(13,HIGH);
+  digitalWrite(statusLedPin,HIGH);
   delay(250);
-  digitalWrite(13,LOW);
+  digitalWrite(statusLedPin,LOW);
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(85,52);
   display.println("v.1.2.6");       // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
   display.display();
-  
-  delay(1500); 
-  
+
+  delay(1500);
+
   state = DISPLAYOFF_IDL;
   mainState = NOTE_OFF;       // initialize main state machine
 
   if (!digitalRead(ePin)) {
-    activePatch=0;                
+    activePatch=0;
     doPatchUpdate=1;
   }
-  
+
   Serial3.begin(31250);   // start serial with midi baudrate 31250
   Serial3.flush();
 
-  digitalWrite(13,HIGH); // Switch on the onboard LED to indicate power on/ready
-  
+  digitalWrite(statusLedPin,HIGH); // Switch on the onboard LED to indicate power on/ready
+
 }
 
 //_______________________________________________________________________________________________ MAIN LOOP
@@ -772,7 +773,7 @@ void mainLoop() {
     breathFilter.input(analogRead(A0));
     pressureSensor = constrain((int)breathFilter.output(),0,4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
     //pressureSensor = analogRead(A0);
-    //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth 
+    //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth
     if (mainState == NOTE_OFF) {
       if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
       if ((activePatch != patch) && doPatchUpdate){
@@ -795,38 +796,38 @@ void mainLoop() {
         if (((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) && legacy) || ((analogRead(0) < (breathCalZero - 500)) && legacyBrAct)){  // both pb pads touched
           readSwitches();
           fingeredNoteUntransposed=patchLimit(fingeredNoteUntransposed+1);
-          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // instant midi setting     
-            if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) { 
-              MIDIchannel = fingeredNoteUntransposed - 72;  // Mid C and up 
-              digitalWrite(13,LOW);
+          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // instant midi setting
+            if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
+              MIDIchannel = fingeredNoteUntransposed - 72;  // Mid C and up
+              digitalWrite(statusLedPin,LOW);
               delay(150);
-              digitalWrite(13,HIGH);
+              digitalWrite(statusLedPin,HIGH);
             }
-          } else {        
+          } else {
             if (!pinkyKey){ // note number to patch number
               if (patch != fingeredNoteUntransposed){
                 patch = fingeredNoteUntransposed;
                 doPatchUpdate = 1;
-                digitalWrite(13,LOW);
+                digitalWrite(statusLedPin,LOW);
                 delay(150);
-                digitalWrite(13,HIGH);
+                digitalWrite(statusLedPin,HIGH);
               }
             } else { // hi and lo patch numbers
               if (fingeredNoteUntransposed > 75){
                 if (patch != patchLimit(fingeredNoteUntransposed + 24)){
                   patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
                   doPatchUpdate = 1;
-                  digitalWrite(13,LOW);
+                  digitalWrite(statusLedPin,LOW);
                   delay(150);
-                  digitalWrite(13,HIGH);
+                  digitalWrite(statusLedPin,HIGH);
                 }
               } else {
                 if (patch != patchLimit(fingeredNoteUntransposed - 36)){
                   patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
                   doPatchUpdate = 1;
-                  digitalWrite(13,LOW);
+                  digitalWrite(statusLedPin,LOW);
                   delay(150);
-                  digitalWrite(13,HIGH);
+                  digitalWrite(statusLedPin,HIGH);
                 }
               }
             }
@@ -869,7 +870,7 @@ void mainLoop() {
               rotatorOn = 1;
               slurSustain = 0;
               parallelChord = 0;
-              subOctaveDouble = 0;      
+              subOctaveDouble = 0;
             } else rotatorOn = 0;
           }
         }
@@ -882,29 +883,29 @@ void mainLoop() {
         if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl)) {
           // Yes, so calculate MIDI note and velocity, then send a note on event
           readSwitches();
-          // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set     
-          breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal); 
+          // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set
+          breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);
           if (!velocity) {
             unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
             velocitySend = (breathValHires >>7) & 0x007F;
             velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
             //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
-          } else velocitySend = velocity;          
+          } else velocitySend = velocity;
           breath(); // send breath data
           fingeredNote=noteValueCheck(fingeredNote);
           if (priority){ // mono prio to last chord note
-            usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
           }
           if (parallelChord){
             for (int i=0; i < addedIntervals; i++){
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
             }
           }
           if (slurSustain){
             usbMIDI.sendControlChange(64,127, activeMIDIchannel);
-            dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
+            dinMIDIsendControlChange(64,127, activeMIDIchannel - 1);
             slurBase = fingeredNote;
             addedIntervals = 0;
           }
@@ -913,20 +914,20 @@ void mainLoop() {
             dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
             if (parallelChord){
               for (int i=0; i < addedIntervals; i++){
-                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
                 dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
               }
             }
           }
           if (rotatorOn){
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel - 1);
             if (currentRotation < 3) currentRotation++; else currentRotation = 0;
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
           }
           if (!priority){ // mono prio to base note
-            usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
           }
           activeNote=fingeredNote;
@@ -942,12 +943,12 @@ void mainLoop() {
         // Value has fallen below threshold - turn the note off
         activeNote=noteValueCheck(activeNote);
         if (priority){
-          usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
+          usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
           dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
         }
         if (parallelChord){
           for (int i=0; i < addedIntervals; i++){
-            usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+            usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
           }
         }
@@ -956,7 +957,7 @@ void mainLoop() {
           dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
           if (parallelChord){
             for (int i=0; i < addedIntervals; i++){
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
             }
           }
@@ -966,14 +967,14 @@ void mainLoop() {
           dinMIDIsendNoteOff(noteValueCheck(activeNote+parallel), velocitySend, activeMIDIchannel - 1);
           usbMIDI.sendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note Off message for old note
           dinMIDIsendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
-        }     
+        }
         if (!priority){
-          usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
+          usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
           dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
-        } 
+        }
         if (slurSustain){
             usbMIDI.sendControlChange(64,0, activeMIDIchannel);
-            dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
+            dinMIDIsendControlChange(64,0, activeMIDIchannel - 1);
         }
         breathLevel=0;
         mainState = NOTE_OFF;
@@ -990,7 +991,7 @@ void mainLoop() {
             // Player has moved to a new fingering while still blowing.
             // Send a note off for the current note and a note on for
             // the new note.
-            if (!velocity){      
+            if (!velocity){
               unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
               velocitySend = (breathValHires >>7) & 0x007F;
               velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
@@ -1001,7 +1002,7 @@ void mainLoop() {
               usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
-            
+
             if (parallelChord){
               for (int i=0; i < addedIntervals; i++){
                 usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note Off message for old note
@@ -1028,47 +1029,47 @@ void mainLoop() {
               usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
-            
-            
+
+
             fingeredNote=noteValueCheck(fingeredNote);
             if (priority){
-              usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
             }
             if (parallelChord){
               for (int i=0; i < addedIntervals; i++){
-                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
                 dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
               }
             }
             if (subOctaveDouble){
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
               if (parallelChord){
                 for (int i=0; i < addedIntervals; i++){
-                  usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note 
+                  usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
                   dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
                 }
               }
             }
             if (rotatorOn){
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel - 1);
               if (currentRotation < 3) currentRotation++; else currentRotation = 0;
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
             }
 
             if (!priority){
-              usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note 
+              usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
             }
-            
+
             if (!parallelChord && !subOctaveDouble && !rotatorOn){ // mono playing, send old note off after new note on
-              usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message 
+              usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
-  
+
             if (slurSustain){
               addedIntervals++;
               slurInterval[addedIntervals-1] = fingeredNote - slurBase;
@@ -1091,7 +1092,7 @@ void mainLoop() {
         extraController();
         statusLEDs();
         doorKnobCheck();
-      }  
+      }
       ccSendTime = millis();
     }
     if (millis() - pixelUpdateTime > pixelUpdateInterval){
@@ -1100,7 +1101,7 @@ void mainLoop() {
       drawSensorPixels(); // live sensor monitoring for the setup screens
       pixelUpdateTime = millis();
     }
-    lastFingering=fingeredNote; 
+    lastFingering=fingeredNote;
     //do menu stuff
     menu();
   }
@@ -1241,7 +1242,7 @@ void midiReset(){ // reset controllers
 
 //**************************************************************
 
-//  Send a three byte din midi message  
+//  Send a three byte din midi message
 void midiSend3B(byte midistatus, byte data1, byte data2) {
   Serial3.write(midistatus);
   Serial3.write(data1);
@@ -1250,7 +1251,7 @@ void midiSend3B(byte midistatus, byte data1, byte data2) {
 
 //**************************************************************
 
-//  Send a two byte din midi message  
+//  Send a two byte din midi message
 void midiSend2B(byte midistatus, byte data) {
   Serial3.write(midistatus);
   Serial3.write(data);
@@ -1258,44 +1259,44 @@ void midiSend2B(byte midistatus, byte data) {
 
 //**************************************************************
 
-//  Send din pitchbend  
+//  Send din pitchbend
 void dinMIDIsendPitchBend(int pb, byte ch) {
     int pitchLSB = pb & 0x007F;
-    int pitchMSB = (pb >>7) & 0x007F; 
+    int pitchMSB = (pb >>7) & 0x007F;
     midiSend3B((0xE0 | ch), pitchLSB, pitchMSB);
 }
 
 //**************************************************************
 
-//  Send din control change  
+//  Send din control change
 void dinMIDIsendControlChange(byte ccNumber, int cc, byte ch) {
     midiSend3B((0xB0 | ch), ccNumber, cc);
 }
 
 //**************************************************************
 
-//  Send din note on  
+//  Send din note on
 void dinMIDIsendNoteOn(byte note, int vel, byte ch) {
     midiSend3B((0x90 | ch), note, vel);
 }
 
 //**************************************************************
 
-//  Send din note off 
+//  Send din note off
 void dinMIDIsendNoteOff(byte note, int vel, byte ch) {
     midiSend3B((0x80 | ch), note, vel);
 }
 
 //**************************************************************
 
-//  Send din aftertouch 
+//  Send din aftertouch
 void dinMIDIsendAfterTouch(byte value, byte ch) {
     midiSend2B((0xD0 | ch), value);
 }
 
 //**************************************************************
 
-//  Send din program change 
+//  Send din program change
 void dinMIDIsendProgramChange(byte value, byte ch) {
     midiSend2B((0xC0 | ch), value);
 }
@@ -1323,7 +1324,7 @@ void breath(){
   int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
   breathLevel = constrain(pressureSensor,breathThrVal,breathMaxVal);
-  //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value      
+  //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
   ////////breathCCval = map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,127);
   breathCCvalHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
   breathCCval = (breathCCvalHires >>7) & 0x007F;
@@ -1342,13 +1343,13 @@ void breath(){
     }
     oldbreath = breathCCval;
   }
-  
+
   if (breathCCvalHires != oldbreathhires){
     if ((breathCC > 4) && (breathCC < 9)){ // send high resolution midi
         usbMIDI.sendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel);
         dinMIDIsendControlChange(ccList[breathCC]+32, breathCCvalFine, activeMIDIchannel - 1);
     }
-    oldbreathhires = breathCCvalHires;   
+    oldbreathhires = breathCCvalHires;
   }
 }
 
@@ -1365,7 +1366,7 @@ void pitch_bend(){
   int vibRead = touchRead(vibratoPin);                                                       // SENSOR PIN 15 - built in var cap
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth*0.5;
-  
+
   vibMax = vibMaxList[vibSens-1];
 
   if (vibRead < vibThr){
@@ -1389,16 +1390,16 @@ void pitch_bend(){
       //keep vibZero value
       break;
     case 1:
-      vibZero = vibZero*0.95+vibRead*0.05; 
+      vibZero = vibZero*0.95+vibRead*0.05;
       break;
     case 2:
-      vibZero = vibZero*0.9+vibRead*0.1; 
+      vibZero = vibZero*0.9+vibRead*0.1;
       break;
     case 3:
-      vibZero = vibZero*0.8+vibRead*0.2; 
+      vibZero = vibZero*0.8+vibRead*0.2;
       break;
     case 4:
-      vibZero = vibZero*0.6+vibRead*0.4; 
+      vibZero = vibZero*0.6+vibRead*0.4;
   }
   vibThr=vibZero-vibSquelch;
   vibThrLo=vibZero+vibSquelch;
@@ -1410,20 +1411,20 @@ void pitch_bend(){
   } else {
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
-  } 
+  }
 
   pitchBend=pitchBend+vibSignal;
-  
+
   pitchBend=constrain(pitchBend, 0, 16383);
 
   if (subVibSquelch && (8192 != pitchBend)){
-    digitalWrite(13,LOW);
+    digitalWrite(statusLedPin,LOW);
     vibLedOff = 1;
   } else if (vibLedOff){
-    digitalWrite(13,HIGH);
+    digitalWrite(statusLedPin,HIGH);
     vibLedOff = 0;
   }
-  
+
   if (pitchBend != oldpb){// only send midi data if pitch bend has changed from previous value
     #if defined(NEWTEENSYDUINO)
     usbMIDI.sendPitchBend(pitchBend-8192, activeMIDIchannel); // newer teensyduino "pitchBend-8192" older just "pitchBend"... strange thing to change
@@ -1438,32 +1439,32 @@ void pitch_bend(){
 //***********************************************************
 
 void doorKnobCheck(){
-  int touchValue[12]; 
+  int touchValue[12];
   for (byte i=0; i<12; i++){
     touchValue[i]=touchSensor.filteredData(i);
   }
   if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)){ // doorknob grip on canister
     if (pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) {
       gateOpen = 1;
-      digitalWrite(13,LOW);
+      digitalWrite(statusLedPin,LOW);
       delay(50);
-      digitalWrite(13,HIGH);
+      digitalWrite(statusLedPin,HIGH);
       delay(50);
     }
     else if (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) {
-      gateOpen = 0;      
+      gateOpen = 0;
       midiPanic();
-      digitalWrite(13,LOW);
+      digitalWrite(statusLedPin,LOW);
       delay(50);
-      digitalWrite(13,HIGH);
-      delay(50);      
-      digitalWrite(13,LOW);
+      digitalWrite(statusLedPin,HIGH);
       delay(50);
-      digitalWrite(13,HIGH);
+      digitalWrite(statusLedPin,LOW);
       delay(50);
-      digitalWrite(13,LOW);
+      digitalWrite(statusLedPin,HIGH);
       delay(50);
-      digitalWrite(13,HIGH);
+      digitalWrite(statusLedPin,LOW);
+      delay(50);
+      digitalWrite(statusLedPin,HIGH);
       delay(700);
     }
   }
@@ -1479,32 +1480,32 @@ void extraController(){
      extracIsOn=1;
      if (extraCT == 4){ //Sustain ON
       usbMIDI.sendControlChange(64,127, activeMIDIchannel);
-      dinMIDIsendControlChange(64,127, activeMIDIchannel - 1); 
-     } 
+      dinMIDIsendControlChange(64,127, activeMIDIchannel - 1);
+     }
     }
     if (extraCT == 1){ //Send modulation
-      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
+      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         usbMIDI.sendControlChange(1,extracCC, activeMIDIchannel);
-        dinMIDIsendControlChange(1,extracCC, activeMIDIchannel - 1);      
+        dinMIDIsendControlChange(1,extracCC, activeMIDIchannel - 1);
       }
-      oldextrac = extracCC; 
+      oldextrac = extracCC;
     }
     if (extraCT == 2){ //Send foot pedal (CC#4)
-      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
+      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         usbMIDI.sendControlChange(4,extracCC, activeMIDIchannel);
-        dinMIDIsendControlChange(4,extracCC, activeMIDIchannel - 1);      
+        dinMIDIsendControlChange(4,extracCC, activeMIDIchannel - 1);
       }
-      oldextrac = extracCC; 
+      oldextrac = extracCC;
     }
     if ((extraCT == 3) && (breathCC != 9)){ //Send filter cutoff (CC#74)
-      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127); 
+      int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         usbMIDI.sendControlChange(74,extracCC, activeMIDIchannel);
-        dinMIDIsendControlChange(74,extracCC, activeMIDIchannel - 1);      
+        dinMIDIsendControlChange(74,extracCC, activeMIDIchannel - 1);
       }
-      oldextrac = extracCC; 
+      oldextrac = extracCC;
     }
   } else if (extracIsOn) {                        // we have just gone below threshold, so send zero value
     extracIsOn=0;
@@ -1532,8 +1533,8 @@ void extraController(){
     } else if (extraCT == 4){ //SP
       //send sustain off
       usbMIDI.sendControlChange(64,0, activeMIDIchannel);
-      dinMIDIsendControlChange(64,0, activeMIDIchannel - 1); 
-    } 
+      dinMIDIsendControlChange(64,0, activeMIDIchannel - 1);
+    }
   }
 }
 
@@ -1546,9 +1547,9 @@ void portamento_(){
    if (!portIsOn) {
      portOn();
     }
-    port();        
+    port();
   } else if (portIsOn) {                        // we have just gone below threshold, so send zero value
-    portOff(); 
+    portOff();
   }
 }
 
@@ -1591,10 +1592,10 @@ void portOff(){
 
 //***********************************************************
 
-void readSwitches(){  
+void readSwitches(){
   int qTransp;
   // Read touch pads (MPR121) and put value in variables
-  int touchValue[12]; 
+  int touchValue[12];
   for (byte i=0; i<12; i++){
     touchValue[i]=touchSensor.filteredData(i);
   }
@@ -1607,7 +1608,7 @@ void readSwitches(){
   else if (touchValue[R3Pin] < ctouchThrVal) octaveR = 3;  //R3
   else if (touchValue[R2Pin] < ctouchThrVal) octaveR = 2;  //R2
   else if (touchValue[R1Pin] < ctouchThrVal) octaveR = 1;  //R1
-  
+
   // Valves and trill keys
   K4=(touchValue[K4Pin] < ctouchThrVal);
   K1=(touchValue[K1Pin] < ctouchThrVal);
@@ -1617,7 +1618,7 @@ void readSwitches(){
   K6=(touchValue[K6Pin] < ctouchThrVal);
   K7=(touchValue[K7Pin] < ctouchThrVal);
 
-  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
+  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
 
  if ((pinkySetting < 12) && pinkyKey){
   qTransp = pinkySetting - 12;
@@ -1628,7 +1629,7 @@ void readSwitches(){
  }
 
 
-  // Calculate midi note number from pressed keys  
+  // Calculate midi note number from pressed keys
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
   fingeredNoteUntransposed=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12;
 }
@@ -1701,7 +1702,7 @@ void menu() {
       buttonPressedAndNotUsed = 1;
       buttonRepeatTime = millis();
     }
-    
+
   }
 
 
@@ -1734,7 +1735,7 @@ void menu() {
   }
 
 
-  
+
   if        (state == DISPLAYOFF_IDL){
     if (stateFirstRun) {
       display.ssd1306_command(SSD1306_DISPLAYOFF);
@@ -1784,27 +1785,27 @@ void menu() {
         case 8:
           // menu
           if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch breath activated legacy settings on/off
-            legacyBrAct = !legacyBrAct;   
+            legacyBrAct = !legacyBrAct;
             dipSwBits = dipSwBits ^ (1<<2);
             writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(13,LOW);
+            digitalWrite(statusLedPin,LOW);
             delay(150);
-            digitalWrite(13,HIGH);
+            digitalWrite(statusLedPin,HIGH);
             delay(150);
-            digitalWrite(13,LOW);
+            digitalWrite(statusLedPin, LOW);
             delay(150);
-            digitalWrite(13,HIGH);
-          } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch pb pad activated legacy settings control on/off     
+            digitalWrite(statusLedPin,HIGH);
+          } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch pb pad activated legacy settings control on/off
             legacy = !legacy;
             dipSwBits = dipSwBits ^ (1<<1);
             writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(13,LOW);
+            digitalWrite(statusLedPin,LOW);
             delay(150);
-            digitalWrite(13,HIGH);
+            digitalWrite(statusLedPin,HIGH);
             delay(150);
-            digitalWrite(13,LOW);
+            digitalWrite(statusLedPin,LOW);
             delay(150);
-            digitalWrite(13,HIGH);
+            digitalWrite(statusLedPin,HIGH);
           } else if (pinkyKey){
             display.ssd1306_command(SSD1306_DISPLAYON);
             state = ROTATOR_MENU;
@@ -1820,7 +1821,7 @@ void menu() {
           _reboot_Teensyduino_();
       }
     }
-  } else if (state == PATCH_VIEW){ 
+  } else if (state == PATCH_VIEW){
     if (stateFirstRun) {
       drawPatchView();
       patchViewTime = millis();
@@ -1831,7 +1832,7 @@ void menu() {
       stateFirstRun = 1;
       doPatchUpdate = 1;
       FPD = 0;
-      if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
+      if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
@@ -1844,7 +1845,7 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
+            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
           } else if (!trills){
             if (patch > 1){
               patch--;
@@ -1874,7 +1875,7 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
+            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
           } else if (!trills){
             if (patch < 128){
               patch++;
@@ -1893,7 +1894,7 @@ void menu() {
             stateFirstRun = 1;
             doPatchUpdate = 1;
           }
-          if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch); 
+          if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
           FPD = 0;
           break;
         case 10:
@@ -1921,7 +1922,7 @@ void menu() {
     }
     if (subTranspose){
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotTranspose(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -1968,10 +1969,10 @@ void menu() {
             if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
             break;
         }
-      }  
+      }
     } else if (subOctave){
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotOctave(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -2018,10 +2019,10 @@ void menu() {
             if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
             break;
         }
-      } 
+      }
     } else if (subMIDI) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotMIDI(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -2068,10 +2069,10 @@ void menu() {
             if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
             break;
         }
-      } 
+      }
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(mainMenuCursor, cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -2129,7 +2130,7 @@ void menu() {
               state = PATCH_VIEW;
               stateFirstRun = 1;
               clearFPS(trills);
-              
+
             }
             break;
         }
@@ -2142,7 +2143,7 @@ void menu() {
     }
     if (subParallel){
       if (((millis() - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         if (forceRedraw){
           forceRedraw = 0;
           cursorNow = WHITE;
@@ -2193,10 +2194,10 @@ void menu() {
             if (readSetting(PARAL_ADDR) != (parallel + 24)) writeSetting(PARAL_ADDR,(parallel + 24));
             break;
         }
-      }  
+      }
     } else if (subRotator){
       if (((millis() - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         if (forceRedraw){
           forceRedraw = 0;
           cursorNow = WHITE;
@@ -2250,7 +2251,7 @@ void menu() {
       }
     } else if (subPriority){
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPriority(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -2293,10 +2294,10 @@ void menu() {
             if (readSetting(PRIO_ADDR) != priority) writeSetting(PRIO_ADDR,priority);
             break;
         }
-      }        
+      }
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(rotatorMenuCursor, cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -2354,13 +2355,13 @@ void menu() {
               state = PATCH_VIEW;
               stateFirstRun = 1;
               clearFPS(trills);
-              
+
             }
             break;
         }
       }
     }
-  // end rotator menu  
+  // end rotator menu
   } else if (state == BREATH_ADJ_IDL){
     if (stateFirstRun) {
       drawBreathScreen();
@@ -2368,7 +2369,7 @@ void menu() {
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       drawAdjCursor(cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2405,7 +2406,7 @@ void menu() {
     }
   } else if (state == BREATH_ADJ_THR){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos1,20,pos1,26,cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2453,7 +2454,7 @@ void menu() {
     }
   } else if (state == BREATH_ADJ_MAX){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos2,50,pos2,57,cursorNow);;
       display.display();
       cursorBlinkTime = millis();
@@ -2506,7 +2507,7 @@ void menu() {
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       drawAdjCursor(cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2518,8 +2519,8 @@ void menu() {
           // down
           state = PITCHB_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal); 
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
+          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
         case 2:
           // enter
@@ -2529,21 +2530,21 @@ void menu() {
           // up
           state = BREATH_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
           if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
         case 8:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);  
+          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
           if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
       }
     }
   } else if (state == PORTAM_ADJ_THR){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos1,20,pos1,26,cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2591,7 +2592,7 @@ void menu() {
     }
   } else if (state == PORTAM_ADJ_MAX){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos2,50,pos2,57,cursorNow);;
       display.display();
       cursorBlinkTime = millis();
@@ -2644,7 +2645,7 @@ void menu() {
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       drawAdjCursor(cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2681,7 +2682,7 @@ void menu() {
     }
   } else if (state == PITCHB_ADJ_THR){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos1,20,pos1,26,cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2729,7 +2730,7 @@ void menu() {
     }
   } else if (state == PITCHB_ADJ_MAX){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos2,50,pos2,57,cursorNow);;
       display.display();
       cursorBlinkTime = millis();
@@ -2783,7 +2784,7 @@ void menu() {
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       drawAdjCursor(cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2820,7 +2821,7 @@ void menu() {
     }
   } else if (state == EXTRAC_ADJ_THR){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos1,20,pos1,26,cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2868,7 +2869,7 @@ void menu() {
     }
   } else if (state == EXTRAC_ADJ_MAX){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos2,50,pos2,57,cursorNow);;
       display.display();
       cursorBlinkTime = millis();
@@ -2922,7 +2923,7 @@ void menu() {
       stateFirstRun = 0;
     }
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       drawAdjCursor(cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -2956,7 +2957,7 @@ void menu() {
     }
   } else if (state == CTOUCH_ADJ_THR){
     if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
       display.drawLine(pos1,20,pos1,26,cursorNow);
       display.display();
       cursorBlinkTime = millis();
@@ -3004,8 +3005,8 @@ void menu() {
           break;
       }
     }
-  
-    
+
+
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
     if (stateFirstRun) {
       drawSetupBrMenuScreen();
@@ -3013,7 +3014,7 @@ void menu() {
     }
     if (subBreathCC){
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotBreathCC(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3080,10 +3081,10 @@ void menu() {
             }
             break;
         }
-      }  
+      }
     } else if (subBreathAT) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotBreathAT(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3132,10 +3133,10 @@ void menu() {
             }
             break;
         }
-      } 
+      }
     } else if (subVelocity) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelocity(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3182,12 +3183,12 @@ void menu() {
             if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
             break;
         }
-      }   
+      }
 
- 
+
     } else if (subCurve) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotCurve(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3234,11 +3235,11 @@ void menu() {
             if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
             break;
         }
-      }   
+      }
 
     } else if (subVelSmpDl) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelSmpDl(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3285,11 +3286,11 @@ void menu() {
             if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
         }
-      }   
+      }
 
      } else if (subVelBias) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelBias(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3336,11 +3337,11 @@ void menu() {
             if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
             break;
         }
-      }   
-      
+      }
+
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(setupBrMenuCursor, cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3381,9 +3382,9 @@ void menu() {
             break;
         }
       }
-    } 
+    }
 
-    
+
   } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
    if (stateFirstRun) {
       drawSetupCtMenuScreen();
@@ -3391,7 +3392,7 @@ void menu() {
     }
     if (subPort){
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPort(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3403,7 +3404,7 @@ void menu() {
             // down
             plotPort(BLACK);
             if (portamento > 0){
-              portamento--; 
+              portamento--;
             } else portamento = 2;
             plotPort(WHITE);
             cursorNow = BLACK;
@@ -3438,10 +3439,10 @@ void menu() {
             if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
             break;
         }
-      }  
+      }
     } else if (subPB) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPB(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3488,10 +3489,10 @@ void menu() {
             if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
             break;
         }
-      } 
+      }
     } else if (subExtra) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotExtra(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3538,10 +3539,10 @@ void menu() {
             if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
             break;
         }
-      } 
+      }
     } else if (subDeglitch) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotDeglitch(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3588,10 +3589,10 @@ void menu() {
             if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
             break;
         }
-      }    
+      }
     } else if (subPinky) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPinkyKey(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3638,10 +3639,10 @@ void menu() {
             if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
             break;
         }
-      }    
+      }
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(setupCtMenuCursor, cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3682,8 +3683,8 @@ void menu() {
             break;
         }
       }
-    } 
-  
+    }
+
 
 
 
@@ -3695,7 +3696,7 @@ void menu() {
     }
     if (subVibrato) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibrato(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3742,10 +3743,10 @@ void menu() {
             if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
             break;
         }
-      } 
+      }
     } else if (subVibSens) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibSens(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3792,10 +3793,10 @@ void menu() {
             if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
             break;
         }
-      } 
+      }
     } else if (subVibRetn) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibRetn(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3842,10 +3843,10 @@ void menu() {
             if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
         }
-      }  
+      }
     } else if (subVibSquelch) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibSquelch(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3892,10 +3893,10 @@ void menu() {
             if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
         }
-      } 
+      }
     } else if (subVibDirection) {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibDirection(cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3938,10 +3939,10 @@ void menu() {
             if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
         }
-      }   
+      }
     } else {
       if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE; 
+        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(vibratoMenuCursor, cursorNow);
         display.display();
         cursorBlinkTime = millis();
@@ -3982,11 +3983,11 @@ void menu() {
             break;
         }
       }
-    } 
+    }
   }
 
 
-  
+
 }
 
 void selectMainMenu(){
@@ -4069,7 +4070,7 @@ void selectRotatorMenu(){
       drawMenuCursor(rotatorMenuCursor, WHITE);
       display.display();
       cursorBlinkTime = millis();
-      drawSubPriority();    
+      drawSubPriority();
       break;
   }
 }
@@ -4220,7 +4221,7 @@ void drawBreathScreen(){
   display.println("BREATH");
   //display.drawLine(0,10,127,10,WHITE);
   display.setCursor(0,20);
-  display.println("THR"); 
+  display.println("THR");
   display.drawLine(25,17,120,17,WHITE);
   display.drawLine(25,18,25,19,WHITE);
   display.drawLine(120,18,120,19,WHITE);
@@ -4233,7 +4234,7 @@ void drawBreathScreen(){
   display.drawLine(25,36,25,40,WHITE);
   display.drawLine(120,36,120,40,WHITE);
   display.setCursor(0,50);
-  display.println("MAX"); 
+  display.println("MAX");
   display.drawLine(25,47,120,47,WHITE);
   display.drawLine(25,48,25,49,WHITE);
   display.drawLine(120,48,120,49,WHITE);
@@ -4263,7 +4264,7 @@ void drawPortamScreen(){
   display.println("PORTAMENTO");
   //display.drawLine(0,10,127,10,WHITE);
   display.setCursor(0,20);
-  display.println("THR"); 
+  display.println("THR");
   display.drawLine(25,17,120,17,WHITE);
   display.drawLine(25,18,25,19,WHITE);
   display.drawLine(120,18,120,19,WHITE);
@@ -4276,7 +4277,7 @@ void drawPortamScreen(){
   display.drawLine(25,36,25,40,WHITE);
   display.drawLine(120,36,120,40,WHITE);
   display.setCursor(0,50);
-  display.println("MAX"); 
+  display.println("MAX");
   display.drawLine(25,47,120,47,WHITE);
   display.drawLine(25,48,25,49,WHITE);
   display.drawLine(120,48,120,49,WHITE);
@@ -4306,7 +4307,7 @@ void drawPitchbScreen(){
   display.println("PITCH BEND");
   //display.drawLine(0,10,127,10,WHITE);
   display.setCursor(0,20);
-  display.println("THR"); 
+  display.println("THR");
   display.drawLine(25,17,120,17,WHITE);
   display.drawLine(25,18,25,19,WHITE);
   display.drawLine(120,18,120,19,WHITE);
@@ -4319,7 +4320,7 @@ void drawPitchbScreen(){
   display.drawLine(25,36,25,40,WHITE);
   display.drawLine(120,36,120,40,WHITE);
   display.setCursor(0,50);
-  display.println("MAX"); 
+  display.println("MAX");
   display.drawLine(25,47,120,47,WHITE);
   display.drawLine(25,48,25,49,WHITE);
   display.drawLine(120,48,120,49,WHITE);
@@ -4349,7 +4350,7 @@ void drawExtracScreen(){
   display.println("EXTRA CONTROLLER");
   //display.drawLine(0,10,127,10,WHITE);
   display.setCursor(0,20);
-  display.println("THR"); 
+  display.println("THR");
   display.drawLine(25,17,120,17,WHITE);
   display.drawLine(25,18,25,19,WHITE);
   display.drawLine(120,18,120,19,WHITE);
@@ -4362,7 +4363,7 @@ void drawExtracScreen(){
   display.drawLine(25,36,25,40,WHITE);
   display.drawLine(120,36,120,40,WHITE);
   display.setCursor(0,50);
-  display.println("MAX"); 
+  display.println("MAX");
   display.drawLine(25,47,120,47,WHITE);
   display.drawLine(25,48,25,49,WHITE);
   display.drawLine(120,48,120,49,WHITE);
@@ -4393,7 +4394,7 @@ void drawCtouchScreen(){
   display.println("TOUCH SENSE");
   //display.drawLine(0,10,127,10,WHITE);
   display.setCursor(0,20);
-  display.println("THR"); 
+  display.println("THR");
   display.drawLine(25,17,120,17,WHITE);
   display.drawLine(25,18,25,19,WHITE);
   display.drawLine(120,18,120,19,WHITE);
@@ -4442,17 +4443,17 @@ void drawMenuScreen(){
   }
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("TRANSPOSE"); 
+  display.println("TRANSPOSE");
   display.setCursor(0,21);
   display.println("OCTAVE");
   display.setCursor(0,30);
-  display.println("MIDI CH"); 
+  display.println("MIDI CH");
   display.setCursor(0,39);
-  display.println("ADJUST"); 
+  display.println("ADJUST");
   display.setCursor(0,48);
-  display.println("SETUP BR"); 
+  display.println("SETUP BR");
   display.setCursor(0,57);
-  display.println("SETUP CTL"); 
+  display.println("SETUP CTL");
   drawMenuCursor(mainMenuCursor, WHITE);
   display.display();
 }
@@ -4467,17 +4468,17 @@ void drawRotatorMenuScreen(){
   display.print("ROTATOR SETUP");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("PARALLEL"); 
+  display.println("PARALLEL");
   display.setCursor(0,21);
   display.println("ROTATE 1");
   display.setCursor(0,30);
-  display.println("ROTATE 2"); 
+  display.println("ROTATE 2");
   display.setCursor(0,39);
-  display.println("ROTATE 3"); 
+  display.println("ROTATE 3");
   display.setCursor(0,48);
-  display.println("ROTATE 4"); 
+  display.println("ROTATE 4");
   display.setCursor(0,57);
-  display.println("PRIORITY"); 
+  display.println("PRIORITY");
   drawMenuCursor(rotatorMenuCursor, WHITE);
   display.display();
 }
@@ -4547,7 +4548,7 @@ void plotTranspose(int color){
     display.println("-");
     display.setCursor(93,33);
     display.println(abs(transpose-12));
-  }  
+  }
 }
 void drawSubRotator(){
   display.fillRect(63,11,64,52,BLACK);
@@ -4573,7 +4574,7 @@ void plotRotator(int color,int value){
     display.println("-");
     display.setCursor(93,33);
     display.println(abs(value));
-  }  
+  }
 }
 
 void drawSubPriority(){
@@ -4592,9 +4593,9 @@ void plotPriority(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (priority){
-    display.println("ROT"); 
+    display.println("ROT");
   } else {
-    display.println("MEL"); 
+    display.println("MEL");
   }
 }
 
@@ -4622,7 +4623,7 @@ void plotOctave(int color){
     display.println("-");
     display.setCursor(93,33);
     display.println(abs(octave-3));
-  } 
+  }
 }
 
 void drawSubMIDI(){
@@ -4640,7 +4641,7 @@ void plotMIDI(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(90,33);
-  display.println(MIDIchannel); 
+  display.println(MIDIchannel);
 }
 
 void drawSubBreathCC(){
@@ -4695,11 +4696,11 @@ void plotBreathCC(int color){
         display.setCursor(83,33);
         display.println("CF");
         break;
-    } 
+    }
   } else {
     display.setCursor(79,33);
-    display.println("OFF"); 
-  } 
+    display.println("OFF");
+  }
 }
 
 void drawSubBreathAT(){
@@ -4718,9 +4719,9 @@ void plotBreathAT(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (breathAT){
-    display.println("ON"); 
+    display.println("ON");
   } else {
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -4740,9 +4741,9 @@ void plotVelocity(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (velocity){
-    display.println(velocity); 
+    display.println(velocity);
   } else {
-    display.println("DYN"); 
+    display.println("DYN");
   }
 }
 
@@ -4814,7 +4815,7 @@ void plotCurve(int color){
       display.setCursor(83,33);
       display.println("Z2");
       break;
-  } 
+  }
 }
 
 
@@ -4834,11 +4835,11 @@ void plotPort(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (portamento == 1){
-    display.println("ON"); 
+    display.println("ON");
   } else if (portamento == 2){
     display.println("SW");
   } else {
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -4860,9 +4861,9 @@ void plotPB(int color){
   if (PBdepth){
     display.println("1/");
     display.setCursor(101,33);
-    display.println(PBdepth); 
+    display.println(PBdepth);
   } else {
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -4921,10 +4922,10 @@ void plotVibrato(int color){
   display.setTextSize(2);
   if (vibrato){
     display.setCursor(90,33);
-    display.println(vibrato); 
+    display.println(vibrato);
   } else {
     display.setCursor(79,33);
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -4943,7 +4944,7 @@ void plotVibSens(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(90,33);
-  display.println(vibSens); 
+  display.println(vibSens);
 }
 
 void drawSubVibRetn(){
@@ -4961,7 +4962,7 @@ void plotVibRetn(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(90,33);
-  display.println(vibRetn); 
+  display.println(vibRetn);
 }
 
 void drawSubVibSquelch(){
@@ -4979,7 +4980,7 @@ void plotVibSquelch(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(83,33);
-  display.println(vibSquelch); 
+  display.println(vibSquelch);
 }
 
 
@@ -5000,9 +5001,9 @@ void plotVibDirection(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (DNWD == vibDirection){
-    display.println("NRM"); 
+    display.println("NRM");
   } else {
-    display.println("REV"); 
+    display.println("REV");
   }
 }
 
@@ -5027,12 +5028,12 @@ void plotDeglitch(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (deglitch){
-    display.println(deglitch); 
+    display.println(deglitch);
     display.setCursor(105,40);
     display.setTextSize(1);
     display.println("ms");
   } else {
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 void drawSubPinkyKey(){
@@ -5051,12 +5052,12 @@ void plotPinkyKey(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (pinkySetting < 12){
-    display.println(pinkySetting - 12); 
+    display.println(pinkySetting - 12);
   } else if (pinkySetting == PBD) {
-    display.println("PBD"); 
+    display.println("PBD");
   } else {
     display.print("+");
-    display.println(pinkySetting - 12); 
+    display.println(pinkySetting - 12);
   }
 }
 void drawSubVelSmpDl(){
@@ -5075,12 +5076,12 @@ void plotVelSmpDl(int color){
   display.setTextSize(2);
   display.setCursor(79,33);
   if (velSmpDl){
-    display.println(velSmpDl); 
+    display.println(velSmpDl);
     display.setCursor(105,40);
     display.setTextSize(1);
     display.println("ms");
   } else {
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -5100,10 +5101,10 @@ void plotVelBias(int color){
   display.setTextSize(2);
   if (velBias){
     display.setCursor(90,33);
-    display.println(velBias); 
+    display.println(velBias);
   } else {
     display.setCursor(79,33);
-    display.println("OFF"); 
+    display.println("OFF");
   }
 }
 
@@ -5117,17 +5118,17 @@ void drawSetupBrMenuScreen(){
   display.println("SETUP BREATH");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("BREATH CC"); 
+  display.println("BREATH CC");
   display.setCursor(0,21);
   display.println("BREATH AT");
   display.setCursor(0,30);
-  display.println("VELOCITY"); 
+  display.println("VELOCITY");
   display.setCursor(0,39);
-  display.println("CURVE"); 
+  display.println("CURVE");
   display.setCursor(0,48);
-  display.println("VEL DELAY"); 
+  display.println("VEL DELAY");
   display.setCursor(0,57);
-  display.println("VEL BIAS"); 
+  display.println("VEL BIAS");
 
   display.display();
 }
@@ -5142,17 +5143,17 @@ void drawSetupCtMenuScreen(){
   display.println("SETUP CTRLS");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("PORT/GLD"); 
+  display.println("PORT/GLD");
   display.setCursor(0,21);
   display.println("PITCHBEND");
   display.setCursor(0,30);
-  display.println("EXTRA CTR"); 
+  display.println("EXTRA CTR");
   display.setCursor(0,39);
-  display.println("VIBRATO"); 
+  display.println("VIBRATO");
   display.setCursor(0,48);
-  display.println("DEGLITCH"); 
+  display.println("DEGLITCH");
   display.setCursor(0,57);
-  display.println("PINKY KEY"); 
+  display.println("PINKY KEY");
 
   display.display();
 }
@@ -5167,17 +5168,17 @@ void drawVibratoMenuScreen(){
   display.println("VIBRATO");
   display.drawLine(0,9,127,9,WHITE);
   display.setCursor(0,12);
-  display.println("DEPTH"); 
+  display.println("DEPTH");
   display.setCursor(0,21);
   display.println("SENSE");
   display.setCursor(0,30);
-  display.println("RETURN"); 
+  display.println("RETURN");
   display.setCursor(0,39);
-  display.println("SQUELCH"); 
+  display.println("SQUELCH");
   display.setCursor(0,48);
-  display.println("DIRECTION"); 
+  display.println("DIRECTION");
   display.setCursor(0,57);
-  display.println(""); 
+  display.println("");
 
   display.display();
 }
@@ -5277,16 +5278,16 @@ void writeSetting(byte address, unsigned short value){
   } data;
   data.val = value;
   EEPROM.write(address, data.v[0]);
-  EEPROM.write(address+1, data.v[1]);  
+  EEPROM.write(address+1, data.v[1]);
 }
 
 unsigned short readSetting(byte address){
   union {
     byte v[2];
     unsigned short val;
-  } data;  
-  data.v[0] = EEPROM.read(address); 
-  data.v[1] = EEPROM.read(address+1); 
+  } data;
+  data.v[0] = EEPROM.read(address);
+  data.v[1] = EEPROM.read(address+1);
   return data.val;
 }
 
