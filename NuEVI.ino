@@ -22,7 +22,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.2.7"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.2.8"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define REVB
 
@@ -480,6 +480,7 @@ byte legacyBrAct = 0;
 byte halfTime = 0;
 byte FPD = 0;
 boolean programonce = false;
+byte slowMidi = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
@@ -695,6 +696,7 @@ void setup() {
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
   activePatch = patch;
+  slowMidi = dipSwBits & (1<<3);
 
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
@@ -801,7 +803,8 @@ void mainLoop() {
         mainState = RISE_WAIT; // Go to next state
       }
       if (legacy || legacyBrAct) {
-        if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) || ((analogRead(0) < (breathCalZero - 500)) && legacyBrAct) && (pbDn < ((pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
+        if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
+          (((analogRead(0) < (breathCalZero - 500)) && legacyBrAct) && (pbDn < ((pitchbMaxVal + pitchbThrVal) / 2)))) { // both pb pads touched or br suck
           readSwitches();
           fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
           if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting
@@ -1172,12 +1175,13 @@ void mainLoop() {
     // Is it time to send more CC data?
     if (millis() - ccSendTime > CC_INTERVAL) {
       // deal with Breath, Pitch Bend, Modulation, etc.
-      breath();
+      if (!slowMidi) breath();
       halfTime = !halfTime;
       if (halfTime) {
         pitch_bend();
         portamento_();
       } else {
+        if (slowMidi) breath();
         extraController();
         statusLEDs();
         doorKnobCheck();
@@ -1452,6 +1456,7 @@ void pitch_bend(){
   // on-pcb variable capacitor for vibrato.
   int vibMax;
   int calculatedPBdepth;
+  byte pbTouched = 0;
   pbUp = touchRead(pbUpPin);                                                                 // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin);                                                                 // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr);  // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
@@ -1498,9 +1503,13 @@ void pitch_bend(){
 
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
-  } else if ((pbDn > pitchbThrVal) && PBdepth){
+  	pbTouched = 1;
+  }
+  if ((pbDn > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
-  } else {
+  	pbTouched = 1;
+  }
+  if (!pbTouched) {
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
   }
@@ -1724,6 +1733,8 @@ void readSwitches(){
   // Calculate midi note number from pressed keys
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
   fingeredNoteUntransposed=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12;
+
+  if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 }
 
 //***********************************************************
@@ -2135,11 +2146,21 @@ void menu() {
             break;
           case 2:
             // enter
-            plotMIDI(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subMIDI = 0;
-            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
+            readSwitches();
+            if (pinkyKey){
+              slowMidi = !slowMidi;
+              plotMIDI(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              dipSwBits = dipSwBits ^ (1<<3);
+              writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+            } else {
+              plotMIDI(WHITE);
+              cursorNow = BLACK;
+              display.display();
+              subMIDI = 0;
+              if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
+            }
             break;
           case 4:
             // up
@@ -4734,6 +4755,14 @@ void plotMIDI(int color){
   display.setTextSize(2);
   display.setCursor(90,33);
   display.println(MIDIchannel);
+  if (slowMidi){
+    display.setTextColor(WHITE);
+  } else {
+    display.setTextColor(BLACK);
+  }
+  display.setTextSize(1);
+  display.setCursor(116,51);
+  display.print("S");
 }
 
 void drawSubBreathCC(){
