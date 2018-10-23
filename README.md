@@ -40,8 +40,8 @@ next to it are.
 Open NuEVI.ino in the Arduino IDE. Under "Tools -> Board", select "Teensy 3.2 / 3.1". Then set
 "Tools -> USB Type" to "MIDI".
 
-If you have Teensyduino 1.4.1 or later, you also need to change an option in the code. In the
-Arduino Editor (where you have NuEVI.ino open), uncomment the line with `#define NEWTEENSYDUINO`. If
+If you have Teensyduino 1.4.0 or earlier, you also need to change an option in the code. In the
+Arduino Editor (where you have NuEVI.ino open), comment out the line with `#define NEWTEENSYDUINO`. If
 this does not match the Teensyduino version, pitch bend over USB-MIDI will not work properly.
 
 ### Building and uploading
