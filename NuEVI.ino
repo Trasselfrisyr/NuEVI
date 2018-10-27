@@ -22,7 +22,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.2.8"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.2.9"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define REVB
 
@@ -633,9 +633,8 @@ void setup() {
     writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
     writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
 
-    //Set threshold/max sensor values only if upgrading from something before version 24
-    //In other cases, these values are saved between factory resets
-    if (readSetting(VERSION_ADDR) < 24) {
+    // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
+    if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))){
       writeSetting(VERSION_ADDR,VERSION);
       writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
       writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -648,6 +647,7 @@ void setup() {
       writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
     }
   }
+
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
   breathMaxVal = readSetting(BREATH_MAX_ADDR);
@@ -1501,14 +1501,31 @@ void pitch_bend(){
   vibThr=vibZero-vibSquelch;
   vibThrLo=vibZero+vibSquelch;
 
+  int pbPos = map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,0,calculatedPBdepth);
+  int pbNeg = map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,0,calculatedPBdepth);
+  int pbSum = 8193 + pbPos - pbNeg;
+  int pbDif = abs(pbPos - pbNeg);
+
+/*
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
-  	pbTouched = 1;
+    pbTouched++;
   }
   if ((pbDn > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
-  	pbTouched = 1;
+    pbTouched++;
   }
+*/
+
+  if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)){
+    if (pbDif < 10){
+      pitchBend = 8192;
+    } else {
+      pitchBend=pitchBend*0.6+0.4*pbSum;
+    }
+    pbTouched = 1;
+  }
+
   if (!pbTouched) {
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
@@ -3364,7 +3381,7 @@ void menu() {
             // down
             plotVelSmpDl(BLACK);
             if (velSmpDl > 0){
-              velSmpDl-=5;
+              velSmpDl-=1;
             } else velSmpDl = 30;
             plotVelSmpDl(WHITE);
             cursorNow = BLACK;
@@ -3383,7 +3400,7 @@ void menu() {
             // up
             plotVelSmpDl(BLACK);
             if (velSmpDl < 30){
-              velSmpDl+=5;
+              velSmpDl+=1;
             } else velSmpDl = 0;
             plotVelSmpDl(WHITE);
             cursorNow = BLACK;
@@ -3667,7 +3684,7 @@ void menu() {
             // down
             if (deglitch > 0){
               plotDeglitch(BLACK);
-              deglitch-=5;
+              deglitch-=1;
               plotDeglitch(WHITE);
               cursorNow = BLACK;
               display.display();
@@ -3686,7 +3703,7 @@ void menu() {
             // up
             if (deglitch < 70){
               plotDeglitch(BLACK);
-              deglitch+=5;
+              deglitch+=1;
               plotDeglitch(WHITE);
               cursorNow = BLACK;
               display.display();
