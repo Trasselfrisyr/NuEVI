@@ -1,4 +1,5 @@
 #include <Wire.h>
+
 #include <Adafruit_MPR121.h>
 #include <SPI.h>
 #include <EEPROM.h>
@@ -22,9 +23,11 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.2.9"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.3.1"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define REVB
+
+//#define CASSIDY
 
 //Comment out the following line if you have Teensyduino 1.4.0 or earlier, to make pitch bend over USB-MIDI work.
 #define NEWTEENSYDUINO
@@ -434,7 +437,7 @@ byte subVibRetn = 0;
 byte subVibSquelch = 0;
 byte subVibDirection = 0;
 
-byte ccList[10] = {0,1,2,7,11,1,2,7,11,74};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires)
+byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20
 
 int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -454,7 +457,7 @@ unsigned long buttonPressedTime = 0;
 unsigned long buttonRepeatInterval = 50;
 unsigned long buttonRepeatDelay = 400;
 unsigned long pixelUpdateTime = 0;
-unsigned long pixelUpdateInterval = 100;
+unsigned long pixelUpdateInterval = 80;
 unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
 unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
 unsigned long patchViewTime = 0;
@@ -571,8 +574,8 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
-byte breathLedBrightness = 100; // up to 255, PWM
-byte portamLedBrightness = 100; // up to 255, PWM
+byte breathLedBrightness = 2000; // up to 4095, PWM
+byte portamLedBrightness = 2000; // up to 4095, PWM
 
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 
@@ -582,6 +585,7 @@ Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch s
 void setup() {
 
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
+  analogWriteResolution(12);
 
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -594,10 +598,24 @@ void setup() {
 
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-
+// if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
+  
+  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){ 
+    writeSetting(VERSION_ADDR,VERSION);
+    writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
+    writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
+    writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
+    writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
+    writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
+    writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
+    writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
+    writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
+    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
+  }
+  
   if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
     writeSetting(VERSION_ADDR,VERSION);
-
+    
     writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
     writeSetting(MIDI_ADDR,MIDI_FACTORY);
     writeSetting(BREATH_CC_ADDR,BREATH_CC_FACTORY);
@@ -632,22 +650,7 @@ void setup() {
     writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
     writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
     writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
-
-    // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-    if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))){
-      writeSetting(VERSION_ADDR,VERSION);
-      writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
-      writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-      writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);
-      writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY);
-      writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
-      writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
-      writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
-      writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
-      writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
-    }
   }
-
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
   breathMaxVal = readSetting(BREATH_MAX_ADDR);
@@ -695,8 +698,8 @@ void setup() {
 
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
-  activePatch = patch;
   slowMidi = dipSwBits & (1<<3);
+  activePatch = patch;
 
   breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
   portamStep = (portamHiLimit - portamLoLimit)/92;
@@ -749,6 +752,10 @@ void setup() {
   digitalWrite(statusLedPin,LOW);
   display.setTextColor(WHITE);
   display.setTextSize(1);
+  #if defined(CASSIDY)
+  display.setCursor(0,0);
+  display.print("BC");
+  #endif
   display.setCursor(85,52);
   display.print("v.");
   display.println(FIRMWARE_VERSION);
@@ -767,6 +774,8 @@ void setup() {
   Serial3.begin(31250);   // start serial with midi baudrate 31250
   Serial3.flush();
 
+  //Serial.begin(9600); // debug
+
   digitalWrite(statusLedPin,HIGH); // Switch on the onboard LED to indicate power on/ready
 
 }
@@ -778,18 +787,18 @@ void loop() {
 }
 
 void mainLoop() {
-  FilterOnePole breathFilter(LOWPASS, filterFreq); // create a one pole (RC) lowpass filter
-  while (1) {
+  FilterOnePole breathFilter( LOWPASS, filterFreq );   // create a one pole (RC) lowpass filter
+  while (1){
     breathFilter.input(analogRead(breathSensorPin));
-    pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
+    pressureSensor = constrain((int)breathFilter.output(),0,4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
     //pressureSensor = analogRead(A0);
     //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth
     if (mainState == NOTE_OFF) {
       if (activeMIDIchannel != MIDIchannel) activeMIDIchannel = MIDIchannel; // only switch channel if no active note
-      if ((activePatch != patch) && doPatchUpdate) {
+      if ((activePatch != patch) && doPatchUpdate){
         activePatch = patch;
-        usbMIDI.sendProgramChange(activePatch - 1, activeMIDIchannel);
-        dinMIDIsendProgramChange(activePatch - 1, activeMIDIchannel - 1);
+        usbMIDI.sendProgramChange(activePatch-1,activeMIDIchannel);
+        dinMIDIsendProgramChange(activePatch-1,activeMIDIchannel-1);
         slurSustain = 0;
         parallelChord = 0;
         subOctaveDouble = 0;
@@ -800,137 +809,125 @@ void mainLoop() {
         // state. Record time and initial breath value.
         breath_on_time = millis();
         initial_breath_value = pressureSensor;
-        mainState = RISE_WAIT; // Go to next state
+        mainState = RISE_WAIT;  // Go to next state
       }
-      if (legacy || legacyBrAct) {
-        if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          (((analogRead(0) < (breathCalZero - 500)) && legacyBrAct) && (pbDn < ((pitchbMaxVal + pitchbThrVal) / 2)))) { // both pb pads touched or br suck
+     if (legacy || legacyBrAct){
+         if (((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) && legacy) || ((analogRead(0) < (breathCalZero - 800)) && legacyBrAct) && (pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn < ((pitchbMaxVal + pitchbThrVal)/2))) {  // both pb pads touched or br suck
           readSwitches();
-          fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
-          if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting
-            if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
-              MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up
-              digitalWrite(statusLedPin, LOW);
+          fingeredNoteUntransposed=patchLimit(fingeredNoteUntransposed+1);
+          if (exSensor >= ((extracThrVal+extracMaxVal)/2)){ // instant midi setting     
+            if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) { 
+              MIDIchannel = fingeredNoteUntransposed - 72;  // Mid C and up 
+              digitalWrite(13,LOW);
               delay(150);
-              digitalWrite(statusLedPin, HIGH);
+              digitalWrite(13,HIGH);
             }
-          } else {
-            if (!pinkyKey) { // note number to patch number
-              if (patch != fingeredNoteUntransposed) {
+          } else {        
+            if (!pinkyKey){ // note number to patch number
+              if (patch != fingeredNoteUntransposed){
                 patch = fingeredNoteUntransposed;
                 doPatchUpdate = 1;
-                digitalWrite(statusLedPin, LOW);
+                digitalWrite(13,LOW);
                 delay(150);
-                digitalWrite(statusLedPin, HIGH);
+                digitalWrite(13,HIGH);
               }
             } else { // hi and lo patch numbers
-              if (fingeredNoteUntransposed > 75) {
-                if (patch != patchLimit(fingeredNoteUntransposed + 24)) {
+              if (fingeredNoteUntransposed > 75){
+                if (patch != patchLimit(fingeredNoteUntransposed + 24)){
                   patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
                   doPatchUpdate = 1;
-                  digitalWrite(statusLedPin, LOW);
+                  digitalWrite(13,LOW);
                   delay(150);
-                  digitalWrite(statusLedPin, HIGH);
+                  digitalWrite(13,HIGH);
                 }
               } else {
-                if (patch != patchLimit(fingeredNoteUntransposed - 36)) {
+                if (patch != patchLimit(fingeredNoteUntransposed - 36)){
                   patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
                   doPatchUpdate = 1;
-                  digitalWrite(statusLedPin, LOW);
+                  digitalWrite(13,LOW);
                   delay(150);
-                  digitalWrite(statusLedPin, HIGH);
+                  digitalWrite(13,HIGH);
                 }
               }
             }
           }
         }
-        else {
-          if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(0) < (breathCalZero - 500)) && programonce == false) { // down bend for suck programming button
-            programonce = true;
-            readSwitches();
+      else {
+        if (pbDn > (pitchbMaxVal + pitchbThrVal)/2 && (analogRead(0) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
+        programonce = true;    
+        readSwitches();
 
-            if (octaveR == 0) { //lowest octave position
-              if (K1 && K2 && !K3 && K4) { //  e28 send patch change -10
-                patch = patch - 10;
-                doPatchUpdate = 1;
-              }
-              else if (K1 && !K2 && !K3 && K4) { //f29 decrement and send patch change
-                patch--;
-                doPatchUpdate = 1;
-              }
-              else if (!K1 && K2 && !K3 && K4) { //f#30 send patch change +10
-                patch = patch + 10;
-                doPatchUpdate = 1;
-              }
-              else if (!K1 && !K2 && !K3 && K4) { //g31 increment and send patch change
-                patch++;
-                doPatchUpdate = 1;
-              }
-              if (!K1 && !K2 && K3 && !K4) { //send reverb pitchlatch value
-                reverb = ((pitchlatch - 36) * 2);
-                if (reverb > 127) { reverb = 127; }
-                if (reverb < 0) { reverb = 0; }
-                usbMIDI.sendControlChange(91, reverb, activeMIDIchannel);
-                dinMIDIsendControlChange(91, reverb, activeMIDIchannel - 1);
-              }
-            }
-
-            if (octaveR == 3) { //middle octave position to set breath parameters
-              // breathCC value is from cclist[] which assigns controller number
-
-              if (K1) { //turn on midi volume
-                breathCC = 3;
-                usbMIDI.sendControlChange(7, 0, activeMIDIchannel); //midi vol to 0
-                dinMIDIsendControlChange(7, 0, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 127, activeMIDIchannel); //midi expression to 127
-                dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
-              }
-              if (K3) { //turn on midi breath controller
-                breathCC = 2;
-                usbMIDI.sendControlChange(7, 127, activeMIDIchannel); //midi vol to 127
-                dinMIDIsendControlChange(7, 127, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 127, activeMIDIchannel); //midi expression to 127
-                dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
-              }
-              if (K4) { //sb turn on midi expression
-                breathCC = 4;
-                usbMIDI.sendControlChange(7, 127, activeMIDIchannel); //midi vol to 127
-                dinMIDIsendControlChange(7, 127, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 0, activeMIDIchannel); //midi expression to 0
-                dinMIDIsendControlChange(11, 0, activeMIDIchannel - 1);
-              }
-              if (K2) { //2v turn on aftertouch
-                breathAT = 1;
-                usbMIDI.sendControlChange(7, 127, activeMIDIchannel); //midi vol to 127
-                dinMIDIsendControlChange(7, 127, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 127, activeMIDIchannel); //midi expression to 0
-                dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
-              }
-              else { breathAT = 0; }
-              if (K5) { //1tr turn on velocity
-                velocity = 0;
-                usbMIDI.sendControlChange(7, 127, activeMIDIchannel); //midi vol to 127
-                dinMIDIsendControlChange(7, 127, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 127, activeMIDIchannel); //midi expression to 0
-                dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
-              }
-              else { velocity = 127; }
-              if (!K1 && !K3 && !K4) {
-                breathCC = 0;
-                usbMIDI.sendControlChange(7, 127, activeMIDIchannel); //midi vol to 127
-                dinMIDIsendControlChange(7, 127, activeMIDIchannel - 1);
-                usbMIDI.sendControlChange(11, 127, activeMIDIchannel); //midi expression to 127
-                dinMIDIsendControlChange(11, 127, activeMIDIchannel - 1);
-              }
-            }
+    if (octaveR == 0) {  //lowest octave position
+    if (K1 && K2 && !K3 &&K4) { patch = patch -10; doPatchUpdate = 1; } //  e28 send patch change -10  
+    else if (K1 && !K2 && !K3 && K4) { patch--; doPatchUpdate = 1; } //f29 decrement and send patch change
+    else if (!K1 && K2 && !K3 && K4) {patch = patch +10; doPatchUpdate = 1; } //f#30 send patch change +10
+    else if (!K1 && !K2 && !K3 &&K4) { patch++; doPatchUpdate = 1; } //g31 increment and send patch change
+    if (!K1 && !K2 && K3 &&!K4) { //send reverb pitchlatch value  
+    reverb = ((pitchlatch - 36) * 2);
+    if (reverb > 127) {reverb = 127;}
+    if (reverb < 0) {reverb = 0;}
+        usbMIDI.sendControlChange(91,reverb, activeMIDIchannel);
+        dinMIDIsendControlChange(91,reverb, activeMIDIchannel - 1);
+    }
           }
+    
+        if (octaveR == 3) { //middle octave position to set breath parameters
+                                        // breathCC value is from cclist[] which assigns controller number
+        if (K1) {  //turn on midi volume
+        breathCC = 3;
+        usbMIDI.sendControlChange(7,0, activeMIDIchannel); //midi vol to 0
+        dinMIDIsendControlChange(7,0, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,127, activeMIDIchannel); //midi expression to 127
+        dinMIDIsendControlChange(11,127, activeMIDIchannel - 1);
+          }
+        if (K3) {  //turn on midi breath controller
+        breathCC = 2; 
+        usbMIDI.sendControlChange(7,127, activeMIDIchannel); //midi vol to 127
+        dinMIDIsendControlChange(7,127, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,127, activeMIDIchannel); //midi expression to 127
+        dinMIDIsendControlChange(11,127, activeMIDIchannel - 1); 
+          }
+        if (K4) { //sb turn on midi expression
+        breathCC = 4;
+        usbMIDI.sendControlChange(7,127, activeMIDIchannel); //midi vol to 127
+        dinMIDIsendControlChange(7,127, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,0, activeMIDIchannel); //midi expression to 0
+        dinMIDIsendControlChange(11,0, activeMIDIchannel - 1);  
+          }
+        if (K2) { //2v turn on aftertouch
+        breathAT = 1;
+        usbMIDI.sendControlChange(7,127, activeMIDIchannel); //midi vol to 127
+        dinMIDIsendControlChange(7,127, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,127, activeMIDIchannel); //midi expression to 0
+        dinMIDIsendControlChange(11,127, activeMIDIchannel - 1);  
+          }
+        else { breathAT = 0; }
+        if (K5) { //1tr turn on velocity
+        velocity = 0;
+        usbMIDI.sendControlChange(7,127, activeMIDIchannel); //midi vol to 127
+        dinMIDIsendControlChange(7,127, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,127, activeMIDIchannel); //midi expression to 0
+        dinMIDIsendControlChange(11,127, activeMIDIchannel - 1);  
+          }
+        else { velocity = 127; }
+        if (!K1 && !K3 && !K4) {
+        breathCC = 0;  
+        usbMIDI.sendControlChange(7,127, activeMIDIchannel); //midi vol to 127
+        dinMIDIsendControlChange(7,127, activeMIDIchannel - 1);
+        usbMIDI.sendControlChange(11,127, activeMIDIchannel); //midi expression to 127
+        dinMIDIsendControlChange(11,127, activeMIDIchannel - 1); 
         }
-      }
+        }
+        }
+        }
+        }
 
-      if (analogRead(0) > (breathCalZero - 400)) programonce = false;
-      specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
-      if (lastSpecialKey != specialKey) {
-        if (specialKey) {
+        if (analogRead(0) > (breathCalZero - 800)) programonce = false;
+      
+         
+      specialKey=(touchRead(specialKeyPin) > touch_Thr);        //S2 on pcb
+      if (lastSpecialKey != specialKey){
+        if (specialKey){
           // special key just pressed, check other keys
           readSwitches();
           if (K4) {
@@ -953,13 +950,13 @@ void mainLoop() {
               rotatorOn = 0;
             } else subOctaveDouble = 0;
           }
-          if (!K1 && !K4 && !K5) {
+          if (!K1 && !K4 && !K5){
             slurSustain = 0;
             parallelChord = 0;
             subOctaveDouble = 0;
             rotatorOn = 0;
           }
-          if (pinkyKey) {
+          if (pinkyKey){
             if (!rotatorOn) {
               rotatorOn = 1;
               slurSustain = 0;
@@ -978,53 +975,53 @@ void mainLoop() {
           // Yes, so calculate MIDI note and velocity, then send a note on event
           readSwitches();
           // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set
-          breathLevel = constrain(max(pressureSensor, initial_breath_value), breathThrVal, breathMaxVal);
+          breathLevel=constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal);
           if (!velocity) {
-            unsigned int breathValHires = breathCurve(map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, 16383));
-            velocitySend = (breathValHires >> 7) & 0x007F;
-            velocitySend = constrain(velocitySend + velocitySend * .1 * velBias, 1, 127);
+            unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+            velocitySend = (breathValHires >>7) & 0x007F;
+            velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
             //velocitySend = map(constrain(max(pressureSensor,initial_breath_value),breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,1,127);
           } else velocitySend = velocity;
           breath(); // send breath data
-          fingeredNote = noteValueCheck(fingeredNote);
-          if (priority) { // mono prio to last chord note
+          fingeredNote=noteValueCheck(fingeredNote);
+          if (priority){ // mono prio to last chord note
             usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
           }
-          if (parallelChord) {
-            for (int i = 0; i < addedIntervals; i++) {
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
-              dinMIDIsendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+          if (parallelChord){
+            for (int i=0; i < addedIntervals; i++){
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
+              dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
             }
           }
-          if (slurSustain) {
-            usbMIDI.sendControlChange(64, 127, activeMIDIchannel);
-            dinMIDIsendControlChange(64, 127, activeMIDIchannel - 1);
+          if (slurSustain){
+            usbMIDI.sendControlChange(64,127, activeMIDIchannel);
+            dinMIDIsendControlChange(64,127, activeMIDIchannel - 1);
             slurBase = fingeredNote;
             addedIntervals = 0;
           }
-          if (subOctaveDouble) {
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend, activeMIDIchannel);
-            dinMIDIsendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend, activeMIDIchannel - 1);
-            if (parallelChord) {
-              for (int i = 0; i < addedIntervals; i++) {
-                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel); // send Note On message for new note
-                dinMIDIsendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel - 1);
+          if (subOctaveDouble){
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel);
+            dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
+            if (parallelChord){
+              for (int i=0; i < addedIntervals; i++){
+                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
+                dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
               }
             }
           }
-          if (rotatorOn) {
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
-            dinMIDIsendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend, activeMIDIchannel - 1);
+          if (rotatorOn){
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
+            dinMIDIsendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel - 1);
             if (currentRotation < 3) currentRotation++; else currentRotation = 0;
-            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
-            dinMIDIsendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
+            usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
+            dinMIDIsendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
           }
-          if (!priority) { // mono prio to base note
+          if (!priority){ // mono prio to base note
             usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
             dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
           }
-          activeNote = fingeredNote;
+          activeNote=fingeredNote;
           mainState = NOTE_ON;
         }
       } else {
@@ -1035,138 +1032,142 @@ void mainLoop() {
     } else if (mainState == NOTE_ON) {
       if ((pressureSensor < breathThrVal) && !gateOpen) {
         // Value has fallen below threshold - turn the note off
-        activeNote = noteValueCheck(activeNote);
-        if (priority) {
+        activeNote=noteValueCheck(activeNote);
+        if (priority){
           usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
           dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
         }
-        if (parallelChord) {
-          for (int i = 0; i < addedIntervals; i++) {
-            usbMIDI.sendNoteOff(noteValueCheck(activeNote + slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
-            dinMIDIsendNoteOff(noteValueCheck(activeNote + slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+        if (parallelChord){
+          for (int i=0; i < addedIntervals; i++){
+            usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
+            dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
           }
         }
-        if (subOctaveDouble) {
-          usbMIDI.sendNoteOff(noteValueCheck(activeNote - 12), velocitySend, activeMIDIchannel);
-          dinMIDIsendNoteOff(noteValueCheck(activeNote - 12), velocitySend, activeMIDIchannel - 1);
-          if (parallelChord) {
-            for (int i = 0; i < addedIntervals; i++) {
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel); // send Note On message for new note
-              dinMIDIsendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel - 1);
+        if (subOctaveDouble){
+          usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel);
+          dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
+          if (parallelChord){
+            for (int i=0; i < addedIntervals; i++){
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
+              dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
             }
           }
         }
-        if (rotatorOn) {
-          usbMIDI.sendNoteOff(noteValueCheck(activeNote + parallel), velocitySend, activeMIDIchannel); // send Note Off message for old note
-          dinMIDIsendNoteOff(noteValueCheck(activeNote + parallel), velocitySend, activeMIDIchannel - 1);
-          usbMIDI.sendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note Off message for old note
-          dinMIDIsendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
+        if (rotatorOn){
+          usbMIDI.sendNoteOff(noteValueCheck(activeNote+parallel), velocitySend, activeMIDIchannel); // send Note Off message for old note
+          dinMIDIsendNoteOff(noteValueCheck(activeNote+parallel), velocitySend, activeMIDIchannel - 1);
+          usbMIDI.sendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note Off message for old note
+          dinMIDIsendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
         }
-        if (!priority) {
+        if (!priority){
           usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
           dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
         }
-        if (slurSustain) {
-          usbMIDI.sendControlChange(64, 0, activeMIDIchannel);
-          dinMIDIsendControlChange(64, 0, activeMIDIchannel - 1);
+        if (slurSustain){
+            usbMIDI.sendControlChange(64,0, activeMIDIchannel);
+            dinMIDIsendControlChange(64,0, activeMIDIchannel - 1);
         }
-        breathLevel = 0;
+        breathLevel=0;
         mainState = NOTE_OFF;
       } else {
         readSwitches();
-        if (fingeredNote != lastFingering) { //
+        if (fingeredNote != lastFingering){ //
           // reset the debouncing timer
           lastDeglitchTime = millis();
         }
         if ((millis() - lastDeglitchTime) > deglitch) {
-          // whatever the reading is at, it's been there for longer
-          // than the debounce delay, so take it as the actual current state
+        // whatever the reading is at, it's been there for longer
+        // than the debounce delay, so take it as the actual current state
           if (noteValueCheck(fingeredNote) != activeNote) {
             // Player has moved to a new fingering while still blowing.
             // Send a note off for the current note and a note on for
             // the new note.
-            if (!velocity) {
-              unsigned int breathValHires = breathCurve(map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, 16383));
-              velocitySend = (breathValHires >> 7) & 0x007F;
-              velocitySend = constrain(velocitySend + velocitySend * .1 * velBias, 1, 127);
+            if (!velocity){
+              unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
+              velocitySend = (breathValHires >>7) & 0x007F;
+              velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
               //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
             }
-            activeNote = noteValueCheck(activeNote);
-            if ((parallelChord || subOctaveDouble || rotatorOn) && priority) { // poly playing, send old note off before new note on
+            activeNote=noteValueCheck(activeNote);
+            if ((parallelChord || subOctaveDouble || rotatorOn) && priority){ // poly playing, send old note off before new note on
               usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
 
-            if (parallelChord) {
-              for (int i = 0; i < addedIntervals; i++) {
-                usbMIDI.sendNoteOff(noteValueCheck(activeNote + slurInterval[i]), velocitySend, activeMIDIchannel); // send Note Off message for old note
-                dinMIDIsendNoteOff(noteValueCheck(activeNote + slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+            if (parallelChord){
+              for (int i=0; i < addedIntervals; i++){
+                usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note Off message for old note
+                dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
               }
             }
-            if (subOctaveDouble) {
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote - 12), velocitySend, activeMIDIchannel); // send Note Off message for old note
-              dinMIDIsendNoteOff(noteValueCheck(activeNote - 12), velocitySend, activeMIDIchannel - 1);
-              if (parallelChord) {
-                for (int i = 0; i < addedIntervals; i++) {
-                  usbMIDI.sendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel); // send Note Off message for old note
-                  dinMIDIsendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel - 1);
+            if (subOctaveDouble){
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
+              dinMIDIsendNoteOff(noteValueCheck(activeNote-12), velocitySend, activeMIDIchannel - 1);
+              if (parallelChord){
+                for (int i=0; i < addedIntervals; i++){
+                  usbMIDI.sendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note Off message for old note
+                  dinMIDIsendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
                 }
               }
             }
-            if (rotatorOn) {
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote + parallel), velocitySend, activeMIDIchannel); // send Note Off message for old note
-              dinMIDIsendNoteOff(noteValueCheck(activeNote + parallel), velocitySend, activeMIDIchannel - 1);
-              usbMIDI.sendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note Off message for old note
-              dinMIDIsendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
+            if (rotatorOn){
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote+parallel), velocitySend, activeMIDIchannel); // send Note Off message for old note
+              dinMIDIsendNoteOff(noteValueCheck(activeNote+parallel), velocitySend, activeMIDIchannel - 1);
+              usbMIDI.sendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note Off message for old note
+              dinMIDIsendNoteOff(noteValueCheck(activeNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
             }
-            if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
+            if ((parallelChord || subOctaveDouble || rotatorOn) && !priority){ // poly playing, send old note off before new note on
               usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); // send Note Off message for old note
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
-            fingeredNote = noteValueCheck(fingeredNote);
-            if (priority) {
+
+
+            fingeredNote=noteValueCheck(fingeredNote);
+            if (priority){
               usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
             }
-            if (parallelChord) {
-              for (int i = 0; i < addedIntervals; i++) {
-                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
-                dinMIDIsendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend, activeMIDIchannel - 1);
+            if (parallelChord){
+              for (int i=0; i < addedIntervals; i++){
+                usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel); // send Note On message for new note
+                dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend, activeMIDIchannel - 1);
               }
             }
-            if (subOctaveDouble) {
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend, activeMIDIchannel); // send Note On message for new note
-              dinMIDIsendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend, activeMIDIchannel - 1);
-              if (parallelChord) {
-                for (int i = 0; i < addedIntervals; i++) {
-                  usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel); // send Note On message for new note
-                  dinMIDIsendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend, activeMIDIchannel - 1);
+            if (subOctaveDouble){
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel); // send Note On message for new note
+              dinMIDIsendNoteOn(noteValueCheck(fingeredNote-12), velocitySend, activeMIDIchannel - 1);
+              if (parallelChord){
+                for (int i=0; i < addedIntervals; i++){
+                  usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel); // send Note On message for new note
+                  dinMIDIsendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend, activeMIDIchannel - 1);
                 }
               }
             }
-            if (rotatorOn) {
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
-              dinMIDIsendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend, activeMIDIchannel - 1);
+            if (rotatorOn){
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel); // send Note On message for new note
+              dinMIDIsendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend, activeMIDIchannel - 1);
               if (currentRotation < 3) currentRotation++; else currentRotation = 0;
-              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
-              dinMIDIsendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
+              usbMIDI.sendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel); // send Note On message for new note
+              dinMIDIsendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend, activeMIDIchannel - 1);
             }
 
-            if (!priority) {
+            if (!priority){
               usbMIDI.sendNoteOn(fingeredNote, velocitySend, activeMIDIchannel); // send Note On message for new note
               dinMIDIsendNoteOn(fingeredNote, velocitySend, activeMIDIchannel - 1);
             }
 
-            if (!parallelChord && !subOctaveDouble && !rotatorOn) { // mono playing, send old note off after new note on
+            if (!parallelChord && !subOctaveDouble && !rotatorOn){ // mono playing, send old note off after new note on
               usbMIDI.sendNoteOff(activeNote, velocitySend, activeMIDIchannel); //  send Note Off message
               dinMIDIsendNoteOff(activeNote, velocitySend, activeMIDIchannel - 1);
             }
 
-            if (slurSustain) {
-              addedIntervals++;
-              slurInterval[addedIntervals - 1] = fingeredNote - slurBase;
+            if (slurSustain){
+              if (addedIntervals < 9){
+                addedIntervals++;
+                slurInterval[addedIntervals-1] = fingeredNote - slurBase;
+              }
             }
-            activeNote = fingeredNote;
+            activeNote=fingeredNote;
           }
         }
       }
@@ -1177,7 +1178,7 @@ void mainLoop() {
       // deal with Breath, Pitch Bend, Modulation, etc.
       if (!slowMidi) breath();
       halfTime = !halfTime;
-      if (halfTime) {
+      if (halfTime){
         pitch_bend();
         portamento_();
       } else {
@@ -1188,13 +1189,18 @@ void mainLoop() {
       }
       ccSendTime = millis();
     }
-    if (millis() - pixelUpdateTime > pixelUpdateInterval) {
+    if (millis() - pixelUpdateTime > pixelUpdateInterval){
       // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
       // this is one of the big reasons the display is for setup use only
       drawSensorPixels(); // live sensor monitoring for the setup screens
+      if (rotatorOn || slurSustain || parallelChord || subOctaveDouble || gateOpen) {
+        digitalWrite(statusLedPin,!digitalRead(statusLedPin));
+      } else if (!digitalRead(statusLedPin)) {
+        digitalWrite(statusLedPin,HIGH);
+      }
       pixelUpdateTime = millis();
     }
-    lastFingering = fingeredNote;
+    lastFingering=fingeredNote;
     //do menu stuff
     menu();
   }
@@ -1500,13 +1506,11 @@ void pitch_bend(){
   }
   vibThr=vibZero-vibSquelch;
   vibThrLo=vibZero+vibSquelch;
-
   int pbPos = map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,0,calculatedPBdepth);
   int pbNeg = map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,0,calculatedPBdepth);
   int pbSum = 8193 + pbPos - pbNeg;
   int pbDif = abs(pbPos - pbNeg);
-
-/*
+  /*
   if ((pbUp > pitchbThrVal) && PBdepth){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
     pbTouched++;
@@ -1515,8 +1519,7 @@ void pitch_bend(){
     pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
     pbTouched++;
   }
-*/
-
+  */
   if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)){
     if (pbDif < 10){
       pitchBend = 8192;
@@ -1525,7 +1528,6 @@ void pitch_bend(){
     }
     pbTouched = 1;
   }
-
   if (!pbTouched) {
     pitchBend = pitchBend*0.6+8192*0.4; // released, so smooth your way back to zero
     if ((pitchBend > 8187) && (pitchBend < 8197)) pitchBend = 8192; // 8192 is 0 pitch bend, don't miss it bc of smoothing
@@ -1542,6 +1544,10 @@ void pitch_bend(){
     digitalWrite(statusLedPin,HIGH);
     vibLedOff = 0;
   }
+
+  //Serial.print(pitchBend);
+  //Serial.print(" - ");
+  //Serial.println(oldpb);
 
   if (pitchBend != oldpb){// only send midi data if pitch bend has changed from previous value
     #if defined(NEWTEENSYDUINO)
@@ -1710,10 +1716,10 @@ void portOff(){
 
 //***********************************************************
 
-void readSwitches(){
+void readSwitches(){  
   int qTransp;
   // Read touch pads (MPR121) and put value in variables
-  int touchValue[12];
+  int touchValue[12]; 
   for (byte i=0; i<12; i++){
     touchValue[i]=touchSensor.filteredData(i);
   }
@@ -1726,7 +1732,7 @@ void readSwitches(){
   else if (touchValue[R3Pin] < ctouchThrVal) octaveR = 3;  //R3
   else if (touchValue[R2Pin] < ctouchThrVal) octaveR = 2;  //R2
   else if (touchValue[R1Pin] < ctouchThrVal) octaveR = 1;  //R1
-
+  
   // Valves and trill keys
   K4=(touchValue[K4Pin] < ctouchThrVal);
   K1=(touchValue[K1Pin] < ctouchThrVal);
@@ -1736,7 +1742,7 @@ void readSwitches(){
   K6=(touchValue[K6Pin] < ctouchThrVal);
   K7=(touchValue[K7Pin] < ctouchThrVal);
 
-  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
+  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
 
  if ((pinkySetting < 12) && pinkyKey){
   qTransp = pinkySetting - 12;
@@ -1747,11 +1753,16 @@ void readSwitches(){
  }
 
 
-  // Calculate midi note number from pressed keys
+  // Calculate midi note number from pressed keys  
+  #if defined(CASSIDY)
+  fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+3*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
+  fingeredNoteUntransposed=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+3*K7+octaveR*12;
+  #else
   fingeredNote=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12+(octave-3)*12+transpose-12+qTransp;
   fingeredNoteUntransposed=startNote-2*K1-K2-3*K3-5*K4+2*K5+K6+4*K7+octaveR*12;
-
-  if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
+  #endif
+//}
+ if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 }
 
 //***********************************************************
@@ -3163,7 +3174,7 @@ void menu() {
               cursorBlinkTime = millis();
             } else {
               plotBreathCC(BLACK);
-              breathCC = 9;
+              breathCC = 10;
               plotBreathCC(WHITE);
               cursorNow = BLACK;
               display.display();
@@ -3183,7 +3194,7 @@ void menu() {
             break;
           case 4:
             // up
-            if (breathCC < 9){
+            if (breathCC < 10){
               plotBreathCC(BLACK);
               breathCC++;
               plotBreathCC(WHITE);
@@ -4834,6 +4845,10 @@ void plotBreathCC(int color){
         display.setCursor(83,33);
         display.println("CF");
         break;
+      case 10:
+        display.setCursor(83,33);
+        display.println("20");
+      break;
     }
   } else {
     display.setCursor(79,33);
