@@ -23,7 +23,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.3.1"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.3.2"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define REVB
 
@@ -562,6 +562,7 @@ byte K6;   // Trill key 2 (pitch change +1)
 byte K7;   // Trill key 3 (pitch change +4)
 
 byte octaveR = 0;
+byte lastOctaveR = 0;
 
 byte halfPitchBendKey;
 byte specialKey;
@@ -1331,6 +1332,11 @@ int patchLimit(int value){
 void midiPanic(){ // all notes off
   usbMIDI.sendControlChange(123, 0, activeMIDIchannel);
   dinMIDIsendControlChange(123, 0, activeMIDIchannel - 1);
+  for (int i = 0; i < 128; i++){
+    usbMIDI.sendNoteOff(i,0,activeMIDIchannel);
+    dinMIDIsendNoteOff(i,0,activeMIDIchannel - 1);
+    delay(2);
+  }
 }
 
 //**************************************************************
@@ -1729,9 +1735,11 @@ void readSwitches(){
   if      ((touchValue[R5Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) octaveR = 6; //R6 = R5 && R3
   else if (touchValue[R5Pin] < ctouchThrVal) octaveR = 5;  //R5
   else if (touchValue[R4Pin] < ctouchThrVal) octaveR = 4;  //R4
-  else if (touchValue[R3Pin] < ctouchThrVal) octaveR = 3;  //R3
+  else if ((touchValue[R3Pin] < ctouchThrVal) && lastOctaveR) octaveR = 3;  //R3
   else if (touchValue[R2Pin] < ctouchThrVal) octaveR = 2;  //R2
   else if (touchValue[R1Pin] < ctouchThrVal) octaveR = 1;  //R1
+
+  lastOctaveR = octaveR;
   
   // Valves and trill keys
   K4=(touchValue[K4Pin] < ctouchThrVal);
