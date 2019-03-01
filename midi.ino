@@ -1,7 +1,5 @@
 #include "midi.h"
-
-//Need this define here for now
-#define NEWTEENSYDUINO
+#include "hardware.h"
 
 int midiChannel = 1;
 
@@ -71,17 +69,17 @@ void midiPanic() { // all notes off
 
 //  Send a three byte din midi message
 void midiSend3B(byte midistatus, byte data1, byte data2) {
-  MidiSerial.write(midistatus);
-  MidiSerial.write(data1);
-  MidiSerial.write(data2);
+  MIDI_SERIAL.write(midistatus);
+  MIDI_SERIAL.write(data1);
+  MIDI_SERIAL.write(data2);
 }
 
 //**************************************************************
 
 //  Send a two byte din midi message
 void midiSend2B(byte midistatus, byte data) {
-  MidiSerial.write(midistatus);
-  MidiSerial.write(data);
+  MIDI_SERIAL.write(midistatus);
+  MIDI_SERIAL.write(data);
 }
 
 //**************************************************************
