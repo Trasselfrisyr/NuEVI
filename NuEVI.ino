@@ -724,12 +724,8 @@ void loop() {
 
             if (!K1 && !K2 && K3 && !K4) { //send reverb pitchlatch value  
               reverb = ((pitchlatch - 36) * 2);
-              if (reverb > 127) {
-                reverb = 127;
-              }
-              if (reverb < 0) {
-                reverb = 0;
-              }
+              reverb = constrain(reverb, 0, 127);
+
               midiSendControlChange(91, reverb);
             }
           }
@@ -1145,9 +1141,7 @@ int noteValueCheck(int note) {
 //**************************************************************
 
 int patchLimit(int value) {
-  if (value < 1) return 1;
-  else if (value > 128) return 128;
-  else return value;
+  return constrain(value, 1, 128);
 }
 
 //**************************************************************
