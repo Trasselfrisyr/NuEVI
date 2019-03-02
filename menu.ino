@@ -3687,4 +3687,3 @@ unsigned short readSetting(byte address){
   data.v[1] = EEPROM.read(address+1);
   return data.val;
 }
-

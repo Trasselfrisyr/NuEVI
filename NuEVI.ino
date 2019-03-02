@@ -453,7 +453,7 @@ void setup() {
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
   
-  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))){ 
+  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))) { 
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -466,7 +466,7 @@ void setup() {
     writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
   }
   
-  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))){
+  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))) {
     writeSetting(VERSION_ADDR,VERSION);
     
     writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
@@ -646,7 +646,7 @@ void loop() {
         activeMIDIchannel = MIDIchannel; // only switch channel if no active note
         midiSetChannel(activeMIDIchannel);
       }
-      if ((activePatch != patch) && doPatchUpdate){
+      if ((activePatch != patch) && doPatchUpdate) {
         activePatch = patch;
         midiSendProgramChange(activePatch);
         slurSustain = 0;
@@ -661,7 +661,7 @@ void loop() {
         initial_breath_value = pressureSensor;
         mainState = RISE_WAIT;  // Go to next state
       }
-     if (legacy || legacyBrAct){
+     if (legacy || legacyBrAct) {
          if (((pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal)/2)) && legacy) || ((analogRead(0) < (breathCalZero - 800)) && legacyBrAct) && (pbUp > ((pitchbMaxVal + pitchbThrVal)/2)) && (pbDn < ((pitchbMaxVal + pitchbThrVal)/2))) {  // both pb pads touched or br suck
           readSwitches();
           fingeredNoteUntransposed=patchLimit(fingeredNoteUntransposed+1);
@@ -763,7 +763,7 @@ void loop() {
       
          
       specialKey=(touchRead(specialKeyPin) > touch_Thr);        //S2 on pcb
-      if (lastSpecialKey != specialKey){
+      if (lastSpecialKey != specialKey ){
         if (specialKey){
           // special key just pressed, check other keys
           readSwitches();
@@ -824,30 +824,30 @@ void loop() {
           if (priority){ // mono prio to last chord note
             midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
           }
-          if (parallelChord){
-            for (int i=0; i < addedIntervals; i++){
+          if (parallelChord) {
+            for (int i=0; i < addedIntervals; i++) {
               midiSendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend); // send Note On message for new note
             }
           }
-          if (slurSustain){
+          if (slurSustain) {
             midiSendControlChange(64,127);
             slurBase = fingeredNote;
             addedIntervals = 0;
           }
-          if (subOctaveDouble){
+          if (subOctaveDouble) {
             midiSendNoteOn(noteValueCheck(fingeredNote-12), velocitySend);
             if (parallelChord){
-              for (int i=0; i < addedIntervals; i++){
+              for (int i=0; i < addedIntervals; i++) {
                 midiSendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend); // send Note On message for new note
               }
             }
           }
-          if (rotatorOn){
+          if (rotatorOn) {
             midiSendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend); // send Note On message for new note
             if (currentRotation < 3) currentRotation++; else currentRotation = 0;
             midiSendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend); // send Note On message for new note
           }
-          if (!priority){ // mono prio to base note
+          if (!priority) { // mono prio to base note
             midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
           }
           activeNote=fingeredNote;
@@ -865,27 +865,27 @@ void loop() {
         if (priority){
           midiSendNoteOff(activeNote); //  send Note Off message
         }
-        if (parallelChord){
+        if (parallelChord) {
           for (int i=0; i < addedIntervals; i++){
             midiSendNoteOff(noteValueCheck(activeNote+slurInterval[i])); // send Note On message for new note
           }
         }
-        if (subOctaveDouble){
+        if (subOctaveDouble) {
           midiSendNoteOff(noteValueCheck(activeNote-12));
           if (parallelChord){
-            for (int i=0; i < addedIntervals; i++){
+            for (int i=0; i < addedIntervals; i++) {
               midiSendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12)); // send Note On message for new note
             }
           }
         }
-        if (rotatorOn){
+        if (rotatorOn) {
           midiSendNoteOff(noteValueCheck(activeNote+parallel)); // send Note Off message for old note
           midiSendNoteOff(noteValueCheck(activeNote+rotations[currentRotation])); // send Note Off message for old note
         }
-        if (!priority){
+        if (!priority) {
           midiSendNoteOff(activeNote); //  send Note Off message
         }
-        if (slurSustain){
+        if (slurSustain) {
             midiSendControlChange(64,0);
         }
         breathLevel=0;
@@ -903,7 +903,7 @@ void loop() {
             // Player has moved to a new fingering while still blowing.
             // Send a note off for the current note and a note on for
             // the new note.
-            if (!velocity){
+            if (!velocity) {
               unsigned int breathValHires = breathCurve(map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,16383));
               velocitySend = (breathValHires >>7) & 0x007F;
               velocitySend = constrain(velocitySend+velocitySend*.1*velBias,1,127);
@@ -914,61 +914,61 @@ void loop() {
               midiSendNoteOff(activeNote); // send Note Off message for old note
             }
 
-            if (parallelChord){
-              for (int i=0; i < addedIntervals; i++){
+            if (parallelChord) {
+              for (int i=0; i < addedIntervals; i++) {
                 midiSendNoteOff(noteValueCheck(activeNote+slurInterval[i])); // send Note Off message for old note
               }
             }
-            if (subOctaveDouble){
+            if (subOctaveDouble) {
               midiSendNoteOff(noteValueCheck(activeNote-12)); // send Note Off message for old note
               if (parallelChord){
-                for (int i=0; i < addedIntervals; i++){
+                for (int i=0; i < addedIntervals; i++) {
                   midiSendNoteOff(noteValueCheck(activeNote+slurInterval[i]-12)); // send Note Off message for old note
                 }
               }
             }
-            if (rotatorOn){
+            if (rotatorOn) {
               midiSendNoteOff(noteValueCheck(activeNote+parallel)); // send Note Off message for old note
               midiSendNoteOff(noteValueCheck(activeNote+rotations[currentRotation])); // send Note Off message for old note
             }
-            if ((parallelChord || subOctaveDouble || rotatorOn) && !priority){ // poly playing, send old note off before new note on
+            if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
               midiSendNoteOff(activeNote); // send Note Off message for old note
             }
 
 
             fingeredNote=noteValueCheck(fingeredNote);
-            if (priority){
+            if (priority) {
               midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
             }
-            if (parallelChord){
+            if (parallelChord) {
               for (int i=0; i < addedIntervals; i++){
                 midiSendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]), velocitySend); // send Note On message for new note
               }
             }
-            if (subOctaveDouble){
+            if (subOctaveDouble) {
               midiSendNoteOn(noteValueCheck(fingeredNote-12), velocitySend); // send Note On message for new note
               if (parallelChord){
-                for (int i=0; i < addedIntervals; i++){
+                for (int i=0; i < addedIntervals; i++) {
                   midiSendNoteOn(noteValueCheck(fingeredNote+slurInterval[i]-12), velocitySend); // send Note On message for new note
                 }
               }
             }
-            if (rotatorOn){
+            if (rotatorOn) {
               midiSendNoteOn(noteValueCheck(fingeredNote+parallel), velocitySend); // send Note On message for new note
               if (currentRotation < 3) currentRotation++; else currentRotation = 0;
               midiSendNoteOn(noteValueCheck(fingeredNote+rotations[currentRotation]), velocitySend); // send Note On message for new note
             }
 
-            if (!priority){
+            if (!priority) {
               midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
             }
 
-            if (!parallelChord && !subOctaveDouble && !rotatorOn){ // mono playing, send old note off after new note on
+            if (!parallelChord && !subOctaveDouble && !rotatorOn) { // mono playing, send old note off after new note on
               midiSendNoteOff(activeNote); //  send Note Off message
             }
 
-            if (slurSustain){
-              if (addedIntervals < 9){
+            if (slurSustain) {
+              if (addedIntervals < 9) {
                 addedIntervals++;
                 slurInterval[addedIntervals-1] = fingeredNote - slurBase;
               }
@@ -1036,7 +1036,7 @@ unsigned int multiMap(unsigned int val, unsigned int* _in, unsigned int* _out, u
 //**************************************************************
 
 // map breath values to selected curve
-unsigned int breathCurve(unsigned int inputVal){
+unsigned int breathCurve(unsigned int inputVal) {
   // 0 to 16383, moving mid value up or down
   switch (curve){
     case 0:
@@ -1118,8 +1118,8 @@ int smooth(int data, float filterVal, float smoothedVal){
 //**************************************************************
 
 // MIDI note value check with out of range octave repeat
-int noteValueCheck(int note){
-  if (note > 127){
+int noteValueCheck(int note) {
+  if (note > 127) {
     note = 115+(note-127)%12;
   } else if (note < 0) {
     note = 12-abs(note)%12;
@@ -1129,20 +1129,20 @@ int noteValueCheck(int note){
 
 //**************************************************************
 
-int patchLimit(int value){
+int patchLimit(int value) {
   if (value < 1) return 1; else if (value > 128) return 128; else return value;
 }
 
 //**************************************************************
 
 void statusLEDs() {
-  if (breathLevel > breathThrVal){ // breath indicator LED, labeled "B" on PCB
+  if (breathLevel > breathThrVal) { // breath indicator LED, labeled "B" on PCB
     //analogWrite(bLedPin, map(breathLevel,0,4096,5,breathLedBrightness));
     analogWrite(bLedPin, map(constrain(breathLevel,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,5,breathLedBrightness));
   } else {
     analogWrite(bLedPin, 0);
   }
-  if (biteSensor > portamThrVal){ // portamento indicator LED, labeled "P" on PCB
+  if (biteSensor > portamThrVal) { // portamento indicator LED, labeled "P" on PCB
     //analogWrite(pLedPin, map(biteSensor,0,4096,5,portamLedBrightness));
     analogWrite(pLedPin, map(constrain(biteSensor,portamThrVal,portamMaxVal),portamThrVal,portamMaxVal,5,portamLedBrightness));
   } else {
@@ -1152,7 +1152,7 @@ void statusLEDs() {
 
 //**************************************************************
 
-void breath(){
+void breath() {
   int breathCCval,breathCCvalFine;
   unsigned int breathCCvalHires;
   breathLevel = constrain(pressureSensor,breathThrVal,breathMaxVal);
@@ -1162,19 +1162,19 @@ void breath(){
   breathCCval = (breathCCvalHires >>7) & 0x007F;
   breathCCvalFine = breathCCvalHires & 0x007F;
 
-  if (breathCCval != oldbreath){ // only send midi data if breath has changed from previous value
+  if (breathCCval != oldbreath) { // only send midi data if breath has changed from previous value
     if (breathCC){
       // send midi cc
       midiSendControlChange(ccList[breathCC], breathCCval);
     }
-    if (breathAT){
+    if (breathAT) {
       // send aftertouch
       midiSendAfterTouch(breathCCval);
     }
     oldbreath = breathCCval;
   }
 
-  if (breathCCvalHires != oldbreathhires){
+  if (breathCCvalHires != oldbreathhires) {
     if ((breathCC > 4) && (breathCC < 9)){ // send high resolution midi
         midiSendControlChange(ccList[breathCC]+32, breathCCvalFine);
     }
@@ -1184,7 +1184,7 @@ void breath(){
 
 //**************************************************************
 
-void pitch_bend(){
+void pitch_bend() {
   // handle input from pitchbend touchpads and
   // on-pcb variable capacitor for vibrato.
   int vibMax;
@@ -1199,8 +1199,8 @@ void pitch_bend(){
 
   vibMax = vibMaxList[vibSens-1];
 
-  if (vibRead < vibThr){
-    if (UPWD == vibDirection){
+  if (vibRead < vibThr) {
+    if (UPWD == vibDirection) {
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,calculatedPBdepth*vibDepth[vibrato]);
     } else {
       vibSignal=vibSignal*0.5+0.5*map(constrain(vibRead,(vibZero-vibMax),vibThr),vibThr,(vibZero-vibMax),0,(0 - calculatedPBdepth*vibDepth[vibrato]));
@@ -1215,7 +1215,7 @@ void pitch_bend(){
     vibSignal = vibSignal*0.5;
   }
 
-  switch(vibRetn){ // moving baseline
+  switch(vibRetn) { // moving baseline
     case 0:
       //keep vibZero value
       break;
@@ -1247,8 +1247,8 @@ void pitch_bend(){
     pbTouched++;
   }
   */
-  if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)){
-    if (pbDif < 10){
+  if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)) {
+    if (pbDif < 10) {
       pitchBend = 8192;
     } else {
       pitchBend=pitchBend*0.6+0.4*pbSum;
@@ -1264,10 +1264,10 @@ void pitch_bend(){
 
   pitchBend=constrain(pitchBend, 0, 16383);
 
-  if (subVibSquelch && (8192 != pitchBend)){
+  if (subVibSquelch && (8192 != pitchBend)) {
     digitalWrite(statusLedPin,LOW);
     vibLedOff = 1;
-  } else if (vibLedOff){
+  } else if (vibLedOff) {
     digitalWrite(statusLedPin,HIGH);
     vibLedOff = 0;
   }
@@ -1284,7 +1284,7 @@ void pitch_bend(){
 
 //***********************************************************
 
-void doorKnobCheck(){
+void doorKnobCheck() {
   int touchValue[12];
   for (byte i=0; i<12; i++){
     touchValue[i]=touchSensor.filteredData(i);
@@ -1318,31 +1318,31 @@ void doorKnobCheck(){
 
 //***********************************************************
 
-void extraController(){
+void extraController() {
  // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
  exSensor=exSensor*0.6+0.4*touchRead(extraPin);     // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
  if (extraCT && (exSensor >= extracThrVal)) {    // if we are enabled and over the threshold, send data
    if (!extracIsOn) {
      extracIsOn=1;
-     if (extraCT == 4){ //Sustain ON
+     if (extraCT == 4) { //Sustain ON
       midiSendControlChange(64, 127);
      }
     }
-    if (extraCT == 1){ //Send modulation
+    if (extraCT == 1) { //Send modulation
       int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         midiSendControlChange(1, extracCC);
       }
       oldextrac = extracCC;
     }
-    if (extraCT == 2){ //Send foot pedal (CC#4)
+    if (extraCT == 2) { //Send foot pedal (CC#4)
       int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         midiSendControlChange(4, extracCC);
       }
       oldextrac = extracCC;
     }
-    if ((extraCT == 3) && (breathCC != 9)){ //Send filter cutoff (CC#74)
+    if ((extraCT == 3) && (breathCC != 9)) { //Send filter cutoff (CC#74)
       int extracCC = map(constrain(exSensor,extracThrVal,extracMaxVal),extracThrVal,extracMaxVal,1,127);
       if (extracCC != oldextrac){
         midiSendControlChange(74, extracCC);
@@ -1378,7 +1378,7 @@ void extraController(){
 
 //***********************************************************
 
-void portamento_(){
+void portamento_() {
  // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
  biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
  if (portamento && (biteSensor >= portamThrVal)) {    // if we are enabled and over the threshold, send portamento
@@ -1393,8 +1393,8 @@ void portamento_(){
 
 //***********************************************************
 
-void portOn(){
-  if (portamento == 2){ // if portamento midi switching is enabled
+void portOn() {
+  if (portamento == 2) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 127);
   }
   portIsOn=1;
@@ -1402,10 +1402,10 @@ void portOn(){
 
 //***********************************************************
 
-void port(){
+void port() {
   int portCC;
   portCC = map(constrain(biteSensor,portamThrVal,portamMaxVal),portamThrVal,portamMaxVal,0,127);
-  if (portCC!=oldport){
+  if (portCC!=oldport) {
     midiSendControlChange(CCN_Port, portCC);
   }
   oldport = portCC;
@@ -1413,11 +1413,11 @@ void port(){
 
 //***********************************************************
 
-void portOff(){
-  if (oldport != 0){ //did a zero get sent? if not, then send one
+void portOff() {
+  if (oldport != 0) { //did a zero get sent? if not, then send one
     midiSendControlChange(CCN_Port, 0);
   }
-  if (portamento == 2){ // if portamento midi switching is enabled
+  if (portamento == 2) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 0);
   }
   portIsOn=0;
@@ -1426,11 +1426,11 @@ void portOff(){
 
 //***********************************************************
 
-void readSwitches(){  
+void readSwitches() {  
   int qTransp;
   // Read touch pads (MPR121) and put value in variables
   int touchValue[12]; 
-  for (byte i=0; i<12; i++){
+  for (byte i=0; i<12; i++) {
     touchValue[i]=touchSensor.filteredData(i);
   }
 
@@ -1456,9 +1456,9 @@ void readSwitches(){
 
   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
 
- if ((pinkySetting < 12) && pinkyKey){
+ if ((pinkySetting < 12) && pinkyKey) {
   qTransp = pinkySetting - 12;
- } else if ((pinkySetting > 12) && pinkyKey){
+ } else if ((pinkySetting > 12) && pinkyKey) {
   qTransp = pinkySetting - 12;
  } else {
   qTransp = 0;
@@ -1479,14 +1479,14 @@ void readSwitches(){
 
 //***********************************************************
 
-int readTrills(){
+int readTrills() {
   readSwitches();
   return K5+2*K6+4*K7;
 }
 
 //***********************************************************
 
-void setFPS(int trills){
+void setFPS(int trills) {
   fastPatch[trills-1] = patch;
   writeSetting(FP1_ADDR+2*(trills-1),patch);
   FPD = 2;
@@ -1494,7 +1494,7 @@ void setFPS(int trills){
 
 //***********************************************************
 
-void clearFPS(int trills){
+void clearFPS(int trills) {
   fastPatch[trills-1] = 0;
   writeSetting(FP1_ADDR+2*(trills-1),0);
   FPD = 3;
