@@ -493,25 +493,21 @@ void setup() {
   initDisplay(); //Start up display and show logo
 
   //auto-calibrate the vibrato threshold while showing splash screen
-  int cv1=touchRead(vibratoPin);
-  int bc1=analogRead(breathSensorPin);
-  digitalWrite(statusLedPin,HIGH);
-  delay(250);
-  int cv2=touchRead(vibratoPin);
-  int bc2=analogRead(breathSensorPin);
-  digitalWrite(statusLedPin,LOW);
-  delay(250);
-  int cv3=touchRead(vibratoPin);
-  int bc3=analogRead(breathSensorPin);
-  digitalWrite(statusLedPin,HIGH);
-  delay(250);
-  digitalWrite(statusLedPin,LOW);
-  int cv4=touchRead(vibratoPin);
-  int bc4=analogRead(breathSensorPin);
-  vibZero=(cv1+cv2+cv3+cv4)/4;
-  vibThr=vibZero-vibSquelch;
-  vibThrLo=vibZero+vibSquelch;
-  breathCalZero=(bc1+bc2+bc3+bc4)/4;
+  vibZero = breathCalZero = 0;
+  const int sampleCount = 4;
+  for(int i =0 ; i < sampleCount; ++i) {
+    vibZero += touchRead(vibratoPin);
+    breathCalZero += analogRead(breathSensorPin);
+    digitalWrite( statusLedPin, 1-(i&1) );
+    delay(250);
+  }
+  vibZero /= sampleCount;
+  breathCalZero /= sampleCount;
+
+  vibThr = vibZero - vibSquelch;
+  vibThrLo = vibZero + vibSquelch;
+
+  digitalWrite(statusLedPin, LOW);
   delay(250);
   digitalWrite(statusLedPin,HIGH);
   delay(250);
