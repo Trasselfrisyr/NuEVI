@@ -5,9 +5,6 @@
 #define USE_MIDI_USB
 #define USE_MIDI_SERIAL
 
-//Define which serial device to use
-#define MidiSerial Serial3
-
 //Set / get current midi channel
 void midiSetChannel(int channel);
 int midiGetChannel();
