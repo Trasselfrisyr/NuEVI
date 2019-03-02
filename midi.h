@@ -6,8 +6,8 @@
 #define USE_MIDI_SERIAL
 
 //Set / get current midi channel
-void midiSetChannel(int channel);
-int midiGetChannel();
+void midiSetChannel(byte channel);
+byte midiGetChannel();
 
 void midiSendProgramChange(int patch);
 void midiSendControlChange(int ccParam, int ccValue);
@@ -20,7 +20,6 @@ void midiSendPitchBend(int value);
 void midiReset(); // reset controllers
 void midiPanic(); // turn all notes off
 
-void dinMIDIsendPitchBend(int pb, byte ch); //  Send din pitchbend
-void dinMIDIsendAfterTouch(byte value, byte ch); //  Send din aftertouch
+void midiInitialize(byte channel=1);
 
 #endif

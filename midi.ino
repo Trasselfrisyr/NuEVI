@@ -1,14 +1,14 @@
 #include "midi.h"
 #include "hardware.h"
 
-int midiChannel = 1;
+int midiChannel;
 
 
-void midiSetChannel(int channel) {
+void midiSetChannel(byte channel) {
   midiChannel = constrain(channel, 1, 16);
 }
 
-int midiGetChannel() {
+byte midiGetChannel() {
   return midiChannel;
 }
 
@@ -61,6 +61,12 @@ void midiPanic() { // all notes off
     midiSendNoteOff(i);
     delay(2);
   }
+}
+
+void midiInitialize(byte channel) {
+  MIDI_SERIAL.begin(31250);   // start serial with midi baudrate 31250
+  MIDI_SERIAL.flush();
+  midiSetChannel(channel);
 }
 
 

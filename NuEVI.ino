@@ -325,7 +325,7 @@ int mainState;                         // The state of the main state machine
 
 int initial_breath_value;          // The breath value at the time we observed the transition
 
-byte activeMIDIchannel=1;          // MIDI channel
+byte activeMIDIchannel;          // MIDI channel
 byte activePatch=0;
 byte doPatchUpdate=0;
 
@@ -625,8 +625,8 @@ void setup() {
     doPatchUpdate=1;
   }
 
-  Serial3.begin(31250);   // start serial with midi baudrate 31250
-  Serial3.flush();
+  activeMIDIchannel = MIDIchannel;
+  midiInitialize(MIDIchannel);
 
   //Serial.begin(9600); // debug
 
