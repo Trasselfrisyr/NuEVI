@@ -30,4 +30,10 @@
 
 extern byte subVibSquelch;
 
+
+void initDisplay();
+void showVersion();
+void menu();
+void drawSensorPixels();
+
 #endif
