@@ -2,6 +2,10 @@
 #define __MENU_H
 
 
+#define MENU_ROW_HEIGHT 9
+#define MENU_HEADER_OFFSET 3
+
+
 //display states
 #define DISPLAYOFF_IDL 0
 #define MAIN_MENU 1

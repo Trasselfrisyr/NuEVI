@@ -2920,60 +2920,42 @@ void drawAdjCursor(byte color){
 }
 
 void drawMenuScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.print("MENU         ");
+  //Construct the title including voltage reading.
+  //Involves intricate splicing of the title string with battery voltage
+  char menuTitle[] = "MENU         XXX Y.Y "; //Allocate string buffer of appropriate size with some placeholders
+  char* splice1 = menuTitle + 13;
+  char* splice2 = menuTitle + 17;
+
   int vMeterReading = analogRead(vMeterPin);
-  if (vMeterReading > 3000) display.print("USB "); else display.print("BAT ");
-  if (vMeterReading < 2294) display.print("LOW"); else {
-    display.print(map(vMeterReading,0,3030,0,50)*0.1,1);
-    display.print("V");
+  memcpy(splice1, (vMeterReading > 3000) ? "USB" : "BAT", 3);
+  if (vMeterReading < 2294) {
+    memcpy(splice2, "LOW ", 3);
+  } else {
+    double voltage = map(vMeterReading,0,3030,0,50)*0.1;
+    dtostrf(voltage, 3, 1, splice2);
+    splice2[3]='V'; //Put the V at the end (last char of buffer before \0)
   }
-  display.drawLine(0,9,127,9,WHITE);
-  display.setCursor(0,12);
-  display.println("TRANSPOSE");
-  display.setCursor(0,21);
-  display.println("OCTAVE");
-  display.setCursor(0,30);
-  display.println("MIDI CH");
-  display.setCursor(0,39);
-  display.println("ADJUST");
-  display.setCursor(0,48);
-  display.println("SETUP BR");
-  display.setCursor(0,57);
-  display.println("SETUP CTL");
-  drawMenuCursor(mainMenuCursor, WHITE);
-  display.display();
+
+  drawMenu(menuTitle, mainMenuCursor, 6,
+    "TRANSPOSE",
+    "OCTAVE",
+    "MIDI CH",
+    "ADJUST",
+    "SETUP BR",
+    "SETUP CTL");
 }
 
 void drawRotatorMenuScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.print("ROTATOR SETUP");
-  display.drawLine(0,9,127,9,WHITE);
-  display.setCursor(0,12);
-  display.println("PARALLEL");
-  display.setCursor(0,21);
-  display.println("ROTATE 1");
-  display.setCursor(0,30);
-  display.println("ROTATE 2");
-  display.setCursor(0,39);
-  display.println("ROTATE 3");
-  display.setCursor(0,48);
-  display.println("ROTATE 4");
-  display.setCursor(0,57);
-  display.println("PRIORITY");
-  drawMenuCursor(rotatorMenuCursor, WHITE);
-  display.display();
+  drawMenu("ROTATOR SETUP", rotatorMenuCursor, 6,
+    "PARALLEL",
+    "ROTATE 1",
+    "ROTATE 2",
+    "ROTATE 3",
+    "ROTATE 4",
+    "PRIORITY");
 }
+
 void drawPatchView(){
   display.clearDisplay();
   if (FPD){
@@ -3613,80 +3595,16 @@ void plotVelBias(int color){
 }
 
 void drawSetupBrMenuScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println("SETUP BREATH");
-  display.drawLine(0,9,127,9,WHITE);
-  display.setCursor(0,12);
-  display.println("BREATH CC");
-  display.setCursor(0,21);
-  display.println("BREATH AT");
-  display.setCursor(0,30);
-  display.println("VELOCITY");
-  display.setCursor(0,39);
-  display.println("CURVE");
-  display.setCursor(0,48);
-  display.println("VEL DELAY");
-  display.setCursor(0,57);
-  display.println("VEL BIAS");
-
-  display.display();
+  drawMenu("SETUP BREATH", -1, 6, "BREATH CC", "BREATH AT", "VELOCITY", "CURVE", "VEL DELAY", "VEL BIAS");
 }
 
 void drawSetupCtMenuScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println("SETUP CTRLS");
-  display.drawLine(0,9,127,9,WHITE);
-  display.setCursor(0,12);
-  display.println("PORT/GLD");
-  display.setCursor(0,21);
-  display.println("PITCHBEND");
-  display.setCursor(0,30);
-  display.println("EXTRA CTR");
-  display.setCursor(0,39);
-  display.println("VIBRATO");
-  display.setCursor(0,48);
-  display.println("DEGLITCH");
-  display.setCursor(0,57);
-  display.println("PINKY KEY");
-
-  display.display();
+  drawMenu("SETUP CTRLS", -1, 6, "PORT/GLD", "PITCHBEND", "EXTRA CTR", "VIBRATO", "DEGLITCH", "PINKY KEY");
 }
 
 void drawVibratoMenuScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println("VIBRATO");
-  display.drawLine(0,9,127,9,WHITE);
-  display.setCursor(0,12);
-  display.println("DEPTH");
-  display.setCursor(0,21);
-  display.println("SENSE");
-  display.setCursor(0,30);
-  display.println("RETURN");
-  display.setCursor(0,39);
-  display.println("SQUELCH");
-  display.setCursor(0,48);
-  display.println("DIRECTION");
-  display.setCursor(0,57);
-  display.println("");
-
-  display.display();
+  drawMenu("VIBRATO", -1, 5, "DEPTH","SENSE","RETURN", "SQUELCH", "DIRECTION");
 }
-
 
 void drawSensorPixels(){
   int pos,oldpos;
@@ -3817,4 +3735,39 @@ void clearFPS(int trills) {
   fastPatch[trills-1] = 0;
   writeSetting(FP1_ADDR+2*(trills-1),0);
   FPD = 3;
+}
+
+
+
+/*
+ * Draw a regular list of text menu items
+ * header - first header line
+ * selectedItem - the currently selected item (draw a triangle next to it). -1 for none. 1..nItems (1-based, 0 is header row)
+ * nItems - number of menu items
+ * ... - a list (nItems long) of text items to show
+ */
+void drawMenu(const char* header, byte selected, byte nItems, ...) {
+
+  //Initialize display and draw menu header + line
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.println(header);
+  display.drawLine(0,MENU_ROW_HEIGHT,127,MENU_ROW_HEIGHT, WHITE);
+
+  va_list valist;
+  va_start(valist, nItems);
+  for(byte row=0; row<nItems; row++) {
+    int rowPixel = (row+1)*MENU_ROW_HEIGHT + MENU_HEADER_OFFSET;
+    const char* lineText = va_arg(valist, const char*);
+    display.setCursor(0,rowPixel);
+    display.println(lineText);
+  }
+
+  if(selected>=0) drawMenuCursor(selected, WHITE);
+
+  va_end(valist);
+
+  display.display();
 }
