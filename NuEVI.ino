@@ -375,7 +375,7 @@ void setup() {
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
   
-  if ((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24) || (!digitalRead(ePin) && !digitalRead(mPin))) { 
+  if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))) {
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -564,7 +564,8 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
-      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) || ((analogRead(0) < (breathCalZero - 800)) && legacyBrAct) && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn < ((pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
+      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
+          ((analogRead(0) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
         readSwitches();
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
