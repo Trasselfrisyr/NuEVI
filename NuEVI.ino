@@ -542,8 +542,7 @@ void setup() {
 void loop() {
   breathFilter.input(analogRead(breathSensorPin));
   pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
-  //pressureSensor = analogRead(A0);
-  //pressureSensor =  smooth(analogRead(0), filterVal, smoothedVal);   // second parameter determines smoothness  - 0 is off,  .9999 is max smooth
+  analogWrite(A14,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095))); 
   if (mainState == NOTE_OFF) {
     if (activeMIDIchannel != MIDIchannel) {
       activeMIDIchannel = MIDIchannel; // only switch channel if no active note
