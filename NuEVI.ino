@@ -348,8 +348,8 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
-byte breathLedBrightness = 2000; // up to 4095, PWM
-byte portamLedBrightness = 2000; // up to 4095, PWM
+int breathLedBrightness = 2000; // up to 4095, PWM
+int portamLedBrightness = 2000; // up to 4095, PWM
 
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
