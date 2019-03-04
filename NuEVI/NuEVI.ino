@@ -495,10 +495,10 @@ void setup() {
   //auto-calibrate the vibrato threshold while showing splash screen
   vibZero = breathCalZero = 0;
   const int sampleCount = 4;
-  for(int i =0 ; i < sampleCount; ++i) {
+  for(int i = 1 ; i <= sampleCount; ++i) {
     vibZero += touchRead(vibratoPin);
     breathCalZero += analogRead(breathSensorPin);
-    digitalWrite( statusLedPin, 1-(i&1) );
+    digitalWrite( statusLedPin, i&1 );
     delay(250);
   }
   vibZero /= sampleCount;
