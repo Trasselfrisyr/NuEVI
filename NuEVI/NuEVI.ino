@@ -369,16 +369,17 @@ void setup() {
   pinMode(uPin, INPUT_PULLUP);
   pinMode(mPin, INPUT_PULLUP);
 
-  pinMode(bLedPin, OUTPUT);   // breath indicator LED
-  pinMode(pLedPin, OUTPUT);   // portam indicator LED
-  pinMode(statusLedPin,OUTPUT);         // Teensy onboard LED
+  pinMode(bLedPin, OUTPUT);        // breath indicator LED
+  pinMode(pLedPin, OUTPUT);        // portam indicator LED
+  pinMode(statusLedPin,OUTPUT);    // Teensy onboard LED
+  pinMode(dacPin, OUTPUT);         //DAC output for analog signal
+  pinMode(pwmDacPin, OUTPUT);      //PWMed DAC output for analog signal
 
   pinMode(biteJumperPin, INPUT_PULLUP); //PBITE
-  pinMode(biteJumperGndPin, OUTPUT);  //PBITE
-  digitalWrite(biteJumperGndPin, LOW); //PBITE
+  pinMode(biteJumperGndPin, OUTPUT);    //PBITE
+  digitalWrite(biteJumperGndPin, LOW);  //PBITE
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-// if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
   
   if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))) {
     writeSetting(VERSION_ADDR,VERSION);
