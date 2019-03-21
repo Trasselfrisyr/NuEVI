@@ -288,7 +288,7 @@ void menu() {
             digitalWrite(statusLedPin,LOW);
             delay(150);
             digitalWrite(statusLedPin,HIGH);
-          } else if (pinkyKey){
+          } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
             display.ssd1306_command(SSD1306_DISPLAYON);
             state = ROTATOR_MENU;
             stateFirstRun = 1;

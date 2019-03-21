@@ -20,6 +20,10 @@
 #define pbDnPin 22
 #define vibratoPin 15
 
+
+#define biteJumperPin 11  //PBITE
+#define biteJumperGndPin 12 //PBITE
+
 #define breathSensorPin A0
 
 #define dPin 3
@@ -32,6 +36,9 @@
 #define statusLedPin 13
 
 #define vMeterPin A11
+
+#define dacPin A14
+#define pwmDacPin 20
 
 #define PBD 12
 #define UPWD 1

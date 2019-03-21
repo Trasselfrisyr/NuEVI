@@ -25,11 +25,11 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.3.3"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.3.4"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 
 //#define CASSIDY
-
+//#define CVSCALEBOARD
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 //#define touch_Thr 1200  // sensitivity for Teensy touch sensors
@@ -108,6 +108,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
 #define PORTAM_MAX_FACTORY 3300
+#define PORTPR_THR_FACTORY 1200
+#define PORTPR_MAX_FACTORY 2000
 #define PITCHB_THR_FACTORY 1400
 #define PITCHB_MAX_FACTORY 2300
 #define EXTRAC_THR_FACTORY 1200
@@ -348,8 +350,8 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
-int breathLedBrightness = 2000; // up to 4095, PWM
-int portamLedBrightness = 2000; // up to 4095, PWM
+int breathLedBrightness = 500; // up to 4095, PWM
+int portamLedBrightness = 500; // up to 4095, PWM
 
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
@@ -371,6 +373,9 @@ void setup() {
   pinMode(pLedPin, OUTPUT);   // portam indicator LED
   pinMode(statusLedPin,OUTPUT);         // Teensy onboard LED
 
+  pinMode(biteJumperPin, INPUT_PULLUP); //PBITE
+  pinMode(biteJumperGndPin, OUTPUT);  //PBITE
+  digitalWrite(biteJumperGndPin, LOW); //PBITE
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
@@ -379,8 +384,13 @@ void setup() {
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-    writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
-    writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
+      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor on A7 instead of capacitive bite sensing)
+        writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
+        writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
+      } else {
+        writeSetting(PORTAM_THR_ADDR,PORTPR_THR_FACTORY);  
+        writeSetting(PORTAM_MAX_ADDR,PORTPR_MAX_FACTORY); 
+      }
     writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
     writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
     writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
@@ -537,8 +547,7 @@ void setup() {
 
 void loop() {
   breathFilter.input(analogRead(breathSensorPin));
-  pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
-  analogWrite(A14,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095))); 
+  pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP 
   if (mainState == NOTE_OFF) {
     if (activeMIDIchannel != MIDIchannel) {
       activeMIDIchannel = MIDIchannel; // only switch channel if no active note
@@ -918,6 +927,13 @@ void loop() {
     pixelUpdateTime = millis();
   }
   lastFingering = fingeredNote;
+  #if defined(CVSCALEBOARD) // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
+    analogWrite(dacPin,constrain((fingeredNote-24)*42+map(pitchBend,0,16383,-84,84),0,4095));
+    analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
+  #else // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
+    analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
+  #endif
+  
   //do menu stuff
   menu();
 }
@@ -1289,7 +1305,11 @@ void extraController() {
 
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-  biteSensor = touchRead(bitePin); // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+  if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
+    biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+   } else { 
+    biteSensor=analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE  
+   }
   if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
     if (!portIsOn) {
       portOn();
