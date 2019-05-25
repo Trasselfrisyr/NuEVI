@@ -146,6 +146,10 @@ void showVersion() {
   display.setCursor(0,0);
   display.print("BC");
   #endif
+  #if defined(CVSCALEBOARD)
+  display.setCursor(15,0);
+  display.print("CV");
+  #endif
   display.setCursor(85,52);
   display.print("v.");
   display.println(FIRMWARE_VERSION);
@@ -3634,6 +3638,10 @@ void drawSensorPixels(){
       display.display();
     }
     lastBite=biteSensor;
+    /*if (biteJumper){
+      pos = map(constrain(analogRead(bitePin),900,1400), 900, 1400, 28, 118);
+      display.drawPixel(pos, 40, WHITE);
+    }*/
   }
   if ((state == PITCHB_ADJ_IDL) || (state == PITCHB_ADJ_THR) || (state == PITCHB_ADJ_MAX)){
     pos = map(constrain(pbUp, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);

@@ -25,7 +25,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.3.4"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.3.5"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 
 //#define CASSIDY
@@ -128,7 +128,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
 #define BREATHCURVE_FACTORY 4 // 0 to 12 (-4 to +4, S1 to S4)
-#define VEL_SMP_DL_FACTORY 20 // 0 to 30 ms in steps of 5
+#define VEL_SMP_DL_FACTORY 15 // 0 to 30
 #define VEL_BIAS_FACTORY 0  // 0 to 9
 #define PINKY_KEY_FACTORY 12 // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 22 (QuickTranspose +1 to +12)
 #define DIPSW_BITS_FACTORY 0 // virtual dip switch settings for special modes (work in progress)
@@ -190,8 +190,8 @@ byte gateOpen = 0; // setting for gate always open, note on sent for every time 
 
 int breathLoLimit = 0;
 int breathHiLimit = 4095;
-int portamLoLimit = 1000;
-int portamHiLimit = 5000;
+int portamLoLimit = 700;
+int portamHiLimit = 4700;
 int pitchbLoLimit = 500;
 int pitchbHiLimit = 4000;
 int extracLoLimit = 500;
@@ -277,6 +277,10 @@ int biteSensor=0;    // capacitance data from bite sensor, for midi cc and thres
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 int oldport=0;
 int lastBite=0;
+byte biteJumper=0;
+
+int cvPitch;
+int targetPitch;
 
 int exSensor=0;
 byte extracIsOn=0;
@@ -363,6 +367,7 @@ void setup() {
 
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
   analogWriteResolution(12);
+  analogWriteFrequency(pwmDacPin,11718.75);
 
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -503,6 +508,11 @@ void setup() {
   
   initDisplay(); //Start up display and show logo
 
+  biteJumper = !digitalRead(biteJumperPin);
+  if (biteJumper){
+    pinMode(bitePin, INPUT);
+  }
+
   //auto-calibrate the vibrato threshold while showing splash screen
   vibZero = breathCalZero = 0;
   const int sampleCount = 4;
@@ -570,42 +580,55 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
+      #if defined(CASSIDY)
+      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
+          ((analogRead(0) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
+      #else
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
           ((analogRead(0) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
+      #endif  
         readSwitches();
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
           if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
             MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up 
+            #if !defined(CASSIDY)
             digitalWrite(statusLedPin, LOW);
             delay(150);
             digitalWrite(statusLedPin, HIGH);
+            #endif
           }
         } else {
           if (!pinkyKey) { // note number to patch number
             if (patch != fingeredNoteUntransposed) {
               patch = fingeredNoteUntransposed;
               doPatchUpdate = 1;
+              #if !defined(CASSIDY)
               digitalWrite(statusLedPin, LOW);
               delay(150);
               digitalWrite(statusLedPin, HIGH);
+              #endif
             }
           } else { // hi and lo patch numbers
             if (fingeredNoteUntransposed > 75) {
               if (patch != patchLimit(fingeredNoteUntransposed + 24)) {
                 patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
                 doPatchUpdate = 1;
+                #if !defined(CASSIDY)
                 digitalWrite(statusLedPin, LOW);
                 delay(150);
                 digitalWrite(statusLedPin, HIGH);
+                #endif
               }
             } else {
               if (patch != patchLimit(fingeredNoteUntransposed - 36)) {
                 patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
                 doPatchUpdate = 1;
+                #if !defined(CASSIDY)
                 digitalWrite(statusLedPin, LOW);
                 delay(150);
                 digitalWrite(statusLedPin, HIGH);
+                #endif
               }
             }
           }
@@ -929,12 +952,29 @@ void loop() {
   }
   lastFingering = fingeredNote;
   #if defined(CVSCALEBOARD) // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
-    analogWrite(dacPin,constrain((fingeredNote-24)*42+map(pitchBend,0,16383,-84,84),0,4095));
-    analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
+    targetPitch = (fingeredNote-24)*42;
+    if (portIsOn){
+      if (targetPitch > cvPitch){
+        cvPitch += 1+(127-oldport)/4;
+        if (cvPitch > targetPitch) cvPitch = targetPitch;
+      } else if (targetPitch < cvPitch){
+        cvPitch -= 1+(127-oldport)/4;
+        if (cvPitch < targetPitch) cvPitch = targetPitch;
+      } else {
+        cvPitch = targetPitch;
+      }
+    } else {
+      cvPitch = targetPitch;
+    }
+    analogWrite(dacPin,constrain(cvPitch+map(pitchBend,0,16383,-84,84),0,4095));
+    analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
   #else // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
   #endif
-  
+
+  while (usbMIDI.read()) {
+    // read & ignore incoming messages
+  }
   //do menu stuff
   menu();
 }
@@ -1306,10 +1346,10 @@ void extraController() {
 
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-  if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
-    biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
+    biteSensor=analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
    } else { 
-    biteSensor=analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE  
+    biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
   if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
     if (!portIsOn) {
