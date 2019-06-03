@@ -1,6 +1,7 @@
 #ifndef __MENU_H
 #define __MENU_H
 
+#include "Wiring.h"
 
 #define MENU_ROW_HEIGHT 9
 #define MENU_HEADER_OFFSET 3
@@ -34,10 +35,11 @@
 
 extern byte subVibSquelch;
 
-
 void initDisplay();
 void showVersion();
 void menu();
 void drawSensorPixels();
+unsigned short readSetting(byte address);
+void writeSetting(byte address, unsigned short value);
 
 #endif
