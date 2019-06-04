@@ -8,6 +8,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPR121.h>
+#include "settings.h"
 
 //#ifndef SSD1306_128_64
 //#error("Incorrect display type, please fix Adafruit_SSD1306.h!");

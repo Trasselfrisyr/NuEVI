@@ -9,6 +9,7 @@
 #include "midi.h"
 #include "menu.h"
 #include "config.h"
+#include "settings.h"
 
 /*
 NAME:                 NuEVI
@@ -21,6 +22,22 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
                       and capacitive touch keys. Output to both USB MIDI and DIN MIDI.
 
 */
+
+
+// The three states of our main state machine
+
+// No note is sounding
+#define NOTE_OFF 1
+
+// We've observed a transition from below to above the
+// threshold value. We wait a while to see how fast the
+// breath velocity is increasing
+#define RISE_WAIT 2
+
+// A note is sounding
+#define NOTE_ON 3
+
+
 
 //_______________________________________________________________________________________________ DECLARATIONS
 
