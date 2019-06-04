@@ -487,7 +487,7 @@ void drawMenuScreen(){
 
   //Construct the title including voltage reading.
   //Involves intricate splicing of the title string with battery voltage
-  char menuTitle[] = "MENU         XXX Y.Y "; //Allocate string buffer of appropriate size with some placeholders
+  char menuTitle[] = "MENU         XXX Y.YV"; //Allocate string buffer of appropriate size with some placeholders
   char* splice1 = menuTitle + 13;
   char* splice2 = menuTitle + 17;
 
@@ -496,9 +496,9 @@ void drawMenuScreen(){
   if (vMeterReading < 2294) {
     memcpy(splice2, "LOW ", 3);
   } else {
-    double voltage = map(vMeterReading,0,3030,0,50)*0.1;
-    dtostrf(voltage, 3, 1, splice2);
-    splice2[3]='V'; //Put the V at the end (last char of buffer before \0)
+    int voltage = map(vMeterReading,0,3030,0,50);
+    splice2[0] = (voltage/10)+'0';
+    splice2[2] = (voltage%10)+'0';
   }
 
   drawMenu(menuTitle, mainMenuCursor, 6,
