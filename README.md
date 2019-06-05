@@ -15,25 +15,13 @@ A few libraries need to be added that are not part of the default Arduino instal
 added directly via the Library Manager in the Arduino IDE:
 * Adafruit MPR121
 * Adafruit GFX
-* Adafruit SSD1306
+* Adafruit SSD1306 (version 1.2.9 or above)
 
 You also need to install [Edgar Bonet's Filters library](https://github.com/edgar-bonet/Filters),
 specifically the `fix-integer-overflow` branch. One of the easiest way to do that is to download the
 git repo [as a zip file](https://github.com/edgar-bonet/Filters/archive/fix-integer-overflow.zip),
 and then add that in the Arduino IDE (under Sketch -> Include Library -> Add .ZIP library)
 
-The SSD1306 display driver library then needs to be patched to support the right kind of display.
-To do this, you need to find the Adafruit_SSD1306.h file used by the Arduino IDE. Exactly where it
-is depends on your OS and how you installed the library, but the default location when installed
-via library manager should be something close to either of these.
-
-* MacOS: `/Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/Adafruit_SSD1306/Adafruit_SSD1306.h`
-* Windows: `My Documents\Arduino\libraries\Adafruit_SSD1306/Adafruit_SSD1306.h`
-* Linux (at least some distributions): `/usr/share/arduino/libraries/usr/share/arduino/libraries/Adafruit_SSD1306/Adafruit_SSD1306.h`
-
-In that file, there is a section around line 69 (at the time of writing) that determines the type
-of display. There, make sure the `#define SSD1306_128_64` is not commented out, but that the others
-next to it are.
 
 ### Compile options
 
