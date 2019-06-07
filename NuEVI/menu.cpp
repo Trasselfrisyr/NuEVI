@@ -494,7 +494,7 @@ void drawMenuScreen(){
   int vMeterReading = analogRead(vMeterPin);
   memcpy(splice1, (vMeterReading > 3000) ? "USB" : "BAT", 3);
   if (vMeterReading < 2294) {
-    memcpy(splice2, "LOW ", 3);
+    memcpy(splice2, "LOW ", 4);
   } else {
     int voltage = map(vMeterReading,0,3030,0,50);
     splice2[0] = (voltage/10)+'0';
