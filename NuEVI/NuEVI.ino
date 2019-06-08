@@ -849,9 +849,8 @@ void loop() {
     analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
   #endif
 
-  while (usbMIDI.read()) {
-    // read & ignore incoming messages
-  }
+  midiDiscardInput();
+
   //do menu stuff
   menu();
 }

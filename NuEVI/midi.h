@@ -16,7 +16,7 @@ void midiSendNoteOff(byte note);
 void midiSendAfterTouch(byte value);
 void midiSendPitchBend(int value);
 
-
+void midiDiscardInput(void);
 void midiReset(); // reset controllers
 void midiPanic(); // turn all notes off
 
