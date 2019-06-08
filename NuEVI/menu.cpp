@@ -37,16 +37,25 @@ static byte vibratoMenuCursor = 1;
 static byte cursorNow;
 static byte forcePix = 0;
 static byte forceRedraw = 0;
+static byte FPD = 0;
+
 
 static int pos1;
 static int pos2;
 
-static unsigned long lastDebounceTime = 0;         // the last time the output pin was toggled
 static const unsigned long debounceDelay = 30;           // the debounce time; increase if the output flickers
-static unsigned long buttonRepeatTime = 0;
-static unsigned long buttonPressedTime = 0;
 static const unsigned long buttonRepeatInterval = 50;
 static const unsigned long buttonRepeatDelay = 400;
+static const unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
+static const unsigned long patchViewTimeUp = 2000;       // ms until patch view shuts off
+static const unsigned long menuTimeUp = 60000;           // menu shuts off after one minute of button inactivity
+
+static unsigned long lastDebounceTime = 0;         // the last time the output pin was toggled
+static unsigned long buttonRepeatTime = 0;
+static unsigned long buttonPressedTime = 0;
+static unsigned long menuTime = 0;
+static unsigned long patchViewTime = 0;
+unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
 
 static int lastPbUp = 0;
 static int lastPbDn = 0;

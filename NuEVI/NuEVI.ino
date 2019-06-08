@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 #include <Filters.h>  // for the breath signal LP filtering, https://github.com/edgar-bonet/Filters
 
+#include "globals.h"
 #include "hardware.h"
 #include "midi.h"
 #include "menu.h"
@@ -115,14 +116,9 @@ int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
 
-unsigned long pixelUpdateTime = 0;
-unsigned long pixelUpdateInterval = 80;
-unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
-unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
-unsigned long patchViewTime = 0;
-unsigned long patchViewTimeUp = 2000;       // ms until patch view shuts off
-unsigned long menuTime = 0;
-unsigned long menuTimeUp = 60000;           // menu shuts off after one minute of button inactivity
+static unsigned long pixelUpdateTime = 0;
+static const unsigned long pixelUpdateInterval = 80;
+
 unsigned long lastDeglitchTime = 0;         // The last time the fingering was changed
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
@@ -140,7 +136,6 @@ byte doPatchUpdate=0;
 byte legacy = 0;
 byte legacyBrAct = 0;
 byte halfTime = 0;
-byte FPD = 0;
 boolean programonce = false;
 byte slowMidi = 0;
 
