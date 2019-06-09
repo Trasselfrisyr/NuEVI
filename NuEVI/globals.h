@@ -40,25 +40,20 @@ extern byte currentRotation;
 extern int rotations[4];
 extern int parallel; // semitones
 
-extern int breathLoLimit;
-extern int breathHiLimit;
-extern int portamLoLimit;
-extern int portamHiLimit;
-extern int pitchbLoLimit;
-extern int pitchbHiLimit;
-extern int extracLoLimit;
-extern int extracHiLimit;
-extern int ctouchLoLimit;
-extern int ctouchHiLimit;
-extern int ttouchLoLimit;
-extern int ttouchHiLimit;
+extern const int breathLoLimit;
+extern const int breathHiLimit;
+extern const int portamLoLimit;
+extern const int portamHiLimit;
+extern const int pitchbLoLimit;
+extern const int pitchbHiLimit;
+extern const int extracLoLimit;
+extern const int extracHiLimit;
+extern const int ctouchLoLimit;
+extern const int ctouchHiLimit;
+extern const int ttouchLoLimit;
+extern const int ttouchHiLimit;
 
 extern int touch_Thr;
-extern int breathStep;
-extern int portamStep;
-extern int pitchbStep;
-extern int extracStep;
-extern int ctouchStep;
 
 extern unsigned long cursorBlinkTime;          // the last time the cursor was toggled
 

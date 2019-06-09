@@ -86,27 +86,22 @@ int parallel = 7; // semitones
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
-int breathLoLimit = 0;
-int breathHiLimit = 4095;
-int portamLoLimit = 700;
-int portamHiLimit = 4700;
-int pitchbLoLimit = 500;
-int pitchbHiLimit = 4000;
-int extracLoLimit = 500;
-int extracHiLimit = 4000;
-int ctouchLoLimit = 50;
-int ctouchHiLimit = 350;
-int ttouchLoLimit = 50;
-int ttouchHiLimit = 1900;
+
+// MAybe move these to config.h (as defines?)
+const int breathLoLimit = 0;
+const int breathHiLimit = 4095;
+const int portamLoLimit = 700;
+const int portamHiLimit = 4700;
+const int pitchbLoLimit = 500;
+const int pitchbHiLimit = 4000;
+const int extracLoLimit = 500;
+const int extracHiLimit = 4000;
+const int ctouchLoLimit = 50;
+const int ctouchHiLimit = 350;
+const int ttouchLoLimit = 50;
+const int ttouchHiLimit = 1900;
 
 int touch_Thr = 1300;
-
-
-int breathStep;
-int portamStep;
-int pitchbStep;
-int extracStep;
-int ctouchStep;
 
 byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20
 
@@ -262,7 +257,7 @@ void setup() {
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-  
+
   uint16_t settingsVersion = readSetting(VERSION_ADDR);
 
   if (((settingsVersion != VERSION) && (settingsVersion < 24)) || (!digitalRead(ePin) && !digitalRead(mPin)) || (settingsVersion == 0xffffu)) {
@@ -370,12 +365,6 @@ void setup() {
   legacyBrAct = dipSwBits & (1<<2);
   slowMidi = dipSwBits & (1<<3);
   activePatch = patch;
-
-  breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
-  portamStep = (portamHiLimit - portamLoLimit)/92;
-  pitchbStep = (pitchbHiLimit - pitchbLoLimit)/92;
-  extracStep = (extracHiLimit - extracLoLimit)/92;
-  ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
 
