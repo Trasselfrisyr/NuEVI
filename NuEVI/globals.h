@@ -3,15 +3,15 @@
 
 #include "Wiring.h"
 
-extern unsigned short breathThrVal;//;
-extern unsigned short breathMaxVal;//;
-extern unsigned short portamThrVal;//;
-extern unsigned short portamMaxVal;//;
-extern unsigned short pitchbThrVal;//;
-extern unsigned short pitchbMaxVal;//;
-extern unsigned short extracThrVal;//;
-extern unsigned short extracMaxVal;//;
-extern unsigned short ctouchThrVal;//;
+extern unsigned short breathThrVal;
+extern unsigned short breathMaxVal;
+extern unsigned short portamThrVal;
+extern unsigned short portamMaxVal;
+extern unsigned short pitchbThrVal;
+extern unsigned short pitchbMaxVal;
+extern unsigned short extracThrVal;
+extern unsigned short extracMaxVal;
+extern unsigned short ctouchThrVal;
 extern unsigned short transpose;
 extern unsigned short MIDIchannel;
 extern unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
@@ -39,7 +39,6 @@ extern byte rotatorOn;
 extern byte currentRotation;
 extern int rotations[4];
 extern int parallel; // semitones
-extern byte gateOpen; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
 extern int breathLoLimit;
 extern int breathHiLimit;
@@ -61,30 +60,14 @@ extern int pitchbStep;
 extern int extracStep;
 extern int ctouchStep;
 
-
-extern unsigned long pixelUpdateTime;
-extern unsigned long pixelUpdateInterval;
 extern unsigned long cursorBlinkTime;          // the last time the cursor was toggled
-extern unsigned long cursorBlinkInterval;    // the cursor blink toggle interval time
-extern unsigned long patchViewTime;
-extern unsigned long patchViewTimeUp;       // ms until patch view shuts off
-extern unsigned long menuTime;
-extern unsigned long menuTimeUp;           // menu shuts off after one minute of button inactivity
-extern unsigned long lastDeglitchTime;         // The last time the fingering was changed
-extern unsigned long ccSendTime;              // The last time we sent CC values
-extern unsigned long breath_on_time;          // Time when breath sensor value went over the ON threshold
-extern int lastFingering;             // Keep the last fingering value for debouncing
-extern int mainState;                         // The state of the main state machine
-extern int initial_breath_value;          // The breath value at the time we observed the transition
-extern byte activeMIDIchannel;          // MIDI channel
+
 extern byte activePatch;
 extern byte doPatchUpdate;
 
 extern byte legacy;
 extern byte legacyBrAct;
-extern byte halfTime;
-extern byte FPD ;
-extern boolean programonce;
+
 extern byte slowMidi;
 
 extern int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks

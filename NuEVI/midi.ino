@@ -50,6 +50,13 @@ void midiSendPitchBend(int value) {
     dinMIDIsendPitchBend(value, midiChannel - 1);
 }
 
+void midiDiscardInput()
+{
+  while (usbMIDI.read()) {
+    // read & ignore incoming messages
+  }
+}
+
 void midiReset() { // reset controllers
   midiSendControlChange(7, 100);
   midiSendControlChange(11, 127);
