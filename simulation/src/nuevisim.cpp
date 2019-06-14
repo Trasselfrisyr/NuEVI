@@ -4,6 +4,7 @@
 
 #include <Adafruit_MPR121.h>
 #include <Adafruit_SSD1306.h>
+#include <cmath>
 #include "globals.h"
 #include "hardware.h"
 
@@ -23,7 +24,7 @@ SimWire Wire;
 SimSerial Serial;
 
 
-static const int scale = 2;
+static const int scale = 4;
 
 static SDL_Window *window;
 static SDL_Surface *surface;
@@ -77,7 +78,6 @@ void delay(unsigned int ms)
 
 void pinMode(uint8_t __attribute((unused)) pin, uint8_t __attribute((unused)) mode)
 {
-
 }
 
 int analogRead(uint8_t pin)
@@ -108,12 +108,35 @@ void analogWrite(uint8_t pin, int value)
 }
 
 
-uint16_t micros()
+bool animateAnalogs = false;
+void analogUpdate(uint32_t time) {
+
+    const uint16_t touchMaxValue = 1023;
+    const uint16_t analogMax = 4095;
+
+    if(animateAnalogs) {
+        for( int i = 0 ; i < 32; ++i) {
+            analogInputs[i] = (sin(time*0.001f + i)*0.5f + 0.5f) * analogMax;
+        }
+
+        uint8_t *regs = touchSensor._registers;
+
+        for(int r = 4; r < (4+24); r += 2) {
+            uint16_t value = (sin(time * 0.005f + r)*0.5f + 0.5f) * touchMaxValue;
+            regs[r] = value & 0xffu;
+            regs[r+1] = (value >> 8) & 0x03u;
+        }
+
+    }
+}
+
+
+uint32_t micros()
 {
     return SDL_GetTicks()*1000;
 }
 
-uint16_t millis()
+uint32_t millis()
 {
     return SDL_GetTicks();
 }
@@ -156,6 +179,10 @@ static void GetDisplay(SDL_Surface* dest)
     SDL_UnlockSurface(dest);
 }
 
+void toggleAnalogAnimation() {
+    animateAnalogs = !animateAnalogs;
+    printf("Analog input variations: %s\n", animateAnalogs ? "ON": "OFF");
+}
 
 static int doQuit = 0;
 
@@ -187,6 +214,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_RIGHT:    digitalInputs[ePin] = 1; break;
                     case SDLK_UP:       digitalInputs[uPin] = 1; break;
                     case SDLK_DOWN:     digitalInputs[dPin] = 1; break;
+                    case SDLK_w:        toggleAnalogAnimation(); break;
                 }
                 fflush(stdout);
             }
@@ -195,9 +223,12 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
         if(doQuit)
             break;
 
+        time = SDL_GetTicks();
+
+
         if(loopFunc) loopFunc();
 
-        time = SDL_GetTicks();
+        analogUpdate(time);
 
         // TODO: Get buffer from SSD1306 and copy to surface...
 

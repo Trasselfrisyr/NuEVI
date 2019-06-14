@@ -46,41 +46,6 @@ Adafruit_MPR121::Adafruit_MPR121() {
 boolean Adafruit_MPR121::begin(uint8_t i2caddr) {
   _i2caddr = i2caddr;
 
-
-//   writeRegister(MPR121_ECR, 0x0);
-
-//   uint8_t c = readRegister8(MPR121_CONFIG2);
-  
-//   if (c != 0x24) return false;
-
-
-//   setThreshholds(12, 6);
-//   writeRegister(MPR121_MHDR, 0x01);
-//   writeRegister(MPR121_NHDR, 0x01);
-//   writeRegister(MPR121_NCLR, 0x0E);
-//   writeRegister(MPR121_FDLR, 0x00);
-
-//   writeRegister(MPR121_MHDF, 0x01);
-//   writeRegister(MPR121_NHDF, 0x05);
-//   writeRegister(MPR121_NCLF, 0x01);
-//   writeRegister(MPR121_FDLF, 0x00);
-
-//   writeRegister(MPR121_NHDT, 0x00);
-//   writeRegister(MPR121_NCLT, 0x00);
-//   writeRegister(MPR121_FDLT, 0x00);
-
-//   writeRegister(MPR121_DEBOUNCE, 0);
-//   writeRegister(MPR121_CONFIG1, 0x10); // default, 16uA charge current
-//   writeRegister(MPR121_CONFIG2, 0x20); // 0.5uS encoding, 1ms period
-
-// //  writeRegister(MPR121_AUTOCONFIG0, 0x8F);
-
-// //  writeRegister(MPR121_UPLIMIT, 150);
-// //  writeRegister(MPR121_TARGETLIMIT, 100); // should be ~400 (100 shifted)
-// //  writeRegister(MPR121_LOWLIMIT, 50);
-//   // enable all electrodes
-//   writeRegister(MPR121_ECR, 0x8F);  // start with first 5 bits of baseline tracking
-
   return true;
 }
 
@@ -213,3 +178,9 @@ void Adafruit_MPR121::writeRegister(uint8_t reg, uint8_t value) {
     // Wire.write((uint8_t)(value));
     // Wire.endTransmission();
 }
+
+
+/*
+  Simulator specifics code..
+ */
+

@@ -5,6 +5,7 @@
 
 struct EEPROMClass
 {
+    EEPROMClass();
     //Basic user access methods.
    //  EERef operator[]( const int idx )    { return idx; }
     uint8_t read( int idx ); //            { return EERef( idx ); }
@@ -34,6 +35,10 @@ struct EEPROMClass
 // #endif
 //         return t;
 //     }
+
+private:
+    char someFakeEEPROM_memory[4096];
+
 };
 
 static EEPROMClass EEPROM __attribute__ ((unused));

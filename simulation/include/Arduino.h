@@ -73,8 +73,8 @@ extern SimSerial Serial;
 
 //extern void putString(int row, int col, int color, const char* msg, const FONT_INFO fontInfo);
 
-uint16_t micros();
-uint16_t millis();
+uint32_t micros();
+uint32_t millis();
 void delay(uint32_t millis);
 void delayMicroseconds(uint32_t micros);
 

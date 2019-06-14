@@ -101,9 +101,9 @@ class Adafruit_MPR121 {
   void setThreshholds(uint8_t touch, uint8_t release) __attribute__((deprecated));
   void setThresholds(uint8_t touch, uint8_t release);
 
+  uint8_t   _registers[48];
  private:
   int8_t _i2caddr;
-  uint8_t   _registers[24];
 };
 
 #endif // ADAFRUIT_MPR121_H
