@@ -263,7 +263,9 @@ void setup() {
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
   
-  if (((readSetting(VERSION_ADDR) != VERSION) && (readSetting(VERSION_ADDR) < 24)) || (!digitalRead(ePin) && !digitalRead(mPin))) {
+  uint16_t settingsVersion = readSetting(VERSION_ADDR);
+
+  if (((settingsVersion != VERSION) && (settingsVersion < 24)) || (!digitalRead(ePin) && !digitalRead(mPin)) || (settingsVersion == 0xffffu)) {
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
@@ -280,8 +282,8 @@ void setup() {
     writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
     writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
   }
-  
-  if ((readSetting(VERSION_ADDR) != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))) {
+
+  if ((settingsVersion != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))) {
     writeSetting(VERSION_ADDR,VERSION);
     
     writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
