@@ -10,9 +10,6 @@
 #include <Adafruit_MPR121.h>
 #include "settings.h"
 
-#include "numenu.h"
-
-
 #define BTN_DOWN 1
 #define BTN_ENTER 2
 #define BTN_UP 4
@@ -250,7 +247,6 @@ void drawAdjustScreen(const char* title, int threshold, int maxValue, uint16_t l
     pos2 = map(maxValue, lowLimit, highLimit, 27, 119);
     display.drawLine(pos2,50,pos2,56,WHITE);
   }
-  display.display();
 }
 
 void drawMenuCursor(byte itemNo, byte color){
@@ -385,24 +381,19 @@ static void drawSubBox(const char* label)
 }
 
 static void plotTranspose(int color){
+  int value = transpose - 12;
+  const char *sign = (value < 0) ? "-":"+";
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(80,33);
-  if ((transpose-12) > -1){
-    display.println("+");
-    display.setCursor(93,33);
-    display.println(transpose-12);
-  } else {
-    display.println("-");
-    display.setCursor(93,33);
-    display.println(abs(transpose-12));
-  }
+  display.println(sign);
+  display.setCursor(93,33);
+  display.println(abs(value));
 }
 
 static void drawSubTranspose(){
   drawSubBox("TRANSPOSE");
   plotTranspose(WHITE);
-  display.display();
 }
 
 
@@ -421,12 +412,6 @@ static void plotRotator(int color,int value){
   }
 }
 
-static void drawSubRotator(){
-  drawSubBox("SEMITONES");
-  //plotRotator(WHITE,value);
-  forceRedraw = 1;
-  display.display();
-}
 
 static void plotPriority(int color){
   display.setTextColor(color);
@@ -437,12 +422,6 @@ static void plotPriority(int color){
   } else {
     display.println("MEL");
   }
-}
-
-static void drawSubPriority(){
-  drawSubBox("MONO PRIO");
-  plotPriority(WHITE);
-  display.display();
 }
 
 
@@ -461,12 +440,6 @@ static void plotOctave(int color){
   }
 }
 
-static void drawSubOctave(){
-  drawSubBox("OCTAVE");
-  plotOctave(WHITE);
-  display.display();
-}
-
 static void plotMIDI(int color){
   display.setTextColor(color);
   display.setTextSize(2);
@@ -482,11 +455,6 @@ static void plotMIDI(int color){
   display.print("S");
 }
 
-static void drawSubMIDI(){
-  drawSubBox("MIDI CHNL");
-  plotMIDI(WHITE);
-  display.display();
-}
 
 
 static void plotSubOption(const char* label, int color)
@@ -505,11 +473,6 @@ static void plotBreathCC(int color){
   plotSubOption(breathCCMenuLabels[breathCC], color);
 }
 
-static void drawSubBreathCC(){
-  drawSubBox("BREATH CC");
-  plotBreathCC(WHITE);
-  display.display();
-}
 
 static void plotBreathAT(int color){
   if (breathAT){
@@ -517,12 +480,6 @@ static void plotBreathAT(int color){
   } else {
     plotSubOption("OFF", color);
   }
-}
-
-static void drawSubBreathAT(){
-  drawSubBox("BREATH AT");
-  plotBreathAT(WHITE);
-  display.display();
 }
 
 
@@ -537,25 +494,13 @@ static void plotVelocity(int color){
   }
 }
 
-static void drawSubVelocity(){
-  drawSubBox("VELOCITY");
-  plotVelocity(WHITE);
-  display.display();
-}
-
-
 static const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
                                          "+3", "+4", "S1", "S2", "Z1", "Z2" };
+
 
 static void plotCurve(int color){
   // Assumes curve is in rage 0..12
   plotSubOption(curveMenuLabels[curve], color);
-}
-
-static void drawSubCurve(){
-  drawSubBox("CURVE");
-  plotCurve(WHITE);
-  display.display();
 }
 
 static void plotPort(int color){
@@ -567,13 +512,6 @@ static void plotPort(int color){
     plotSubOption("OFF", color);
   }
 }
-
-static void drawSubPort(){
-  drawSubBox("PORT/GLD");
-  plotPort(WHITE);
-  display.display();
-}
-
 
 static void plotPB(int color){
   display.setTextColor(color);
@@ -588,24 +526,11 @@ static void plotPB(int color){
   }
 }
 
-static void drawSubPB(){
-  drawSubBox("PITCHBEND");
-  plotPB(WHITE);
-  display.display();
-}
-
 static const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
 
 static void plotExtra(int color){
   plotSubOption(extraMenuLabels[extraCT], color);
 }
-
-static void drawSubExtra(){
-  drawSubBox("EXTRA CTR");
-  plotExtra(WHITE);
-  display.display();
-}
-
 
 static void plotVibrato(int color){
   display.setTextColor(color);
@@ -619,23 +544,11 @@ static void plotVibrato(int color){
   }
 }
 
-static void drawSubVibrato(){
-  drawSubBox("LEVEL");
-  plotVibrato(WHITE);
-  display.display();
-}
-
 static void plotVibSens(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   display.setCursor(90,33);
   display.println(vibSens);
-}
-
-static void drawSubVibSens(){
-  drawSubBox("LEVEL");
-  plotVibSens(WHITE);
-  display.display();
 }
 
 static void plotVibRetn(int color){
@@ -645,13 +558,6 @@ static void plotVibRetn(int color){
   display.println(vibRetn);
 }
 
-static void drawSubVibRetn(){
-  drawSubBox("LEVEL");
-  plotVibRetn(WHITE);
-  display.display();
-}
-
-
 static void plotVibSquelch(int color){
   display.setTextColor(color);
   display.setTextSize(2);
@@ -659,28 +565,14 @@ static void plotVibSquelch(int color){
   display.println(vibSquelch);
 }
 
-static void drawSubVibSquelch(){
-  drawSubBox("LEVEL");
-  plotVibSquelch(WHITE);
-  display.display();
-}
-
-
-
-
 static void plotVibDirection(int color){
   if (DNWD == vibDirection){
     plotSubOption("NRM", color);
   } else {
-    plotSubOption("NRM", color);
+    plotSubOption("REV", color);
   }
 }
 
-static void drawSubVibDirection(){
-  drawSubBox("DIRECTION");
-  plotVibDirection(WHITE);
-  display.display();
-}
 
 static void plotDeglitch(int color){
   display.setTextColor(color);
@@ -694,12 +586,6 @@ static void plotDeglitch(int color){
   } else {
     display.println("OFF");
   }
-}
-
-static void drawSubDeglitch(){
-  drawSubBox("DEGLITCH");
-  plotDeglitch(WHITE);
-  display.display();
 }
 
 
@@ -717,16 +603,11 @@ static void plotPinkyKey(int color){
   }
 }
 
-static void drawSubPinkyKey(){
-  drawSubBox("PINKY KEY");
-  plotPinkyKey(WHITE);
-  display.display();
-}
 
 static void plotVelSmpDl(int color){
   display.setTextColor(color);
-  display.setTextSize(2);
   display.setCursor(79,33);
+  display.setTextSize(2);
   if (velSmpDl){
     display.println(velSmpDl);
     display.setCursor(105,40);
@@ -736,13 +617,6 @@ static void plotVelSmpDl(int color){
     display.println("OFF");
   }
 }
-
-static void drawSubVelSmpDl(){
-  drawSubBox("VEL DELAY");
-  plotVelSmpDl(WHITE);
-  display.display();
-}
-
 
 static void plotVelBias(int color){
   display.setTextColor(color);
@@ -756,11 +630,111 @@ static void plotVelBias(int color){
   }
 }
 
+
+
+static void drawSubRotator(){
+  drawSubBox("SEMITONES");
+  //plotRotator(WHITE,value);
+  forceRedraw = 1;
+}
+
+
+static void drawSubVelSmpDl(){
+  drawSubBox("VEL DELAY");
+  plotVelSmpDl(WHITE);
+}
+
+static void drawSubPriority(){
+  drawSubBox("MONO PRIO");
+  plotPriority(WHITE);
+}
+
+static void drawSubOctave(){
+  drawSubBox("OCTAVE");
+  plotOctave(WHITE);
+}
+
+static void drawSubMIDI(){
+  drawSubBox("MIDI CHNL");
+  plotMIDI(WHITE);
+}
+
+static void drawSubBreathCC(){
+  drawSubBox("BREATH CC");
+  plotBreathCC(WHITE);
+}
+
+static void drawSubBreathAT(){
+  drawSubBox("BREATH AT");
+  plotBreathAT(WHITE);
+}
+
+static void drawSubVelocity(){
+  drawSubBox("VELOCITY");
+  plotVelocity(WHITE);
+}
+
+static void drawSubCurve(){
+  drawSubBox("CURVE");
+  plotCurve(WHITE);
+}
+
+static void drawSubPort(){
+  drawSubBox("PORT/GLD");
+  plotPort(WHITE);
+}
+
+static void drawSubPB(){
+  drawSubBox("PITCHBEND");
+  plotPB(WHITE);
+}
+
 static void drawSubVelBias(){
   drawSubBox("VEL BIAS");
   plotVelBias(WHITE);
-  display.display();
 }
+
+static void drawSubVibSquelch(){
+  drawSubBox("LEVEL");
+  plotVibSquelch(WHITE);
+}
+
+static void drawSubVibDirection(){
+  drawSubBox("DIRECTION");
+  plotVibDirection(WHITE);
+}
+
+static void drawSubExtra(){
+  drawSubBox("EXTRA CTR");
+  plotExtra(WHITE);
+}
+
+static void drawSubVibrato(){
+  drawSubBox("LEVEL");
+  plotVibrato(WHITE);
+}
+
+static void drawSubVibSens(){
+  drawSubBox("LEVEL");
+  plotVibSens(WHITE);
+}
+
+static void drawSubVibRetn(){
+  drawSubBox("LEVEL");
+  plotVibRetn(WHITE);
+}
+
+static void drawSubDeglitch(){
+  drawSubBox("DEGLITCH");
+  plotDeglitch(WHITE);
+}
+
+static void drawSubPinkyKey(){
+  drawSubBox("PINKY KEY");
+  plotPinkyKey(WHITE);
+}
+
+
 
 static void drawSetupBrMenuScreen(){
   drawMenu("SETUP BREATH", -1, 6, "BREATH CC", "BREATH AT", "VELOCITY", "CURVE", "VEL DELAY", "VEL BIAS");
@@ -877,26 +851,26 @@ static void clearFPS(int trills) {
   FPD = 3;
 }
 
-static void selectMainMenu(){
+static bool selectMainMenu(){
   cursorBlinkTime = millis();
   switch (mainMenuCursor){
     case 1:
       subTranspose = 1;
       drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
       drawSubTranspose();
+      return true;
       break;
     case 2:
       subOctave = 1;
       drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
       drawSubOctave();
+      return true;
       break;
     case 3:
       subMIDI = 1;
       drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
       drawSubMIDI();
+      return true;
       break;
     case 4:
       state = BREATH_ADJ_IDL;
@@ -912,6 +886,7 @@ static void selectMainMenu(){
       stateFirstRun = 1;
       break;
   }
+  return false;
 }
 
 static void selectRotatorMenu(){
@@ -975,12 +950,13 @@ static void selectSetupBrMenu(){
       drawSubVelBias();
       break;
   }
+  display.display();
 }
 
 static void selectSetupCtMenu(){
   drawMenuCursor(setupCtMenuCursor, WHITE);
   cursorBlinkTime = millis();
-
+  bool redraw = true;
   switch (setupCtMenuCursor){
     case 1:
       subPort = 1;
@@ -999,6 +975,7 @@ static void selectSetupCtMenu(){
       //drawSubVibrato();
       state = VIBRATO_MENU;
       stateFirstRun = 1;
+      redraw = false;
       break;
     case 5:
       subDeglitch = 1;
@@ -1008,6 +985,8 @@ static void selectSetupCtMenu(){
       subPinky = 1;
       drawSubPinkyKey();
   }
+  if(redraw)
+    display.display();
 }
 
 static void selectVibratoMenu(){
@@ -1065,30 +1044,31 @@ bool drawAdjustBar(uint16_t buttons, int row, uint16_t *valPtr, uint16_t minVal,
   return updated;
 }
 
-void updateAdjustCursor(uint32_t timeNow){
-    if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = timeNow;
-    }
+static bool updateAdjustCursor(uint32_t timeNow){
+  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
+    drawAdjCursor(cursorNow);
+    cursorBlinkTime = timeNow;
+    return true;
+  }
+  return false;
 }
 
-static void updateAdjustLineCursor(uint32_t timeNow, uint16_t hPos, uint16_t vPos ) {
-    if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(hPos, vPos,hPos, vPos+6, cursorNow);;
-      display.display();
-      cursorBlinkTime = timeNow;
-    }
+static bool updateAdjustLineCursor(uint32_t timeNow, uint16_t hPos, uint16_t vPos ) {
+  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
+    display.drawLine(hPos, vPos,hPos, vPos+6, cursorNow);;
+    cursorBlinkTime = timeNow;
+    return true;
+  }
+  return false;
 }
 
 void menu() {
   unsigned long timeNow = millis();
+  bool redraw = false;
   // read the state of the switches
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
-
-  // mainMenu.update(deumButtons);
 
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
@@ -1108,7 +1088,6 @@ void menu() {
     if (deumButtons != deumButtonState) {
       deumButtonState = deumButtons;
       menuTime = timeNow;
-      Serial.println(deumButtonState);
       buttonPressedAndNotUsed = 1;
       buttonPressedTime = timeNow;
     }
@@ -1148,7 +1127,9 @@ void menu() {
     subVibDirection = 0;
   }
 
-
+  if (stateFirstRun) {
+    redraw = true;
+  }
 
   if        (state == DISPLAYOFF_IDL){
     if (stateFirstRun) {
@@ -1321,7 +1302,7 @@ void menu() {
             display.println("DON'T");
             display.setCursor(35,30);
             display.println("PANIC");
-            display.display();
+            redraw = true;
             patchViewTime = timeNow;
             break;
           case 15:
@@ -1338,7 +1319,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotTranspose(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -1350,7 +1331,7 @@ void menu() {
               transpose--;
               plotTranspose(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1358,7 +1339,7 @@ void menu() {
             // enter
             plotTranspose(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subTranspose = 0;
             writeSetting(TRANSP_ADDR,transpose);
             break;
@@ -1369,7 +1350,7 @@ void menu() {
               transpose++;
               plotTranspose(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1377,7 +1358,7 @@ void menu() {
             // menu
             plotTranspose(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subTranspose = 0;
             writeSetting(TRANSP_ADDR,transpose);
             break;
@@ -1495,7 +1476,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(mainMenuCursor, cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -1509,12 +1490,12 @@ void menu() {
               drawMenuCursor(mainMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_ENTER:
             // enter
-            selectMainMenu();
+            redraw |= selectMainMenu();
             break;
           case BTN_UP:
             // up
@@ -1524,7 +1505,7 @@ void menu() {
               drawMenuCursor(mainMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_MENU:
@@ -1569,7 +1550,7 @@ void menu() {
           cursorNow = WHITE;
         }
         plotRotator(cursorNow,parallel);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -1581,7 +1562,7 @@ void menu() {
               parallel--;
               plotRotator(WHITE,parallel);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1589,7 +1570,7 @@ void menu() {
             // enter
             plotRotator(WHITE,parallel);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subParallel = 0;
             writeSetting(PARAL_ADDR,(parallel + 24));
             break;
@@ -1600,7 +1581,7 @@ void menu() {
               parallel++;
               plotRotator(WHITE,parallel);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1608,7 +1589,7 @@ void menu() {
             // menu
             plotRotator(WHITE,parallel);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subParallel = 0;
             writeSetting(PARAL_ADDR,(parallel + 24));
             break;
@@ -1622,7 +1603,7 @@ void menu() {
           cursorNow = WHITE;
         }
         plotRotator(cursorNow,rotations[subRotator-1]);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -1634,7 +1615,7 @@ void menu() {
               rotations[subRotator-1]--;
               plotRotator(WHITE,rotations[subRotator-1]);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1642,7 +1623,7 @@ void menu() {
             // enter
             plotRotator(WHITE,rotations[subRotator-1]);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
             subRotator = 0;
             break;
@@ -1653,7 +1634,7 @@ void menu() {
               rotations[subRotator-1]++;
               plotRotator(WHITE,rotations[subRotator-1]);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -1661,7 +1642,7 @@ void menu() {
             // menu
             plotRotator(WHITE,rotations[subRotator-1]);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
             subRotator = 0;
             break;
@@ -1671,7 +1652,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPriority(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -1680,16 +1661,10 @@ void menu() {
           case BTN_DOWN:
             plotPriority(BLACK);
             priority = !priority;
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subPriority = 0;
             writeSetting(PRIO_ADDR,priority);
             break;
@@ -1697,20 +1672,17 @@ void menu() {
             // up
             plotPriority(BLACK);
             priority = !priority;
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subPriority = 0;
             writeSetting(PRIO_ADDR,priority);
             break;
         }
+        plotPriority(WHITE);
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
@@ -1730,12 +1702,13 @@ void menu() {
               drawMenuCursor(rotatorMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_ENTER:
             // enter
             selectRotatorMenu();
+            redraw = true;
             break;
           case BTN_UP:
             // up
@@ -1745,7 +1718,7 @@ void menu() {
               drawMenuCursor(rotatorMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_MENU:
@@ -1771,7 +1744,6 @@ void menu() {
               state = PATCH_VIEW;
               stateFirstRun = 1;
               clearFPS(trills);
-
             }
             break;
         }
@@ -1784,7 +1756,7 @@ void menu() {
       forcePix = 1;
       stateFirstRun = 0;
     }
-    updateAdjustCursor(timeNow);
+    redraw |=updateAdjustCursor(timeNow);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -1816,42 +1788,36 @@ void menu() {
       }
     }
   } else if (state == BREATH_ADJ_THR){
-    updateAdjustLineCursor(timeNow, pos1, 20);
+    redraw |= updateAdjustLineCursor(timeNow, pos1, 20);
     if (buttonPressedAndNotUsed){
-      drawAdjustBar(deumButtonState, 20, &breathThrVal, breathLoLimit, breathHiLimit, &pos1);
+      redraw |= drawAdjustBar(deumButtonState, 20, &breathThrVal, breathLoLimit, breathHiLimit, &pos1);
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
         case BTN_ENTER:
           state = BREATH_ADJ_MAX;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
         case BTN_MENU:
           state = BREATH_ADJ_IDL;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
   } else if (state == BREATH_ADJ_MAX){
-    updateAdjustLineCursor(timeNow, pos2, 50);
+    redraw |= updateAdjustLineCursor(timeNow, pos2, 50);
     if (buttonPressedAndNotUsed){
-      drawAdjustBar(deumButtonState, 50, &breathMaxVal, breathLoLimit, breathHiLimit, &pos2);
+      redraw |= drawAdjustBar(deumButtonState, 50, &breathMaxVal, breathLoLimit, breathHiLimit, &pos2);
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
         case BTN_ENTER:
-          // enter
-          state = BREATH_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,56,WHITE);
-          display.display();
-          break;
         case BTN_MENU:
-          // menu
           state = BREATH_ADJ_IDL;
           display.drawLine(pos2,50,pos2,56,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
@@ -1861,7 +1827,7 @@ void menu() {
       forcePix = 1;
       stateFirstRun = 0;
     }
-    updateAdjustCursor(timeNow);
+    redraw |= updateAdjustCursor(timeNow);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -1893,10 +1859,10 @@ void menu() {
       }
     }
   } else if (state == PORTAM_ADJ_THR){
-    updateAdjustLineCursor(timeNow, pos1, 20);
+    redraw |= updateAdjustLineCursor(timeNow, pos1, 20);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
-      drawAdjustBar(deumButtonState, 20, &portamThrVal, portamLoLimit, portamHiLimit, &pos1);
+      redraw |= drawAdjustBar(deumButtonState, 20, &portamThrVal, portamLoLimit, portamHiLimit, &pos1);
       cursorBlinkTime = timeNow;
 
       switch (deumButtonState){
@@ -1904,23 +1870,23 @@ void menu() {
           // enter
           state = PORTAM_ADJ_MAX;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
         case BTN_MENU:
           // menu
           state = PORTAM_ADJ_IDL;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
   } else if (state == PORTAM_ADJ_MAX){
-    updateAdjustLineCursor(timeNow, pos2, 50);
+    redraw |= updateAdjustLineCursor(timeNow, pos2, 50);
     if (buttonPressedAndNotUsed){
       // TODO: Ask Johan what the minOffset is for...
       // if ((portamMaxVal - portamStep) > (portamThrVal + minOffset)){
 
-      drawAdjustBar(deumButtonState, 50, &portamMaxVal, portamLoLimit, portamHiLimit, &pos2);
+      redraw |= drawAdjustBar(deumButtonState, 50, &portamMaxVal, portamLoLimit, portamHiLimit, &pos2);
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -1928,7 +1894,7 @@ void menu() {
         case BTN_MENU:
           state = PORTAM_ADJ_IDL;
           display.drawLine(pos2,50,pos2,56,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
@@ -1939,7 +1905,7 @@ void menu() {
       forcePix = 1;
       stateFirstRun = 0;
     }
-    updateAdjustCursor(timeNow);
+    redraw |= updateAdjustCursor(timeNow);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -1971,30 +1937,30 @@ void menu() {
       }
     }
   } else if (state == PITCHB_ADJ_THR){
-    updateAdjustLineCursor(timeNow, pos1, 20);
+    redraw |= updateAdjustLineCursor(timeNow, pos1, 20);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
       cursorBlinkTime = timeNow;
-      drawAdjustBar(deumButtonState, 20, &pitchbThrVal, pitchbLoLimit, pitchbHiLimit, &pos1);
+      redraw |= drawAdjustBar(deumButtonState, 20, &pitchbThrVal, pitchbLoLimit, pitchbHiLimit, &pos1);
       switch (deumButtonState){
         case BTN_ENTER:
           // enter
           state = PITCHB_ADJ_MAX;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
         case BTN_MENU:
           // menu
           state = PITCHB_ADJ_IDL;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
   } else if (state == PITCHB_ADJ_MAX){
-    updateAdjustLineCursor(timeNow, pos2, 50);
+    redraw |= updateAdjustLineCursor(timeNow, pos2, 50);
     if (buttonPressedAndNotUsed){
-      drawAdjustBar(deumButtonState, 50, &portamMaxVal, portamLoLimit, portamHiLimit, &pos2);
+      redraw |= drawAdjustBar(deumButtonState, 50, &portamMaxVal, portamLoLimit, portamHiLimit, &pos2);
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -2002,7 +1968,7 @@ void menu() {
         case BTN_MENU:
           state = PITCHB_ADJ_IDL;
           display.drawLine(pos2,50,pos2,56,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
@@ -2014,7 +1980,7 @@ void menu() {
       stateFirstRun = 0;
     }
 
-    updateAdjustCursor(timeNow);
+    redraw |= updateAdjustCursor(timeNow);
 
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
@@ -2047,30 +2013,29 @@ void menu() {
       }
     }
   } else if (state == EXTRAC_ADJ_THR){
-    updateAdjustLineCursor(timeNow, pos1, 20);
+    redraw |= updateAdjustLineCursor(timeNow, pos1, 20);
 
     if (buttonPressedAndNotUsed){
-      drawAdjustBar(deumButtonState, 20, &extracThrVal, extracLoLimit, extracHiLimit, &pos1);
-
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
+      redraw |= drawAdjustBar(deumButtonState, 20, &extracThrVal, extracLoLimit, extracHiLimit, &pos1);
       switch (deumButtonState){
         case BTN_ENTER:
           state = EXTRAC_ADJ_MAX;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
         case BTN_MENU:
           state = EXTRAC_ADJ_IDL;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
   } else if (state == EXTRAC_ADJ_MAX){
-    updateAdjustLineCursor(timeNow, pos2, 50);
+    redraw |= updateAdjustLineCursor(timeNow, pos2, 50);
     if (buttonPressedAndNotUsed){
-      drawAdjustBar(deumButtonState, 50, &extracMaxVal, extracLoLimit, extracHiLimit, &pos2);
+      redraw |= drawAdjustBar(deumButtonState, 50, &extracMaxVal, extracLoLimit, extracHiLimit, &pos2);
 
       cursorBlinkTime = timeNow;
       buttonPressedAndNotUsed = 0;
@@ -2079,7 +2044,7 @@ void menu() {
         case BTN_MENU:
           state = EXTRAC_ADJ_IDL;
           display.drawLine(pos2,50,pos2,56,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
@@ -2090,7 +2055,7 @@ void menu() {
       forcePix = 1;
       stateFirstRun = 0;
     }
-    updateAdjustCursor(timeNow);
+    redraw |= updateAdjustCursor(timeNow);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
       switch (deumButtonState){
@@ -2119,20 +2084,22 @@ void menu() {
       }
     }
   } else if (state == CTOUCH_ADJ_THR){
-    updateAdjustLineCursor(timeNow, pos1, 20);
+    redraw |= updateAdjustLineCursor(timeNow, pos1, 20);
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
 
       bool updated = drawAdjustBar(deumButtonState, 20, &ctouchThrVal, ctouchLoLimit, ctouchHiLimit, &pos1);
-      if(updated)
+      if(updated) {
         touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+        redraw = true;
+      }
 
       switch (deumButtonState){
         case BTN_ENTER:
         case BTN_MENU:
           state = CTOUCH_ADJ_IDL;
           display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
+          redraw = true;
           break;
       }
     }
@@ -2147,34 +2114,23 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotBreathCC(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
+            plotBreathCC(BLACK);
             if (breathCC > 0){
-              plotBreathCC(BLACK);
               breathCC--;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = timeNow;
             } else {
-              plotBreathCC(BLACK);
               breathCC = 10;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = timeNow;
             }
+            cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
-            plotBreathCC(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subBreathCC = 0;
             if (readSetting(BREATH_CC_ADDR) != breathCC) {
               writeSetting(BREATH_CC_ADDR,breathCC);
@@ -2183,27 +2139,16 @@ void menu() {
             break;
           case BTN_UP:
             // up
+            plotBreathCC(BLACK);
             if (breathCC < 10){
-              plotBreathCC(BLACK);
               breathCC++;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = timeNow;
             } else {
-              plotBreathCC(BLACK);
               breathCC = 0;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = timeNow;
             }
+            cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
-            plotBreathCC(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subBreathCC = 0;
             if (readSetting(BREATH_CC_ADDR) != breathCC) {
               writeSetting(BREATH_CC_ADDR,breathCC);
@@ -2211,12 +2156,15 @@ void menu() {
             }
             break;
         }
+        plotBreathCC(WHITE);
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else if (subBreathAT) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotBreathAT(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2225,16 +2173,10 @@ void menu() {
           case BTN_DOWN:
             plotBreathAT(BLACK);
             breathAT=!breathAT;
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subBreathAT = 0;
             if (readSetting(BREATH_AT_ADDR) != breathAT){
               writeSetting(BREATH_AT_ADDR,breathAT);
@@ -2245,16 +2187,10 @@ void menu() {
             // up
             plotBreathAT(BLACK);
             breathAT=!breathAT;
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subBreathAT = 0;
             if (readSetting(BREATH_AT_ADDR) != breathAT){
               writeSetting(BREATH_AT_ADDR,breathAT);
@@ -2262,12 +2198,15 @@ void menu() {
             }
             break;
         }
+        plotBreathAT(WHITE);
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else if (subVelocity) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelocity(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2278,47 +2217,34 @@ void menu() {
             if (velocity > 0){
               velocity--;
             } else velocity = 127;
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
-            // enter
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelocity = 0;
             writeSetting(VELOCITY_ADDR,velocity);
             break;
           case BTN_UP:
-            // up
             plotVelocity(BLACK);
             if (velocity < 127){
               velocity++;
             } else velocity = 0;
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
-            // menu
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelocity = 0;
             writeSetting(VELOCITY_ADDR,velocity);
             break;
         }
+        plotVelocity(WHITE);
+        cursorNow = BLACK;
+        redraw = true;
       }
-
 
     } else if (subCurve) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotCurve(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2330,15 +2256,11 @@ void menu() {
               curve--;
             } else curve = 12;
             plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subCurve = 0;
             writeSetting(BREATHCURVE_ADDR,curve);
             break;
@@ -2349,26 +2271,24 @@ void menu() {
               curve++;
             } else curve = 0;
             plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subCurve = 0;
             writeSetting(BREATHCURVE_ADDR,curve);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
 
     } else if (subVelSmpDl) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelSmpDl(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2380,15 +2300,11 @@ void menu() {
               velSmpDl-=1;
             } else velSmpDl = 30;
             plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelSmpDl = 0;
             writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
@@ -2399,26 +2315,24 @@ void menu() {
               velSmpDl+=1;
             } else velSmpDl = 0;
             plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelSmpDl = 0;
             writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
 
      } else if (subVelBias) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVelBias(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2430,15 +2344,11 @@ void menu() {
               velBias--;
             } else velBias = 9;
             plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelBias = 0;
             writeSetting(VEL_BIAS_ADDR,velBias);
             break;
@@ -2449,26 +2359,24 @@ void menu() {
               velBias++;
             } else velBias = 0;
             plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVelBias = 0;
             writeSetting(VEL_BIAS_ADDR,velBias);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
 
     } else {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(setupBrMenuCursor, cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2481,7 +2389,7 @@ void menu() {
               drawMenuCursor(setupBrMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_ENTER:
@@ -2496,7 +2404,7 @@ void menu() {
               drawMenuCursor(setupBrMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_MENU:
@@ -2518,7 +2426,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotPort(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2530,15 +2438,11 @@ void menu() {
               portamento--;
             } else portamento = 2;
             plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subPort = 0;
             writeSetting(PORTAM_ADDR,portamento);
             break;
@@ -2549,19 +2453,17 @@ void menu() {
               portamento++;
             } else portamento = 0;
             plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subPort = 0;
             writeSetting(PORTAM_ADDR,portamento);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else if (subPB) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
@@ -2828,7 +2730,7 @@ void menu() {
               vibrato--;
               plotVibrato(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -2836,7 +2738,7 @@ void menu() {
             // enter
             plotVibrato(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibrato = 0;
             writeSetting(VIBRATO_ADDR,vibrato);
             break;
@@ -2847,7 +2749,7 @@ void menu() {
               vibrato++;
               plotVibrato(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -2855,7 +2757,7 @@ void menu() {
             // menu
             plotVibrato(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibrato = 0;
             writeSetting(VIBRATO_ADDR,vibrato);
             break;
@@ -2865,7 +2767,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibSens(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2877,7 +2779,7 @@ void menu() {
               vibSens--;
               plotVibSens(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -2885,7 +2787,7 @@ void menu() {
             // enter
             plotVibSens(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibSens = 0;
             writeSetting(VIB_SENS_ADDR,vibSens);
             break;
@@ -2896,7 +2798,7 @@ void menu() {
               vibSens++;
               plotVibSens(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -2904,7 +2806,7 @@ void menu() {
             // menu
             plotVibSens(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibSens = 0;
             writeSetting(VIB_SENS_ADDR,vibSens);
             break;
@@ -2914,7 +2816,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibRetn(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2926,15 +2828,11 @@ void menu() {
               vibRetn--;
             }
             plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVibRetn = 0;
             writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
@@ -2945,25 +2843,23 @@ void menu() {
               vibRetn++;
             }
             plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVibRetn = 0;
             writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else if (subVibSquelch) {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibSquelch(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -2975,7 +2871,7 @@ void menu() {
               vibSquelch--;
               plotVibSquelch(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -2983,7 +2879,7 @@ void menu() {
             // enter
             plotVibSquelch(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibSquelch = 0;
             writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
@@ -2994,7 +2890,7 @@ void menu() {
               vibSquelch++;
               plotVibSquelch(WHITE);
               cursorNow = BLACK;
-              display.display();
+              redraw = true;
               cursorBlinkTime = timeNow;
             }
             break;
@@ -3002,7 +2898,7 @@ void menu() {
             // menu
             plotVibSquelch(WHITE);
             cursorNow = BLACK;
-            display.display();
+            redraw = true;
             subVibSquelch = 0;
             writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
@@ -3012,7 +2908,7 @@ void menu() {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         plotVibDirection(cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -3022,15 +2918,11 @@ void menu() {
             plotVibDirection(BLACK);
             vibDirection = !vibDirection;
             plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER:
             // enter
             plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVibDirection = 0;
             writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
@@ -3039,25 +2931,23 @@ void menu() {
             plotVibDirection(BLACK);
             vibDirection = !vibDirection;
             plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
             cursorBlinkTime = timeNow;
             break;
           case BTN_MENU:
             // menu
             plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
             subVibDirection = 0;
             writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
         }
+        cursorNow = BLACK;
+        redraw = true;
       }
     } else {
       if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
         drawMenuCursor(vibratoMenuCursor, cursorNow);
-        display.display();
+        redraw = true;
         cursorBlinkTime = timeNow;
       }
       if (buttonPressedAndNotUsed){
@@ -3070,12 +2960,13 @@ void menu() {
               drawMenuCursor(vibratoMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_ENTER:
             // enter
             selectVibratoMenu();
+            redraw = true;
             break;
           case BTN_UP:
             // up
@@ -3085,7 +2976,7 @@ void menu() {
               drawMenuCursor(vibratoMenuCursor, WHITE);
               cursorNow = BLACK;
               clearSub();
-              display.display();
+              redraw = true;
             }
             break;
           case BTN_MENU:
@@ -3096,5 +2987,9 @@ void menu() {
         }
       }
     }
+  }
+
+  if(redraw) {
+    display.display();
   }
 }
