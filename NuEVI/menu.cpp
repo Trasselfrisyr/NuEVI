@@ -372,12 +372,16 @@ static void clearSub(){
   display.fillRect(63,11,64,52,BLACK);
 }
 
-static void drawSubBox()
+static void drawSubBox(const char* label)
 {
   display.fillRect(63,11,64,52,BLACK);
   display.drawRect(63,11,64,52,WHITE);
   display.setTextColor(WHITE);
   display.setTextSize(1);
+  int len = strlen(label);
+
+  display.setCursor(95-len*3,15);
+  display.println(label);
 }
 
 static void plotTranspose(int color){
@@ -396,9 +400,7 @@ static void plotTranspose(int color){
 }
 
 static void drawSubTranspose(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("TRANSPOSE");
+  drawSubBox("TRANSPOSE");
   plotTranspose(WHITE);
   display.display();
 }
@@ -420,9 +422,7 @@ static void plotRotator(int color,int value){
 }
 
 static void drawSubRotator(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("SEMITONES");
+  drawSubBox("SEMITONES");
   //plotRotator(WHITE,value);
   forceRedraw = 1;
   display.display();
@@ -440,9 +440,7 @@ static void plotPriority(int color){
 }
 
 static void drawSubPriority(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("MONO PRIO");
+  drawSubBox("MONO PRIO");
   plotPriority(WHITE);
   display.display();
 }
@@ -464,9 +462,7 @@ static void plotOctave(int color){
 }
 
 static void drawSubOctave(){
-  drawSubBox();
-  display.setCursor(77,15);
-  display.println("OCTAVE");
+  drawSubBox("OCTAVE");
   plotOctave(WHITE);
   display.display();
 }
@@ -487,9 +483,7 @@ static void plotMIDI(int color){
 }
 
 static void drawSubMIDI(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("MIDI CHNL");
+  drawSubBox("MIDI CHNL");
   plotMIDI(WHITE);
   display.display();
 }
@@ -512,9 +506,7 @@ static void plotBreathCC(int color){
 }
 
 static void drawSubBreathCC(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("BREATH CC");
+  drawSubBox("BREATH CC");
   plotBreathCC(WHITE);
   display.display();
 }
@@ -528,9 +520,7 @@ static void plotBreathAT(int color){
 }
 
 static void drawSubBreathAT(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("BREATH AT");
+  drawSubBox("BREATH AT");
   plotBreathAT(WHITE);
   display.display();
 }
@@ -548,9 +538,7 @@ static void plotVelocity(int color){
 }
 
 static void drawSubVelocity(){
-  drawSubBox();
-  display.setCursor(71,15);
-  display.println("VELOCITY");
+  drawSubBox("VELOCITY");
   plotVelocity(WHITE);
   display.display();
 }
@@ -565,9 +553,7 @@ static void plotCurve(int color){
 }
 
 static void drawSubCurve(){
-  drawSubBox();
-  display.setCursor(80,15);
-  display.println("CURVE");
+  drawSubBox("CURVE");
   plotCurve(WHITE);
   display.display();
 }
@@ -583,9 +569,7 @@ static void plotPort(int color){
 }
 
 static void drawSubPort(){
-  drawSubBox();
-  display.setCursor(71,15);
-  display.println("PORT/GLD");
+  drawSubBox("PORT/GLD");
   plotPort(WHITE);
   display.display();
 }
@@ -605,9 +589,7 @@ static void plotPB(int color){
 }
 
 static void drawSubPB(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("PITCHBEND");
+  drawSubBox("PITCHBEND");
   plotPB(WHITE);
   display.display();
 }
@@ -619,9 +601,7 @@ static void plotExtra(int color){
 }
 
 static void drawSubExtra(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("EXTRA CTR");
+  drawSubBox("EXTRA CTR");
   plotExtra(WHITE);
   display.display();
 }
@@ -640,9 +620,7 @@ static void plotVibrato(int color){
 }
 
 static void drawSubVibrato(){
-  drawSubBox();
-  display.setCursor(81,15);
-  display.println("LEVEL");
+  drawSubBox("LEVEL");
   plotVibrato(WHITE);
   display.display();
 }
@@ -655,9 +633,7 @@ static void plotVibSens(int color){
 }
 
 static void drawSubVibSens(){
-  drawSubBox();
-  display.setCursor(81,15);
-  display.println("LEVEL");
+  drawSubBox("LEVEL");
   plotVibSens(WHITE);
   display.display();
 }
@@ -670,9 +646,7 @@ static void plotVibRetn(int color){
 }
 
 static void drawSubVibRetn(){
-  drawSubBox();
-  display.setCursor(81,15);
-  display.println("LEVEL");
+  drawSubBox("LEVEL");
   plotVibRetn(WHITE);
   display.display();
 }
@@ -686,9 +660,7 @@ static void plotVibSquelch(int color){
 }
 
 static void drawSubVibSquelch(){
-  drawSubBox();
-  display.setCursor(81,15);
-  display.println("LEVEL");
+  drawSubBox("LEVEL");
   plotVibSquelch(WHITE);
   display.display();
 }
@@ -705,9 +677,7 @@ static void plotVibDirection(int color){
 }
 
 static void drawSubVibDirection(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("DIRECTION");
+  drawSubBox("DIRECTION");
   plotVibDirection(WHITE);
   display.display();
 }
@@ -727,9 +697,7 @@ static void plotDeglitch(int color){
 }
 
 static void drawSubDeglitch(){
-  drawSubBox();
-  display.setCursor(71,15);
-  display.println("DEGLITCH");
+  drawSubBox("DEGLITCH");
   plotDeglitch(WHITE);
   display.display();
 }
@@ -750,9 +718,7 @@ static void plotPinkyKey(int color){
 }
 
 static void drawSubPinkyKey(){
-  drawSubBox();
-  display.setCursor(68,15);
-  display.println("PINKY KEY");
+  drawSubBox("PINKY KEY");
   plotPinkyKey(WHITE);
   display.display();
 }
@@ -772,9 +738,7 @@ static void plotVelSmpDl(int color){
 }
 
 static void drawSubVelSmpDl(){
-  drawSubBox();
-  display.setCursor(69,15);
-  display.println("VEL DELAY");
+  drawSubBox("VEL DELAY");
   plotVelSmpDl(WHITE);
   display.display();
 }
@@ -793,9 +757,7 @@ static void plotVelBias(int color){
 }
 
 static void drawSubVelBias(){
-  drawSubBox();
-  display.setCursor(72,15);
-  display.println("VEL BIAS");
+  drawSubBox("VEL BIAS");
   plotVelBias(WHITE);
   display.display();
 }
@@ -1284,7 +1246,7 @@ void menu() {
       stateFirstRun = 1;
       doPatchUpdate = 1;
       FPD = 0;
-      if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
+      writeSetting(PATCH_ADDR,patch);
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
@@ -1297,7 +1259,7 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
+            writeSetting(PATCH_ADDR,patch);
           } else if (!trills){
             if (patch > 1){
               patch--;
@@ -1327,7 +1289,7 @@ void menu() {
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
+            writeSetting(PATCH_ADDR,patch);
           } else if (!trills){
             if (patch < 128){
               patch++;
@@ -1346,7 +1308,7 @@ void menu() {
             stateFirstRun = 1;
             doPatchUpdate = 1;
           }
-          if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
+          writeSetting(PATCH_ADDR,patch);
           FPD = 0;
           break;
         case 10:
@@ -1398,7 +1360,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subTranspose = 0;
-            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
+            writeSetting(TRANSP_ADDR,transpose);
             break;
           case BTN_UP:
             // up
@@ -1417,7 +1379,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subTranspose = 0;
-            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
+            writeSetting(TRANSP_ADDR,transpose);
             break;
         }
       }
@@ -1447,7 +1409,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subOctave = 0;
-            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
+            writeSetting(OCTAVE_ADDR,octave);
             break;
           case BTN_UP:
             // up
@@ -1466,7 +1428,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subOctave = 0;
-            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
+            writeSetting(OCTAVE_ADDR,octave);
             break;
         }
       }
@@ -1505,7 +1467,7 @@ void menu() {
               cursorNow = BLACK;
               display.display();
               subMIDI = 0;
-              if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
+              writeSetting(MIDI_ADDR,MIDIchannel);
             }
             break;
           case BTN_UP:
@@ -1525,7 +1487,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subMIDI = 0;
-            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
+            writeSetting(MIDI_ADDR,MIDIchannel);
             break;
         }
       }
@@ -1629,7 +1591,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subParallel = 0;
-            if (readSetting(PARAL_ADDR) != (parallel + 24)) writeSetting(PARAL_ADDR,(parallel + 24));
+            writeSetting(PARAL_ADDR,(parallel + 24));
             break;
           case BTN_UP:
             // up
@@ -1648,7 +1610,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subParallel = 0;
-            if (readSetting(PARAL_ADDR) != (parallel + 24)) writeSetting(PARAL_ADDR,(parallel + 24));
+            writeSetting(PARAL_ADDR,(parallel + 24));
             break;
         }
       }
@@ -1681,7 +1643,7 @@ void menu() {
             plotRotator(WHITE,rotations[subRotator-1]);
             cursorNow = BLACK;
             display.display();
-            if (readSetting(ROTN1_ADDR+2*(subRotator-1)) != rotations[subRotator-1]) writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
+            writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
             subRotator = 0;
             break;
           case BTN_UP:
@@ -1700,7 +1662,7 @@ void menu() {
             plotRotator(WHITE,rotations[subRotator-1]);
             cursorNow = BLACK;
             display.display();
-            if (readSetting(ROTN1_ADDR+2*(subRotator-1)) != (rotations[subRotator-1]+24)) writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
+            writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
             subRotator = 0;
             break;
         }
@@ -1729,7 +1691,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPriority = 0;
-            if (readSetting(PRIO_ADDR) != priority) writeSetting(PRIO_ADDR,priority);
+            writeSetting(PRIO_ADDR,priority);
             break;
           case BTN_UP:
             // up
@@ -1746,7 +1708,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPriority = 0;
-            if (readSetting(PRIO_ADDR) != priority) writeSetting(PRIO_ADDR,priority);
+            writeSetting(PRIO_ADDR,priority);
             break;
         }
       }
@@ -1907,8 +1869,8 @@ void menu() {
           // down
           state = PITCHB_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
+          writeSetting(PORTAM_THR_ADDR,portamThrVal);
+          writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
         case BTN_ENTER:
           // enter
@@ -1918,15 +1880,15 @@ void menu() {
           // up
           state = BREATH_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
+          writeSetting(PORTAM_THR_ADDR,portamThrVal);
+          writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
         case BTN_MENU:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
+          writeSetting(PORTAM_THR_ADDR,portamThrVal);
+          writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
           break;
       }
     }
@@ -1985,8 +1947,8 @@ void menu() {
           // down
           state = EXTRAC_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
         case BTN_ENTER:
           // enter
@@ -1996,15 +1958,15 @@ void menu() {
           // up
           state = PORTAM_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
         case BTN_MENU:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
+          writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
+          writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
           break;
       }
     }
@@ -2061,8 +2023,8 @@ void menu() {
           // down
           state = CTOUCH_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
+          writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
         case BTN_ENTER:
           // enter
@@ -2072,15 +2034,15 @@ void menu() {
           // up
           state = PITCHB_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
+          writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
         case BTN_MENU:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
+          writeSetting(EXTRAC_THR_ADDR,extracThrVal);
+          writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
           break;
       }
     }
@@ -2136,7 +2098,7 @@ void menu() {
           // down
           state = BREATH_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
           break;
         case BTN_ENTER:
           // enter
@@ -2146,13 +2108,13 @@ void menu() {
           // up
           state = EXTRAC_ADJ_IDL;
           stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
           break;
         case BTN_MENU:
           // menu
           state = MAIN_MENU;
           stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
+          writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
           break;
       }
     }
@@ -2327,7 +2289,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelocity = 0;
-            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
+            writeSetting(VELOCITY_ADDR,velocity);
             break;
           case BTN_UP:
             // up
@@ -2346,7 +2308,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelocity = 0;
-            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
+            writeSetting(VELOCITY_ADDR,velocity);
             break;
         }
       }
@@ -2378,7 +2340,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subCurve = 0;
-            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
+            writeSetting(BREATHCURVE_ADDR,curve);
             break;
           case BTN_UP:
             // up
@@ -2397,7 +2359,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subCurve = 0;
-            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
+            writeSetting(BREATHCURVE_ADDR,curve);
             break;
         }
       }
@@ -2428,7 +2390,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelSmpDl = 0;
-            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
+            writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
           case BTN_UP:
             // up
@@ -2447,7 +2409,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelSmpDl = 0;
-            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
+            writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
         }
       }
@@ -2478,7 +2440,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelBias = 0;
-            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
+            writeSetting(VEL_BIAS_ADDR,velBias);
             break;
           case BTN_UP:
             // up
@@ -2497,7 +2459,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVelBias = 0;
-            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
+            writeSetting(VEL_BIAS_ADDR,velBias);
             break;
         }
       }
@@ -2578,7 +2540,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPort = 0;
-            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
+            writeSetting(PORTAM_ADDR,portamento);
             break;
           case BTN_UP:
             // up
@@ -2597,7 +2559,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPort = 0;
-            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
+            writeSetting(PORTAM_ADDR,portamento);
             break;
         }
       }
@@ -2627,7 +2589,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPB = 0;
-            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
+            writeSetting(PB_ADDR,PBdepth);
             break;
           case BTN_UP:
             // up
@@ -2646,7 +2608,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPB = 0;
-            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
+            writeSetting(PB_ADDR,PBdepth);
             break;
         }
       }
@@ -2676,7 +2638,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subExtra = 0;
-            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
+            writeSetting(EXTRA_ADDR,extraCT);
             break;
           case BTN_UP:
             // up
@@ -2695,7 +2657,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subExtra = 0;
-            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
+            writeSetting(EXTRA_ADDR,extraCT);
             break;
         }
       }
@@ -2725,7 +2687,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subDeglitch = 0;
-            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
+            writeSetting(DEGLITCH_ADDR,deglitch);
             break;
           case BTN_UP:
             // up
@@ -2744,7 +2706,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subDeglitch = 0;
-            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
+            writeSetting(DEGLITCH_ADDR,deglitch);
             break;
         }
       }
@@ -2774,7 +2736,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPinky = 0;
-            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
+            writeSetting(PINKY_KEY_ADDR,pinkySetting);
             break;
           case BTN_UP:
             // up
@@ -2793,7 +2755,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subPinky = 0;
-            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
+            writeSetting(PINKY_KEY_ADDR,pinkySetting);
             break;
         }
       }
@@ -2876,7 +2838,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
+            writeSetting(VIBRATO_ADDR,vibrato);
             break;
           case BTN_UP:
             // up
@@ -2895,7 +2857,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
+            writeSetting(VIBRATO_ADDR,vibrato);
             break;
         }
       }
@@ -2925,7 +2887,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibSens = 0;
-            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
+            writeSetting(VIB_SENS_ADDR,vibSens);
             break;
           case BTN_UP:
             // up
@@ -2944,7 +2906,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibSens = 0;
-            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
+            writeSetting(VIB_SENS_ADDR,vibSens);
             break;
         }
       }
@@ -2974,7 +2936,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibRetn = 0;
-            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
+            writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
           case BTN_UP:
             // up
@@ -2993,7 +2955,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibRetn = 0;
-            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
+            writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
         }
       }
@@ -3023,7 +2985,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibSquelch = 0;
-            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
+            writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
           case BTN_UP:
             // up
@@ -3042,7 +3004,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibSquelch = 0;
-            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
+            writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
         }
       }
@@ -3070,7 +3032,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibDirection = 0;
-            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
+            writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
           case BTN_UP:
             // up
@@ -3087,7 +3049,7 @@ void menu() {
             cursorNow = BLACK;
             display.display();
             subVibDirection = 0;
-            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
+            writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
         }
       }
