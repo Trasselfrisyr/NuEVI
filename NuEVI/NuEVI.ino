@@ -87,19 +87,19 @@ int parallel = 7; // semitones
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
 
-// MAybe move these to config.h (as defines?)
-const int breathLoLimit = 0;
-const int breathHiLimit = 4095;
-const int portamLoLimit = 700;
-const int portamHiLimit = 4700;
-const int pitchbLoLimit = 500;
-const int pitchbHiLimit = 4000;
-const int extracLoLimit = 500;
-const int extracHiLimit = 4000;
-const int ctouchLoLimit = 50;
-const int ctouchHiLimit = 350;
-const int ttouchLoLimit = 50;
-const int ttouchHiLimit = 1900;
+// // MAybe move these to config.h (as defines?)
+// const uint16_t breathLoLimit = 0;
+// const uint16_t breathHiLimit = 4095;
+// const uint16_t portamLoLimit = 700;
+// const uint16_t portamHiLimit = 4700;
+// const uint16_t pitchbLoLimit = 500;
+// const uint16_t pitchbHiLimit = 4000;
+// const uint16_t extracLoLimit = 500;
+// const uint16_t extracHiLimit = 4000;
+// const uint16_t ctouchLoLimit = 50;
+// const uint16_t ctouchHiLimit = 350;
+// const uint16_t ttouchLoLimit = 50;
+// const uint16_t ttouchHiLimit = 1900;
 
 int touch_Thr = 1300;
 
@@ -1214,9 +1214,9 @@ void extraController() {
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
   if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
-    biteSensor=analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
+    biteSensor = analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
    } else { 
-    biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
   if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
     if (!portIsOn) {
