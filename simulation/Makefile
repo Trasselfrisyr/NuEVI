@@ -10,7 +10,7 @@ LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
 LDFLAGS=-macosx_version_min 10.9
 
 SYSINC = ~/Documents/Arduino/libraries/Filters ./include
-INCS = ../NuEVI ./include
+INCS = ../NuEVI ./include ./imgui ./gl3w
 
 INCDIRS = $(addprefix -isystem ,$(SYSINC))
 INCDIRS += $(addprefix -I,$(INCS))
@@ -28,7 +28,14 @@ CXXFILES=		../NuEVI/menu.cpp \
 				src/filters.cpp \
 				src/Adafruit_GFX_sim.cpp \
 				src/Adafruit_SSD1306_sim.cpp \
-				src/Adafruit_MPR121_sim.cpp
+				src/Adafruit_MPR121_sim.cpp \
+				imgui/imgui.cpp \
+				imgui/imgui_draw.cpp \
+				imgui/imgui_widgets.cpp \
+				imgui/examples/imgui_impl_sdl.cpp \
+				imgui/examples/imgui_impl_opengl3.cpp
+
+CFILES= 		gl3w/gl3w.c
 
 OBJS=$(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 

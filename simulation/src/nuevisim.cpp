@@ -7,6 +7,10 @@
 #include <cmath>
 #include "globals.h"
 #include "hardware.h"
+#include "imgui.h"
+#include "GL/gl3w.h"
+#include "examples/imgui_impl_sdl.h"
+#include "examples/imgui_impl_opengl3.h"
 
 #include <Arduino.h>
 
@@ -24,10 +28,9 @@ SimWire Wire;
 SimSerial Serial;
 
 
-static const int scale = 4;
+static const int scale = 3;
 
 static SDL_Window *window;
-static SDL_Surface *surface;
 
 void _reboot_Teensyduino_()
 {
@@ -59,6 +62,8 @@ static uint16_t analogInputs[256]; // random number of inputs..
 static uint16_t analogOutputs[256]; // random number of inputs..
 static int _analogRes = 12;
 
+static GLuint displayTexture;
+
 void digitalWrite(uint8_t pin, uint8_t val)
 {
     printf("digital write %d = %d\n", pin, val);
@@ -88,7 +93,7 @@ int analogRead(uint8_t pin)
 
 void analogReadRes(unsigned int __attribute__((unused)) bits)
 {
-    // ??
+    _analogRes = bits;
 }
 
 uint32_t analogWriteRes(uint32_t res)
@@ -112,7 +117,7 @@ bool animateAnalogs = false;
 void analogUpdate(uint32_t time) {
 
     const uint16_t touchMaxValue = 1023;
-    const uint16_t analogMax = 4095;
+    const uint16_t analogMax = (1<<_analogRes)-1;
 
     if(animateAnalogs) {
         for( int i = 0 ; i < 32; ++i) {
@@ -126,7 +131,6 @@ void analogUpdate(uint32_t time) {
             regs[r] = value & 0xffu;
             regs[r+1] = (value >> 8) & 0x03u;
         }
-
     }
 }
 
@@ -141,57 +145,118 @@ uint32_t millis()
     return SDL_GetTicks();
 }
 
-int touchRead(uint8_t reg){ return touchSensor.readRegister16(reg); }
+
+// There are 9 touch sensors pins on the teensy 3.2
+int touchValues[12];
+
+static int touchPinMapping[12] = {
+    specialKeyPin, // 0       // SK or S2
+    halfPitchBendKeyPin, // 1 // PD or S1
+    vibratoPin, // 15
+    extraPin, // 16
+    bitePin, // 17
+    pbDnPin, // 22
+    pbUpPin, // 23
+};
 
 
-int main()
+int touchRead(uint8_t pin)
 {
-    return SimRun();
+    // find mapped sensors
+    int i = 0;
+    for(; i< 9 && touchPinMapping[i] != pin; ++i)
+    if( i < 9)
+        return touchValues[i];
+    return 0;
+}
+
+static void touchWrite(uint8_t pin, uint16_t value)
+{
+    // find mapped sensors
+    int i = 0;
+    for(; (i < 9) && (touchPinMapping[i] != pin); ++i)
+    if( i < 9) touchValues[i] = value;
 }
 
 //***********************************************************
 
-static void GetDisplay(SDL_Surface* dest)
+static void doInputWindow()
 {
-    int w = display.width();
-    int h = display.height();
+    if( ImGui::Begin( "Inputs" ) ) {
+        int val = analogInputs[breathSensorPin];
+        if( ImGui::SliderInt("Breath input", &val, 0, 4095 ) && !animateAnalogs ) {
+            analogInputs[breathSensorPin] = val;
+        }
 
-    SDL_LockSurface(dest);
-    uint8_t* buffer = (uint8_t*)surface->pixels;
-    int pitch = surface->pitch;
+        val = analogInputs[vMeterPin];
+        if( ImGui::SliderInt("Voltage", &val, 0, 4095 ) && !animateAnalogs ) {
+            analogInputs[vMeterPin] = val;
+        }
 
-    if(!display.enabled_) {
-        SDL_memset( buffer, 0, (w*h)*3);
-    } else {
-        int fg = 255;
-        int bg = 0;
+        val = analogInputs[0];
+        if( ImGui::SliderInt("Unknown", &val, 0, 4095 ) && !animateAnalogs ) {
+            analogInputs[0] = val;
+        }
+
+        val = analogInputs[A7];
+        if( ImGui::SliderInt("Alt Bite", &val, 0, 4095 ) && !animateAnalogs ) {
+            analogInputs[A7] = val;
+        }
+
+    }
+    ImGui::End();
+}
+
+
+
+
+static uint8_t displayBuffer[128*128];
+
+static void GetDisplay()
+{
+    SDL_memset( displayBuffer, 0, (128*128));
+
+    if(display.enabled_) {
+        uint8_t fg = 255;
+        uint8_t bg = 0;
 
         if( display.dimmed_) fg = 127;
-        if( display.inverted_ ) { int tmp = fg; fg = bg; bg = tmp; }
+        if( display.inverted_ ) { uint8_t tmp = fg; fg = bg; bg = tmp; }
 
-        for(int y = 0 ; y < h; ++y) {
-            for(int x = 0 ; x < w; ++x) {
-                int color = display.getPixel(x,y) ? fg : bg;
-                SDL_memset( buffer + pitch*y + x*3, color, 3);
+        for(int y = 0 ; y < 64; ++y) {
+            for(int x = 0 ; x < 128; ++x) {
+                uint8_t color = display.getPixel(x,y) ? fg : bg;
+                displayBuffer[x+y*128] = color;
             }
         }
     }
-    SDL_UnlockSurface(dest);
+
+    glBindTexture( GL_TEXTURE_2D, displayTexture );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE_3_3_2, displayBuffer);
+
+    GLenum error = glGetError();
+    if(error != GL_NO_ERROR) {
+        printf("glerror %d\n", error);
+    }
+    glBindTexture( GL_TEXTURE_2D, 0);
 }
 
-void toggleAnalogAnimation() {
+static void toggleAnalogAnimation() {
     animateAnalogs = !animateAnalogs;
     printf("Analog input variations: %s\n", animateAnalogs ? "ON": "OFF");
 }
 
-static int doQuit = 0;
 
 static void SimLoop(std::function<bool()> continue_predicate, std::function<void()> loopFunc)
 {
+    int doQuit = 0;
     uint32_t time;
     while( continue_predicate() ) {
+
         SDL_Event event;
         while( SDL_PollEvent(&event) ) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+
             if( event.type == SDL_QUIT ) {
                 doQuit = 1;
                 break;
@@ -225,18 +290,36 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
 
         time = SDL_GetTicks();
 
+        analogUpdate(SDL_GetTicks());
 
         if(loopFunc) loopFunc();
 
-        analogUpdate(time);
-
         // TODO: Get buffer from SSD1306 and copy to surface...
 
-        GetDisplay(surface);
+        GetDisplay();
 
-        SDL_Surface *dstSurface = SDL_GetWindowSurface(window);
-        SDL_BlitScaled( surface, NULL, dstSurface, NULL );
-        SDL_UpdateWindowSurface(window);
+        glClearColor(0.0f, 1.0f, 0.0f, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame(window);
+        ImGui::NewFrame();
+
+        // Render UI here..
+        doInputWindow();
+
+        ImGui::Begin("NuEVI display");
+        ImVec2 size( 128*scale, 64*scale );
+        ImVec2 uv0(0,0);
+        ImVec2 uv1(1, 0.5f);
+        uint64_t tmp = displayTexture;  // Avoid warning as void* is larger than GLuint
+        ImGui::Image( (void*)tmp, size, uv0, uv1 );
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        SDL_GL_SwapWindow(window);
 
         uint32_t timePassed = SDL_GetTicks() - time;
         if( timePassed < 16 ) {
@@ -257,18 +340,29 @@ static int SimRun( )
 
 static int SimInit()
 {
+
 	int result = result = SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 	if( 0 != result ) {
 		fprintf(stderr, "Could not initialize SDL");
 		return 1;
 	}
 
-	window = SDL_CreateWindow( "TinySim"
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+
+
+	window = SDL_CreateWindow( "NuEVI Simulator"
 		, SDL_WINDOWPOS_UNDEFINED
 		, SDL_WINDOWPOS_UNDEFINED
-		, 128*scale
-		, 64*scale
-		, SDL_WINDOW_SHOWN );
+		, 1024
+		, 768
+		, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
 	if( window == NULL ) {
 		fprintf(stderr, "Could not create SDL window");
@@ -276,21 +370,20 @@ static int SimInit()
 		return 2;
 	}
 
-	SDL_SetWindowTitle( window, "Tiny Sim" );
+	SDL_GLContext context = SDL_GL_CreateContext(window);
+    gl3wInit();
+
+    ImGui::CreateContext();
+	ImGui_ImplSDL2_InitForOpenGL(window, context);
+    ImGui_ImplOpenGL3_Init("#version 150");
+
+    glGenTextures(1, &displayTexture);
+    glBindTexture( GL_TEXTURE_2D, displayTexture);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     memset(digitalInputs, 1, sizeof(digitalInputs));
-
-    int16_t w = display.width();
-    int16_t h = display.height();
-
-    surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 0, SDL_PIXELFORMAT_RGB24);
-    if(!surface)
-    {
-        printf("Could not create surface with size %d %d\n", w,h);
-        SimQuit();
-    }
-
-    printf("create surface with size %d %d\n", w,h);
 
     return result;
 }
@@ -301,9 +394,15 @@ static void SimQuit()
 
     if( window != NULL ) {
         SDL_DestroyWindow( window );
-        SDL_FreeSurface( surface );
+        // SDL_FreeSurface( surface );
     }
     SDL_Quit();
 }
 
 #include "NuEVI.ino"
+
+
+int main()
+{
+    return SimRun();
+}
