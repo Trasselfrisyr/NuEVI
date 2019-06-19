@@ -178,6 +178,122 @@ static void touchWrite(uint8_t pin, uint16_t value)
     if( i < 9) touchValues[i] = value;
 }
 
+static void doGlobalsWindow()
+{
+    if( ImGui::Begin("Globals" ) ) {
+
+
+        if(ImGui::TreeNode("Sensor limits") )
+        {
+            ImGui::LabelText("Breath Thr", "%d", breathThrVal);
+            ImGui::LabelText("Breath Max", "%d", breathMaxVal);
+            ImGui::LabelText("Portam Thr", "%d", portamThrVal);
+            ImGui::LabelText("Portam Max", "%d", portamMaxVal);
+            ImGui::LabelText("Pitchb Thr", "%d", pitchbThrVal);
+            ImGui::LabelText("Pitchb Max", "%d", pitchbMaxVal);
+            ImGui::LabelText("Extrac Thr", "%d", extracThrVal);
+            ImGui::LabelText("Extrac Max", "%d", extracMaxVal);
+            ImGui::LabelText("Ctouch Thr", "%d", ctouchThrVal);
+            ImGui::TreePop();
+        }
+
+        if(ImGui::TreeNode("Buttons") )
+        {
+            ImGui::LabelText("Valve 1", "%d", K1);
+            ImGui::LabelText("Valve 2", "%d", K2);
+            ImGui::LabelText("Valve 3", "%d", K3);
+            ImGui::LabelText("Left index", "%d", K4);
+            ImGui::LabelText("Trill 1", "%d", K5);
+            ImGui::LabelText("Trill 2", "%d", K6);
+            ImGui::LabelText("Trill 3", "%d", K7);
+            ImGui::LabelText("half PB", "%d", halfPitchBendKey);
+            ImGui::LabelText("Special", "%d", specialKey);
+            ImGui::LabelText("Pinky", "%d", pinkyKey);
+            ImGui::TreePop();
+        }
+
+// unsigned short transpose;
+// unsigned short MIDIchannel;
+// unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
+// unsigned short breathAT;
+// unsigned short velocity;
+// unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
+// unsigned short PBdepth;   // OFF:1-12 divider
+// unsigned short extraCT;   // OFF:MW:FP:CF:SP
+// unsigned short vibrato;   // OFF:1-9
+// unsigned short deglitch;  // 0-70 ms in steps of 5
+// unsigned short patch;     // 1-128
+// unsigned short octave;
+// unsigned short curve;
+// unsigned short velSmpDl;  // 0-30 ms
+// unsigned short velBias;   // 0-9
+// unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
+// unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
+// unsigned short priority; // mono priority for rotator chords
+// unsigned short vibSens; // vibrato sensitivity
+// unsigned short vibRetn; // vibrato return speed
+// unsigned short vibSquelch; //vibrato signal squelch
+// unsigned short vibDirection; //direction of first vibrato wave UPWD or DNWD
+// unsigned short fastPatch[7];
+// byte rotatorOn;
+// byte currentRotation;
+// int rotations[4];
+// int parallel; // semitones
+
+// int touch_Thr;
+
+// unsigned long cursorBlinkTime;          // the last time the cursor was toggled
+
+// byte activePatch;
+// byte doPatchUpdate;
+
+// byte legacy;
+// byte legacyBrAct;
+
+// byte slowMidi;
+
+// int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
+// int lastPressure;
+
+// int biteSensor;    // capacitance data from bite sensor, for midi cc and threshold checks
+// int lastBite;
+// byte biteJumper;
+
+// int exSensor;
+// int lastEx;
+
+// int pitchBend;
+
+// int pbUp;
+// int pbDn;
+
+// byte vibLedOff;
+// byte oldpkey;
+
+// int vibThr;          // this gets auto calibrated in setup
+// int vibThrLo;
+// int vibZero;
+
+// // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
+// byte K1;   // Valve 1 (pitch change -2)
+// byte K2;   // Valve 2 (pitch change -1)
+// byte K3;   // Valve 3 (pitch change -3)
+// byte K4;   // Left Hand index finger (pitch change -5)
+// byte K5;   // Trill key 1 (pitch change +2)
+// byte K6;   // Trill key 2 (pitch change +1)
+// byte K7;   // Trill key 3 (pitch change +4)
+
+// byte halfPitchBendKey;
+// byte specialKey;
+// byte pinkyKey;
+
+
+    }
+
+    ImGui::End();
+}
+
+
 //***********************************************************
 
 static void doInputWindow()
@@ -193,9 +309,14 @@ static void doInputWindow()
             analogInputs[vMeterPin] = val;
         }
 
-        val = analogInputs[0];
-        if( ImGui::SliderInt("Unknown", &val, 0, 4095 ) && !animateAnalogs ) {
-            analogInputs[0] = val;
+        // val = analogInputs[0];
+        // if( ImGui::SliderInt("Unknown", &val, 0, 4095 ) && !animateAnalogs ) {
+        //     analogInputs[0] = val;
+        // }
+
+        val = touchRead(halfPitchBendKeyPin);
+        if( ImGui::SliderInt("Pinky key", &val, 0, 4095 ) && !animateAnalogs ) {
+            touchWrite(halfPitchBendKeyPin, val);
         }
 
         val = analogInputs[A7];
@@ -203,7 +324,43 @@ static void doInputWindow()
             analogInputs[A7] = val;
         }
 
+        ImGui::Separator();
+        bool k1 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K1Pin*2) < ctouchThrVal;
+        bool k2 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K2Pin*2) < ctouchThrVal;
+        bool k3 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K3Pin*2) < ctouchThrVal;
+        bool k4 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K4Pin*2) < ctouchThrVal;
+        bool k5 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K5Pin*2) < ctouchThrVal;
+        bool k6 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K6Pin*2) < ctouchThrVal;
+        bool k7 = touchSensor.readRegister16(MPR121_FILTDATA_0L + K7Pin*2) < ctouchThrVal;
+
+        if( ImGui::Checkbox("K1", &k1) )
+            touchSensor.mockFilteredData(K1Pin, ctouchThrVal + (!k1 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K2", &k2) )
+            touchSensor.mockFilteredData(K2Pin, ctouchThrVal + (!k2 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K3", &k3) )
+            touchSensor.mockFilteredData(K3Pin, ctouchThrVal + (!k3 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K4", &k4) )
+            touchSensor.mockFilteredData(K4Pin, ctouchThrVal + (!k4 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K5", &k5) )
+            touchSensor.mockFilteredData(K5Pin, ctouchThrVal + (!k5 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K6", &k6) )
+            touchSensor.mockFilteredData(K6Pin, ctouchThrVal + (!k6 ? 100 : -100));
+
+        ImGui::SameLine();
+        if( ImGui::Checkbox("K7", &k7) )
+            touchSensor.mockFilteredData(K7Pin, ctouchThrVal + (!k7 ? 100 : -100));
     }
+
     ImGui::End();
 }
 
@@ -307,6 +464,8 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
 
         // Render UI here..
         doInputWindow();
+        doGlobalsWindow();
+
 
         ImGui::Begin("NuEVI display");
         ImVec2 size( 128*scale, 64*scale );
@@ -384,6 +543,9 @@ static int SimInit()
     glBindTexture(GL_TEXTURE_2D, 0);
 
     memset(digitalInputs, 1, sizeof(digitalInputs));
+
+
+    analogInputs[vMeterPin] = 3025;
 
     return result;
 }

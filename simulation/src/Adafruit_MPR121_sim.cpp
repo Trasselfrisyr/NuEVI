@@ -131,15 +131,7 @@ uint16_t  Adafruit_MPR121::touched(void) {
  *  @returns    the 8 bit value that was read.
  ****************************************************************************************/
 uint8_t Adafruit_MPR121::readRegister8(uint8_t reg) {
-
     return this->_registers[reg];
-    // Wire.beginTransmission(_i2caddr);
-    // Wire.write(reg);
-    // Wire.endTransmission(false);
-    // Wire.requestFrom(_i2caddr, 1);
-    // if (Wire.available() < 1)
-    //   return 0;
-    // return (Wire.read());
 }
 
 /**
@@ -151,15 +143,6 @@ uint8_t Adafruit_MPR121::readRegister8(uint8_t reg) {
  ****************************************************************************************/
 uint16_t Adafruit_MPR121::readRegister16(uint8_t reg) {
     return _registers[reg] | (_registers[reg+1] << 8);
-    // Wire.beginTransmission(_i2caddr);
-    // Wire.write(reg);
-    // Wire.endTransmission(false);
-    // Wire.requestFrom(_i2caddr, 2);
-    // if (Wire.available() < 2)
-    //   return 0;
-    // uint16_t v = Wire.read();
-    // v |=  ((uint16_t) Wire.read()) << 8;
-    // return v;
 }
 
 /**************************************************************************/
@@ -173,10 +156,6 @@ uint16_t Adafruit_MPR121::readRegister16(uint8_t reg) {
 void Adafruit_MPR121::writeRegister(uint8_t reg, uint8_t value) {
 
     _registers[reg] = value;
-    // Wire.beginTransmission(_i2caddr);
-    // Wire.write((uint8_t)reg);
-    // Wire.write((uint8_t)(value));
-    // Wire.endTransmission();
 }
 
 
@@ -184,3 +163,8 @@ void Adafruit_MPR121::writeRegister(uint8_t reg, uint8_t value) {
   Simulator specifics code..
  */
 
+
+void Adafruit_MPR121::mockFilteredData(int reg, uint16_t value) {
+    _registers[MPR121_FILTDATA_0L + reg*2] = value & 0xffu;
+    _registers[MPR121_FILTDATA_0L + reg*2+1] = (value>>8) & 0xffu;
+}

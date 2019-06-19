@@ -102,6 +102,11 @@ class Adafruit_MPR121 {
   void setThresholds(uint8_t touch, uint8_t release);
 
   uint8_t   _registers[48];
+
+
+  // Simulator specific stuff
+  void mockFilteredData(int register, uint16_t value);
+
  private:
   int8_t _i2caddr;
 };

@@ -13,14 +13,14 @@ EEPROMClass::EEPROMClass() {
 
 uint8_t EEPROMClass::read( int idx )
 {
-    printf("Reading EEPROM address %d: %d\n", idx, someFakeEEPROM_memory[idx]);
+    printf("Reading EEPROM address %u: %u\n", idx, 0xff&someFakeEEPROM_memory[idx]);
     return someFakeEEPROM_memory[idx];
 }
 
 
 void  EEPROMClass::write( int idx, uint8_t val )
 {
-    printf("Writing to EEPROM address %d = %d\n", idx, val);
+    printf("Writing to EEPROM address %u = %u\n", idx, val);
     someFakeEEPROM_memory[idx] = val;
 }
 
