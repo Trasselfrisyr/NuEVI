@@ -222,18 +222,22 @@ void drawMenuCursor(byte itemNo, byte color){
 }
 
 
-static bool updateSubMenuCursor(const MenuPage &page, uint32_t timeNow)
-{
-  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-    if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-
+static bool drawSubMenu(const MenuPage &page, int color) {
     int index = cursors[page.cursor];
     // TODO: Make sure this is a MenuEntrySub
     // TODO: Handle MenuEntrySubRotator case
     // TODO: Null check subMenuFunc
-    ((const MenuEntrySub*)page.entries[index])->subMenuFunc(cursorNow);
-    cursorBlinkTime = timeNow;
+    ((const MenuEntrySub*)page.entries[index])->subMenuFunc(color);
     return true;
+}
+
+static bool updateSubMenuCursor(const MenuPage &page, uint32_t timeNow)
+{
+  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    if (cursorNow == WHITE) cursorNow = BLACK;
+    else cursorNow = WHITE;
+    cursorBlinkTime = timeNow;
+    return drawSubMenu( page, cursorNow );
   }
   return false;
 }
@@ -1178,6 +1182,9 @@ static void checkForPatchView()
 
 void menu() {
   unsigned long timeNow = millis();
+  const MenuPage *currentPage = nullptr; 
+
+  bool redrawSubValue = false;
   bool redraw = stateFirstRun;
   // read the state of the switches
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
@@ -1411,42 +1418,29 @@ void menu() {
       drawMenuScreen();
       stateFirstRun = 0;
     }
+    currentPage = &mainMenuPage;
     if (subTranspose){
       redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (transpose > 0){
-              clearSubValue();
+            if (transpose > 0)
               transpose--;
-              plotTranspose(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (transpose < 24){
-              clearSubValue();
+            if (transpose < 24)
               transpose++;
-              plotTranspose(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotTranspose(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subTranspose = 0;
             writeSetting(TRANSP_ADDR,transpose);
             break;
         }
+        redrawSubValue = true;
       }
     } else if (subOctave){
       redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
@@ -1454,38 +1448,22 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (octave > 0){
-              clearSubValue();
-              // plotOctave(BLACK);
+            if (octave > 0)
               octave--;
-              plotOctave(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (octave < 6){
-              clearSubValue();
-              // plotOctave(BLACK);
+            if (octave < 6)
               octave++;
-              plotOctave(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotOctave(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subOctave = 0;
             writeSetting(OCTAVE_ADDR,octave);
             break;
         }
+        redrawSubValue = true;
       }
     } else if (subMIDI) {
       redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
@@ -1493,53 +1471,33 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (MIDIchannel > 1){
-              clearSubValue();
+            if (MIDIchannel > 1)
               MIDIchannel--;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
+            break;
+
+          case BTN_UP:
+            if (MIDIchannel < 16)
+              MIDIchannel++;
             break;
 
           case BTN_ENTER:
             readSwitches();
             if (pinkyKey){
               slowMidi = !slowMidi;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
               dipSwBits = dipSwBits ^ (1<<3);
               writeSetting(DIPSW_BITS_ADDR,dipSwBits);
             } else {
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
               subMIDI = 0;
               writeSetting(MIDI_ADDR,MIDIchannel);
             }
             break;
 
-          case BTN_UP:
-            if (MIDIchannel < 16){
-              clearSubValue();
-              MIDIchannel++;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
-            break;
-
           case BTN_MENU:
-            plotMIDI(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subMIDI = 0;
             writeSetting(MIDI_ADDR,MIDIchannel);
             break;
         }
+        redrawSubValue = true;
       }
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
@@ -1552,6 +1510,7 @@ void menu() {
       drawMenu(rotatorMenuPage);
       stateFirstRun = 0;
     }
+    currentPage = &rotatorMenuPage;
     if (subParallel){
       if (((timeNow - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
         if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
@@ -1567,36 +1526,26 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (parallel > -24){
-              plotRotator(BLACK,parallel);
+            if (parallel > -24)
               parallel--;
-              plotRotator(WHITE,parallel);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (parallel < 24){
-              plotRotator(BLACK,parallel);
+            if (parallel < 24)
               parallel++;
-              plotRotator(WHITE,parallel);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotRotator(WHITE,parallel);
-            cursorNow = BLACK;
-            redraw = true;
             subParallel = 0;
             writeSetting(PARAL_ADDR,(parallel + 24));
             break;
         }
+        clearSubValue();
+        plotRotator(WHITE,parallel);
+        cursorNow = BLACK;
+        redraw = true;
+        cursorBlinkTime = timeNow;
       }
     } else if (subRotator){
       if (((timeNow - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
@@ -1613,51 +1562,35 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (rotations[subRotator-1] > -24){
-              clearSubValue();
+            if (rotations[subRotator-1] > -24)
               rotations[subRotator-1]--;
-              plotRotator(WHITE,rotations[subRotator-1]);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (rotations[subRotator-1] < 24){
-              clearSubValue();
+            if (rotations[subRotator-1] < 24)
               rotations[subRotator-1]++;
-              plotRotator(WHITE,rotations[subRotator-1]);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotRotator(WHITE,rotations[subRotator-1]);
-            cursorNow = BLACK;
-            redraw = true;
             writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
             subRotator = 0;
             break;
         }
-      }
-    } else if (subPriority){
-      if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotPriority(cursorNow);
+        clearSubValue();
+        plotRotator(WHITE,rotations[subRotator-1]);
+        cursorNow = BLACK;
         redraw = true;
         cursorBlinkTime = timeNow;
       }
-      if (buttonPressedAndNotUsed){
+    } else if (subPriority){
+      updateSubMenuCursor( rotatorMenuPage, timeNow );
+      if (buttonPressedAndNotUsed) {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
           case BTN_UP:
             // up
-            clearSubValue();
             priority = !priority;
             cursorBlinkTime = timeNow;
             break;
@@ -1668,9 +1601,7 @@ void menu() {
             writeSetting(PRIO_ADDR,priority);
             break;
         }
-        plotPriority(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
@@ -1696,6 +1627,7 @@ void menu() {
       drawMenu( breathMenuPage );
       stateFirstRun = 0;
     }
+    currentPage = &breathMenuPage;
     if (subBreathCC){
       redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
       if (buttonPressedAndNotUsed){
@@ -1707,7 +1639,6 @@ void menu() {
             } else {
               breathCC = 10;
             }
-            cursorBlinkTime = timeNow;
             break;
           case BTN_UP:
             if (breathCC < 10){
@@ -1715,7 +1646,6 @@ void menu() {
             } else {
               breathCC = 0;
             }
-            cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
@@ -1727,10 +1657,7 @@ void menu() {
             }
             break;
         }
-        clearSubValue();
-        plotBreathCC(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else if (subBreathAT) {
       redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
@@ -1738,15 +1665,11 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
-            breathAT=!breathAT;
-            cursorBlinkTime = timeNow;
+            breathAT = !breathAT;
             break;
           case BTN_UP:
             // up
-            clearSubValue();
-            breathAT=!breathAT;
-            cursorBlinkTime = timeNow;
+            breathAT = !breathAT;
             break;
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
@@ -1758,9 +1681,7 @@ void menu() {
             }
             break;
         }
-        plotBreathAT(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else if (subVelocity) {
       redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
@@ -1768,18 +1689,14 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
             if (velocity > 0){
               velocity--;
             } else velocity = 127;
-            cursorBlinkTime = timeNow;
             break;
           case BTN_UP:
-            clearSubValue();
             if (velocity < 127){
               velocity++;
             } else velocity = 0;
-            cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
@@ -1787,9 +1704,7 @@ void menu() {
             writeSetting(VELOCITY_ADDR,velocity);
             break;
         }
-        plotVelocity(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
 
     } else if (subCurve) {
@@ -1798,32 +1713,24 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
             if (curve > 0){
               curve--;
             } else curve = 12;
-            plotCurve(WHITE);
-            cursorBlinkTime = timeNow;
             break;
           case BTN_UP:
             // up
-            clearSubValue();
             if (curve < 12){
               curve++;
             } else curve = 0;
-            plotCurve(WHITE);
-            cursorBlinkTime = timeNow;
             break;
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
             // menu
-            plotCurve(WHITE);
             subCurve = 0;
             writeSetting(BREATHCURVE_ADDR,curve);
             break;
         }
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
 
     } else if (subVelSmpDl) {
@@ -1832,69 +1739,56 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
             if (velSmpDl > 0){
               velSmpDl-=1;
             } else velSmpDl = 30;
-            plotVelSmpDl(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_UP:
-            // up
-            clearSubValue();
             if (velSmpDl < 30){
               velSmpDl+=1;
             } else velSmpDl = 0;
-            plotVelSmpDl(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotVelSmpDl(WHITE);
             subVelSmpDl = 0;
             writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
             break;
         }
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
 
      } else if (subVelBias) {
       redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
+        switch (deumButtonState) {
           case BTN_DOWN:
-            clearSubValue();
             if (velBias > 0){
               velBias--;
             } else velBias = 9;
-            plotVelBias(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER:
-            // enter
-            plotVelBias(WHITE);
             subVelBias = 0;
             writeSetting(VEL_BIAS_ADDR,velBias);
             break;
+
           case BTN_UP:
-            // up
-            clearSubValue();
             if (velBias < 9){
               velBias++;
             } else velBias = 0;
-            plotVelBias(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_MENU:
-            // menu
-            plotVelBias(WHITE);
             subVelBias = 0;
             writeSetting(VEL_BIAS_ADDR,velBias);
             break;
         }
+        clearSubValue();
+        plotVelBias(WHITE);
+        cursorBlinkTime = timeNow;
         cursorNow = BLACK;
         redraw = true;
       }
@@ -1909,40 +1803,31 @@ void menu() {
       drawMenu( controlMenuPage );
       stateFirstRun = 0;
     }
+    currentPage = &controlMenuPage;
     if (subPort){
-
       redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
-
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
             if (portamento > 0){
               portamento--;
             } else portamento = 2;
-            plotPort(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_UP:
-            // up
-            clearSubValue();
             if (portamento < 2){
               portamento++;
             } else portamento = 0;
-            plotPort(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotPort(WHITE);
             subPort = 0;
             writeSetting(PORTAM_ADDR,portamento);
             break;
         }
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else if (subPB) {
       redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
@@ -1950,36 +1835,22 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (PBdepth > 0){
-              clearSubValue();
+            if (PBdepth > 0)
               PBdepth--;
-              plotPB(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (PBdepth < 12){
-              clearSubValue();
+            if (PBdepth < 12)
               PBdepth++;
-              plotPB(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotPB(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subPB = 0;
             writeSetting(PB_ADDR,PBdepth);
             break;
         }
+        redrawSubValue = true;
       }
     } else if (subExtra) {
       redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
@@ -1987,36 +1858,24 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            clearSubValue();
             if (extraCT > 0){
               extraCT--;
             } else extraCT = 4;
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_UP:
-            // up
-            clearSubValue();
             if (extraCT < 4){
               extraCT++;
             } else extraCT = 0;
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subExtra = 0;
             writeSetting(EXTRA_ADDR,extraCT);
             break;
         }
+        redrawSubValue = true;
       }
     } else if (subDeglitch) {
       redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
@@ -2024,36 +1883,23 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (deglitch > 0){
-              clearSubValue();
+            if (deglitch > 0)
               deglitch-=1;
-              plotDeglitch(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
             if (deglitch < 70){
-              clearSubValue();
               deglitch+=1;
-              plotDeglitch(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
             }
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotDeglitch(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subDeglitch = 0;
             writeSetting(DEGLITCH_ADDR,deglitch);
             break;
         }
+        redrawSubValue = true;
       }
     } else if (subPinky) {
       redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
@@ -2061,36 +1907,22 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (pinkySetting > 0){
-              clearSubValue();
+            if (pinkySetting > 0)
               pinkySetting-=1;
-              plotPinkyKey(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
             break;
+
           case BTN_UP:
-            // up
-            if (pinkySetting < 24){
-              clearSubValue();
-              pinkySetting+=1;
-              plotPinkyKey(WHITE);
-              cursorNow = BLACK;
-              redraw = true;
-              cursorBlinkTime = timeNow;
-            }
+            if (pinkySetting < 24)
+              pinkySetting += 1;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotPinkyKey(WHITE);
-            cursorNow = BLACK;
-            redraw = true;
             subPinky = 0;
             writeSetting(PINKY_KEY_ADDR,pinkySetting);
             break;
         }
+        redrawSubValue = true;
       }
     } else {
       redraw |= updateMenuPage( controlMenuPage, timeNow );
@@ -2101,11 +1933,9 @@ void menu() {
       drawMenu(vibratoMenuPage);
       stateFirstRun = 0;
     }
-
+    currentPage = &vibratoMenuPage;
     if (subVibrato) {
-
       redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
-
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2125,11 +1955,7 @@ void menu() {
             writeSetting(VIBRATO_ADDR,vibrato);
             break;
         }
-        clearSubValue();
-        plotVibrato(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
-        cursorBlinkTime = timeNow;
+        redrawSubValue = true;
       }
     } else if (subVibSens) {
 
@@ -2161,9 +1987,7 @@ void menu() {
         cursorBlinkTime = timeNow;
       }
     } else if (subVibRetn) {
-
       redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
-
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2171,28 +1995,22 @@ void menu() {
             if (vibRetn > 0)
               vibRetn--;
             break;
+
           case BTN_UP:
-            // up
             if (vibRetn < 4)
               vibRetn++;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
             subVibRetn = 0;
             writeSetting(VIB_RETN_ADDR,vibRetn);
             break;
         }
-        cursorBlinkTime = timeNow;
-        cursorNow = BLACK;
-        redraw = true;
-        clearSubValue();
-        plotVibRetn(WHITE);
+        redrawSubValue = true;
       }
     } else if (subVibSquelch) {
-
       redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
-
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2212,46 +2030,41 @@ void menu() {
             writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
         }
+        clearSubValue();
+        plotVibSquelch(WHITE);
         cursorBlinkTime = timeNow;
         cursorNow = BLACK;
         redraw = true;
-        clearSubValue();
-        plotVibSquelch(WHITE);
       }
     } else if (subVibDirection) {
-
       redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
-
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
-          case BTN_DOWN:
-            clearSubValue();
-            vibDirection = !vibDirection;
-            plotVibDirection(WHITE);
-            cursorBlinkTime = timeNow;
-            break;
+
+          case BTN_DOWN: // fallthrough
           case BTN_UP:
-            // up
-            clearSubValue();
             vibDirection = !vibDirection;
-            plotVibDirection(WHITE);
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
-            plotVibDirection(WHITE);
             subVibDirection = 0;
             writeSetting(VIB_DIRECTION_ADDR,vibDirection);
             break;
         }
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else {
       redraw |= updateMenuPage( vibratoMenuPage, timeNow );
     }
+  }
+
+  if(redrawSubValue && currentPage) {
+    clearSubValue();
+    redraw |= drawSubMenu(*currentPage, WHITE);
+    cursorNow = BLACK;
+    cursorBlinkTime = timeNow;
   }
 
   if(redraw) {
