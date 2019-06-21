@@ -212,8 +212,24 @@ static void doGlobalsWindow()
             ImGui::TreePop();
         }
 
-// unsigned short transpose;
-// unsigned short MIDIchannel;
+        if(ImGui::TreeNode("Config") )
+        {
+            ImGui::LabelText("Transpose", "%d", transpose);
+            ImGui::LabelText("MIDI channel", "%d", MIDIchannel);
+            ImGui::LabelText("Breath curve", "%d", curve);
+            ImGui::TreePop();
+        }
+
+        if(ImGui::TreeNode("Vibrato config") )
+        {
+            ImGui::LabelText("Sensitivity", "%d", vibSens);
+            ImGui::LabelText("Return speed", "%d", vibRetn);
+            ImGui::LabelText("signal squelch", "%d", vibSquelch);
+            ImGui::LabelText("Direction", "%d", vibDirection);
+            ImGui::TreePop();
+        }
+
+
 // unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
 // unsigned short breathAT;
 // unsigned short velocity;
@@ -224,16 +240,14 @@ static void doGlobalsWindow()
 // unsigned short deglitch;  // 0-70 ms in steps of 5
 // unsigned short patch;     // 1-128
 // unsigned short octave;
-// unsigned short curve;
+
 // unsigned short velSmpDl;  // 0-30 ms
 // unsigned short velBias;   // 0-9
 // unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
 // unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 // unsigned short priority; // mono priority for rotator chords
-// unsigned short vibSens; // vibrato sensitivity
-// unsigned short vibRetn; // vibrato return speed
-// unsigned short vibSquelch; //vibrato signal squelch
-// unsigned short vibDirection; //direction of first vibrato wave UPWD or DNWD
+
+
 // unsigned short fastPatch[7];
 // byte rotatorOn;
 // byte currentRotation;
@@ -365,8 +379,6 @@ static void doInputWindow()
 }
 
 
-
-
 static uint8_t displayBuffer[128*128];
 
 static void GetDisplay()
@@ -491,6 +503,11 @@ static int SimRun( )
 {
 	if( 0 != SimInit() ) { return 1; }
     setup();
+    {
+        // See comment in SimInit why I do this..
+        digitalInputs[mPin] = 1;
+        digitalInputs[ePin] = 1;
+    }
     SimLoop( []() -> bool { return true; }, loop );
     SimQuit();
 	return 0;
@@ -499,7 +516,6 @@ static int SimRun( )
 
 static int SimInit()
 {
-
 	int result = result = SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 	if( 0 != result ) {
 		fprintf(stderr, "Could not initialize SDL");
@@ -544,8 +560,11 @@ static int SimInit()
 
     memset(digitalInputs, 1, sizeof(digitalInputs));
 
-
     analogInputs[vMeterPin] = 3025;
+
+    // Dummy to always force full reset of EEPROM, to circumvent bug in NuEVI.ino 
+    digitalInputs[mPin] = 0;
+    digitalInputs[ePin] = 0;
 
     return result;
 }
