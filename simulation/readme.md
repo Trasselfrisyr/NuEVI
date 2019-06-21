@@ -9,7 +9,7 @@ This is a simple SDL2 based simulator that runs the NuEVI firmware compiled for 
  * SDL2 must be installed on your machine.
  * You probably need to have XCode and XCodes command line tools installed as well.
 
-[Dear Imgui](https://github.com/ocornut/imgui) is pulled in as an git submodule. Run `git submoudule init` and `git submodule update` to get the code. The code is tested with tag v1.70 of ImGui, so if you run into problems make sure that is the checked out version.
+[Dear Imgui](https://github.com/ocornut/imgui) is pulled in as an git submodule. Run `git submodule init` and `git submodule update` to get the code. The code is tested with tag v1.70 of ImGui, so if you run into problems make sure that is the checked out version.
 
 
 ### Know limitations
