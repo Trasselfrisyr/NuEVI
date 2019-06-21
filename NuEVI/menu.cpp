@@ -844,19 +844,7 @@ static void drawAdjustBase(const char* title, bool all) {
   drawAdjCursor(WHITE);
 }
 
-void drawAdjustScreen(const char* title, int threshold, int maxValue, uint16_t lowLimit, uint16_t highLimit){
-  drawAdjustBase(title, maxValue >= 0);
-
-  pos1 = map(threshold, lowLimit, highLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-
-  if(maxValue >= 0) {
-    pos2 = map(maxValue, lowLimit, highLimit, 27, 119);
-    display.drawLine(pos2,50,pos2,56,WHITE);
-  }
-}
-
-bool drawAdjustBar(uint16_t buttons, int row, const AdjustValue* entry, uint16_t *pos) {
+static bool drawAdjustBar(uint16_t buttons, int row, const AdjustValue* entry, uint16_t *pos) {
   bool updated = false;
   uint16_t step = (entry->limitHigh-entry->limitLow)/92;
   int val = *entry->value;
