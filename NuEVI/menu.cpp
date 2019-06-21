@@ -1150,11 +1150,11 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
 }
 
 //***********************************************************
-static void checkForPatchView()
+static void checkForPatchView(int buttons)
 {
   int trills = readTrills();
 
-  switch (deumButtonState){
+  switch (buttons){
     case BTN_MENU+BTN_DOWN:
       break;
 
@@ -1501,7 +1501,7 @@ void menu() {
       bool hadButtons = buttonPressedAndNotUsed;
       redraw |= updateMenuPage( *currentPage, timeNow );
       if (hadButtons)
-        checkForPatchView();
+        checkForPatchView(deumButtonState);
     }
   } else if (state == ROTATOR_MENU) {    // ROTATOR MENU HERE <<<<<<<<<<<<<<<
     if (stateFirstRun) {
@@ -1605,7 +1605,7 @@ void menu() {
       bool hadButtons = buttonPressedAndNotUsed;
       redraw |= updateMenuPage( *currentPage, timeNow );
       if (hadButtons)
-        checkForPatchView();
+        checkForPatchView(deumButtonState);
     }
   // end rotator menu
 
