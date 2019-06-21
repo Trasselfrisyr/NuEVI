@@ -1657,7 +1657,6 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN: // fallthrough
             breathAT = !breathAT;
-            breathAT = !breathAT;
             break;
 
           case BTN_ENTER: // fallthrough
