@@ -378,13 +378,10 @@ static void plotRotator(int color,int value){
 }
 
 static void plotPriority(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
   if (priority){
-    display.println("ROT");
+    plotSubOption("ROT", color);
   } else {
-    display.println("MEL");
+    plotSubOption("MEL", color);
   }
 }
 
@@ -550,13 +547,10 @@ static void plotVelSmpDl(int color){
 }
 
 static void plotVelBias(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
   if (velBias){
     plotSubNum(velBias, color);
   } else {
-    display.setCursor(79,33);
-    display.println("OFF");
+    plotSubOption("OFF", color);
   }
 }
 
