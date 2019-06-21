@@ -1171,6 +1171,17 @@ static void checkForPatchView(int buttons) {
   }
 }
 
+// This should be moved to a separate file/process that handles only led 
+void statusBlink() {
+  digitalWrite(statusLedPin,LOW);
+  delay(150);
+  digitalWrite(statusLedPin,HIGH);
+  delay(150);
+  digitalWrite(statusLedPin,LOW);
+  delay(150);
+  digitalWrite(statusLedPin,HIGH);
+}
+
 //***********************************************************
 
 void menu() {
@@ -1276,24 +1287,12 @@ void menu() {
             legacyBrAct = !legacyBrAct;
             dipSwBits = dipSwBits ^ (1<<2);
             writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-            delay(150);
-            digitalWrite(statusLedPin, LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
+            statusBlink();
           } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
             legacy = !legacy;
             dipSwBits = dipSwBits ^ (1<<1);
             writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-            delay(150);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
+            statusBlink();
           } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
             display.ssd1306_command(SSD1306_DISPLAYON);
             state = ROTATOR_MENU;
