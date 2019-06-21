@@ -432,10 +432,7 @@ static void plotBreathAT(int color){
 
 static void plotVelocity(int color){
   if (velocity){
-    display.setTextColor(color);
-    display.setTextSize(2);
-    display.setCursor(79,33);
-    display.println(velocity);
+    plotNum(velocity, color);
   } else {
     plotSubOption("DYN", color);
   }
