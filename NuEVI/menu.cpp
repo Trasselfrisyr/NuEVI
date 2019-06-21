@@ -335,6 +335,24 @@ static void drawSubBox(const char* label)
   display.println(label);
 }
 
+static void plotSubOption(const char* label, int color) {
+  display.setTextColor(color);
+  display.setTextSize(2);
+  int x_pos = 91-strlen(label)*4;
+  display.setCursor(x_pos,33);
+  display.println(label);
+}
+
+static void plotNum(int value, int color) {
+  int s = 0;
+  if(value > 99) s = 2*7;
+  else if(value > 9) s = 1*7;
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(90-s ,33);
+  display.println(value);
+}
+
 static void plotTranspose(int color){
   int value = transpose - 12;
   const char *sign = (value < 0) ? "-":"+";
@@ -383,12 +401,9 @@ static void plotOctave(int color){
   display.println(abs(octave-3));
 }
 
-static void plotMIDI(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(MIDIchannel);
-  if (slowMidi && color){
+static void plotMIDI(int color) {
+  plotNum(MIDIchannel, color);
+  if (slowMidi && color) {
     display.setTextColor(WHITE);
   } else {
     display.setTextColor(BLACK);
@@ -396,25 +411,6 @@ static void plotMIDI(int color){
   display.setTextSize(1);
   display.setCursor(116,51);
   display.print("S");
-}
-
-static void plotSubOption(const char* label, int color)
-{
-  display.setTextColor(color);
-  display.setTextSize(2);
-  int x_pos = 91-strlen(label)*4;
-  display.setCursor(x_pos,33);
-  display.println(label);
-}
-
-static void plotNum(int value, int color) {
-  int s = 0;
-  if(value > 99) s = 2*7;
-  else if(value > 9) s = 1*7;
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90-s ,33);
-  display.println(value);
 }
 
 static const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
