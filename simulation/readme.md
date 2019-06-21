@@ -2,11 +2,14 @@
 
 This is a simple SDL2 based simulator that runs the NuEVI firmware compiled for MacOS. This is for testing the menu and is not supposed to produce any midi events.
 
+
 ### Requirements
 
  * The Filters library must be installed in ~/Documents/Arduino/libraries/Filters.
  * SDL2 must be installed on your machine.
  * You probably need to have XCode and XCodes command line tools installed as well.
+
+[Dear Imgui](https://github.com/ocornut/imgui) is pulled in as an git submodule. Run `git submoudule init` and `git submodule update` to get the code. The code is tested with tag v1.70 of ImGui, so if you run into problems make sure that is the checked out version.
 
 
 ### Know limitations
