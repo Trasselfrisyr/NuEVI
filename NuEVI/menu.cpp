@@ -1244,7 +1244,7 @@ void menu() {
       display.ssd1306_command(SSD1306_DISPLAYOFF);
       stateFirstRun = 0;
     }
-    if (buttonPressedAndNotUsed){
+    if (buttonPressedAndNotUsed) {
       buttonPressedAndNotUsed = 0;
       int trills = readTrills();
       switch (deumButtonState){
@@ -1581,15 +1581,13 @@ void menu() {
       if (buttonPressedAndNotUsed) {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
-          case BTN_DOWN:
+          case BTN_DOWN: // fallthrough
           case BTN_UP:
-            // up
             priority = !priority;
-            cursorBlinkTime = timeNow;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
             subPriority = 0;
             writeSetting(PRIO_ADDR,priority);
             break;
@@ -1656,6 +1654,7 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN: // fallthrough
+          case BTN_UP:
             breathAT = !breathAT;
             break;
 
@@ -1759,17 +1758,13 @@ void menu() {
             } else velBias = 9;
             break;
 
-          case BTN_ENTER:
-            subVelBias = 0;
-            writeSetting(VEL_BIAS_ADDR,velBias);
-            break;
-
           case BTN_UP:
             if (velBias < 9){
               velBias++;
             } else velBias = 0;
             break;
 
+          case BTN_ENTER: // fallthrough
           case BTN_MENU:
             subVelBias = 0;
             writeSetting(VEL_BIAS_ADDR,velBias);
