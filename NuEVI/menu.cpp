@@ -1420,7 +1420,7 @@ void menu() {
     }
     currentPage = &mainMenuPage;
     if (subTranspose){
-      redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1443,7 +1443,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subOctave){
-      redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1466,7 +1466,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subMIDI) {
-      redraw |= updateSubMenuCursor( mainMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1501,7 +1501,7 @@ void menu() {
       }
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage( mainMenuPage, timeNow );
+      redraw |= updateMenuPage( *currentPage, timeNow );
       if (hadButtons)
         checkForPatchView();
     }
@@ -1584,7 +1584,7 @@ void menu() {
         cursorBlinkTime = timeNow;
       }
     } else if (subPriority){
-      updateSubMenuCursor( rotatorMenuPage, timeNow );
+      updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed) {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1605,21 +1605,19 @@ void menu() {
       }
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage( rotatorMenuPage, timeNow );
+      redraw |= updateMenuPage( *currentPage, timeNow );
       if (hadButtons)
         checkForPatchView();
     }
   // end rotator menu
 
   } else if (state == ADJUST_MENU) {
-
     // This is a hack to update touch_Thr is it was changed..
     int old_thr = ctouchThrVal;
     redraw |= updateAdjustMenu( timeNow, buttonPressedAndNotUsed ? deumButtonState : 0 );
     buttonPressedAndNotUsed = 0;
 
     if( old_thr != ctouchThrVal) {
-      // Question: Why not used the built-in threshold in the touch sensor?
       touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
     }
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
@@ -1629,7 +1627,7 @@ void menu() {
     }
     currentPage = &breathMenuPage;
     if (subBreathCC){
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1660,23 +1658,20 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subBreathAT) {
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
-          case BTN_DOWN:
+          case BTN_DOWN: // fallthrough
+            breathAT = !breathAT;
             breathAT = !breathAT;
             break;
-          case BTN_UP:
-            // up
-            breathAT = !breathAT;
-            break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
             subBreathAT = 0;
             if (readSetting(BREATH_AT_ADDR) != breathAT){
-              writeSetting(BREATH_AT_ADDR,breathAT);
+              writeSetting(BREATH_AT_ADDR, breathAT);
               midiReset();
             }
             break;
@@ -1684,7 +1679,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subVelocity) {
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1693,11 +1688,13 @@ void menu() {
               velocity--;
             } else velocity = 127;
             break;
+
           case BTN_UP:
             if (velocity < 127){
               velocity++;
             } else velocity = 0;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
             subVelocity = 0;
@@ -1708,24 +1705,24 @@ void menu() {
       }
 
     } else if (subCurve) {
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            if (curve > 0){
+            if (curve > 0)
               curve--;
-            } else curve = 12;
+            else curve = 12;
             break;
+
           case BTN_UP:
-            // up
-            if (curve < 12){
+            if (curve < 12)
               curve++;
-            } else curve = 0;
+            else curve = 0;
             break;
+
           case BTN_ENTER: // fallthrough
           case BTN_MENU:
-            // menu
             subCurve = 0;
             writeSetting(BREATHCURVE_ADDR,curve);
             break;
@@ -1734,7 +1731,7 @@ void menu() {
       }
 
     } else if (subVelSmpDl) {
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1760,7 +1757,7 @@ void menu() {
       }
 
      } else if (subVelBias) {
-      redraw |= updateSubMenuCursor( breathMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState) {
@@ -1794,7 +1791,7 @@ void menu() {
       }
 
     } else {
-      redraw |= updateMenuPage( breathMenuPage, timeNow );
+      redraw |= updateMenuPage( *currentPage, timeNow );
     }
 
 
@@ -1805,7 +1802,7 @@ void menu() {
     }
     currentPage = &controlMenuPage;
     if (subPort){
-      redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1830,7 +1827,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subPB) {
-      redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1853,7 +1850,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subExtra) {
-      redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1878,7 +1875,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subDeglitch) {
-      redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1902,7 +1899,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subPinky) {
-      redraw |= updateSubMenuCursor( controlMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1925,7 +1922,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else {
-      redraw |= updateMenuPage( controlMenuPage, timeNow );
+      redraw |= updateMenuPage( *currentPage, timeNow );
     }
 
   } else if (state == VIBRATO_MENU) {   // VIBRATO MENU HERE <<<<<<<<<<<<<
@@ -1935,7 +1932,7 @@ void menu() {
     }
     currentPage = &vibratoMenuPage;
     if (subVibrato) {
-      redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1958,9 +1955,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subVibSens) {
-
-      redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
-
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -1987,7 +1982,7 @@ void menu() {
         cursorBlinkTime = timeNow;
       }
     } else if (subVibRetn) {
-      redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2010,7 +2005,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else if (subVibSquelch) {
-      redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2037,7 +2032,7 @@ void menu() {
         redraw = true;
       }
     } else if (subVibDirection) {
-      redraw |= updateSubMenuCursor( vibratoMenuPage, timeNow );
+      redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
@@ -2056,7 +2051,7 @@ void menu() {
         redrawSubValue = true;
       }
     } else {
-      redraw |= updateMenuPage( vibratoMenuPage, timeNow );
+      redraw |= updateMenuPage( *currentPage, timeNow );
     }
   }
 
