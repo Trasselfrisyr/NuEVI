@@ -1146,8 +1146,7 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
 }
 
 //***********************************************************
-static void checkForPatchView(int buttons)
-{
+static void checkForPatchView(int buttons) {
   int trills = readTrills();
 
   switch (buttons){
@@ -1750,7 +1749,7 @@ void menu() {
         redrawSubValue = true;
       }
 
-     } else if (subVelBias) {
+    } else if (subVelBias) {
       redraw |= updateSubMenuCursor( *currentPage, timeNow );
       if (buttonPressedAndNotUsed){
         buttonPressedAndNotUsed = 0;
@@ -1777,11 +1776,7 @@ void menu() {
             writeSetting(VEL_BIAS_ADDR,velBias);
             break;
         }
-        clearSubValue();
-        plotVelBias(WHITE);
-        cursorBlinkTime = timeNow;
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
 
     } else {
@@ -1969,11 +1964,7 @@ void menu() {
             writeSetting(VIB_SENS_ADDR,vibSens);
             break;
         }
-        clearSubValue();
-        plotVibSens(WHITE);
-        cursorNow = BLACK;
-        redraw = true;
-        cursorBlinkTime = timeNow;
+        redrawSubValue = true;
       }
     } else if (subVibRetn) {
       redraw |= updateSubMenuCursor( *currentPage, timeNow );
@@ -2019,11 +2010,7 @@ void menu() {
             writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
             break;
         }
-        clearSubValue();
-        plotVibSquelch(WHITE);
-        cursorBlinkTime = timeNow;
-        cursorNow = BLACK;
-        redraw = true;
+        redrawSubValue = true;
       }
     } else if (subVibDirection) {
       redraw |= updateSubMenuCursor( *currentPage, timeNow );
