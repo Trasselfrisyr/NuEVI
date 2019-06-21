@@ -312,7 +312,6 @@ static void drawPatchView(){
     display.setCursor(10,10);
     display.println("CLR");
   }
-  display.display();
 }
 
 static void clearSub(){
