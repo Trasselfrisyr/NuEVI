@@ -343,7 +343,7 @@ static void plotSubOption(const char* label, int color) {
   display.println(label);
 }
 
-static void plotNum(int value, int color) {
+static void plotSubNum(int value, int color) {
   int s = 0;
   if(value > 99) s = 2*7;
   else if(value > 9) s = 1*7;
@@ -402,7 +402,7 @@ static void plotOctave(int color){
 }
 
 static void plotMIDI(int color) {
-  plotNum(MIDIchannel, color);
+  plotSubNum(MIDIchannel, color);
   if (slowMidi && color) {
     display.setTextColor(WHITE);
   } else {
@@ -432,7 +432,7 @@ static void plotBreathAT(int color){
 
 static void plotVelocity(int color){
   if (velocity){
-    plotNum(velocity, color);
+    plotSubNum(velocity, color);
   } else {
     plotSubOption("DYN", color);
   }
@@ -477,27 +477,23 @@ static void plotExtra(int color){
 }
 
 static void plotVibrato(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
   if (vibrato){
-    display.setCursor(90,33);
-    display.println(vibrato);
+    plotSubNum(vibrato, color);
   } else {
-    display.setCursor(79,33);
-    display.println("OFF");
+    plotSubOption("OFF", color);
   }
 }
 
 static void plotVibSens(int color){
-  plotNum(vibSens, color);
+  plotSubNum(vibSens, color);
 }
 
 static void plotVibRetn(int color){
-  plotNum(vibRetn, color);
+  plotSubNum(vibRetn, color);
 }
 
 static void plotVibSquelch(int color){
-  plotNum(vibSquelch, color);
+  plotSubNum(vibSquelch, color);
 }
 
 static void plotVibDirection(int color){
@@ -557,7 +553,7 @@ static void plotVelBias(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   if (velBias){
-    plotNum(velBias, color);
+    plotSubNum(velBias, color);
   } else {
     display.setCursor(79,33);
     display.println("OFF");
