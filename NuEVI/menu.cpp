@@ -195,7 +195,6 @@ void initDisplay() {
   display.drawBitmap(0,0,nuevi_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
   display.display();
 
-  // Arduino memset???
   memset(cursors, 0, sizeof(cursors));
 }
 
@@ -263,8 +262,7 @@ static void drawMenu(const MenuPage &page, const char* customTitle = nullptr) {
   }
 }
 
-void drawMenuScreen(){
-
+static void drawMenuScreen() {
   //Construct the title including voltage reading.
   //Involves intricate splicing of the title string with battery voltage
   char menuTitle[] = "MENU         XXX Y.YV"; //Allocate string buffer of appropriate size with some placeholders
@@ -390,7 +388,7 @@ static void plotMIDI(int color){
   display.setTextSize(2);
   display.setCursor(90,33);
   display.println(MIDIchannel);
-  if (slowMidi){
+  if (slowMidi && color){
     display.setTextColor(WHITE);
   } else {
     display.setTextColor(BLACK);
@@ -407,6 +405,16 @@ static void plotSubOption(const char* label, int color)
   int x_pos = 91-strlen(label)*4;
   display.setCursor(x_pos,33);
   display.println(label);
+}
+
+static void plotNum(int value, int color) {
+  int s = 0;
+  if(value > 99) s = 2*7;
+  else if(value > 9) s = 1*7;
+  display.setTextColor(color);
+  display.setTextSize(2);
+  display.setCursor(90-s ,33);
+  display.println(value);
 }
 
 static const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
@@ -488,24 +496,15 @@ static void plotVibrato(int color){
 }
 
 static void plotVibSens(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(vibSens);
+  plotNum(vibSens, color);
 }
 
 static void plotVibRetn(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(vibRetn);
+  plotNum(vibRetn, color);
 }
 
 static void plotVibSquelch(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(83,33);
-  display.println(vibSquelch);
+  plotNum(vibSquelch, color);
 }
 
 static void plotVibDirection(int color){
@@ -565,8 +564,7 @@ static void plotVelBias(int color){
   display.setTextColor(color);
   display.setTextSize(2);
   if (velBias){
-    display.setCursor(90,33);
-    display.println(velBias);
+    plotNum(velBias, color);
   } else {
     display.setCursor(79,33);
     display.println("OFF");
