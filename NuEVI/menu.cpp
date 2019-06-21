@@ -40,10 +40,6 @@ enum CursorIdx {
 
 static byte cursors[CursorIdx::NUM_CURSORS];
 
-// These two should 
-static byte mainMenuCursor = 0;   
-static byte rotatorMenuCursor = 0;
-
 static byte cursorNow;
 
 static byte forceRedraw = 0;
@@ -655,7 +651,7 @@ const MenuEntry* rotatorMenuEntries[] = {
 const MenuPage rotatorMenuPage = {
   "ROTATOR SETUP", 
   CursorIdx::ERotator,
-  MAIN_MENU,
+  DISPLAYOFF_IDL,
   ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
 };
 
@@ -781,7 +777,6 @@ const AdjustMenuEntry extraSensorAdjustMenu = {
   }
 };
 
-
 const AdjustMenuEntry ctouchAdjustMenu = {
   "TOUCH SENSE", 
   {
@@ -801,10 +796,7 @@ const AdjustMenuEntry* adjustMenuEntries[] = {
   &ctouchAdjustMenu,
 };
 
-
 static const int numAdjustEntries = ARR_LEN(adjustMenuEntries);
-
-
 
 //***********************************************************
 void drawAdjCursor(byte color) {
@@ -1101,64 +1093,88 @@ static bool selectMenuOption(int cursorPosition, const MenuEntry** menuEntries){
 
 //***********************************************************
 
-static bool handleMenuPageInput( const MenuPage &page, uint32_t timeNow )
-{
+static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
   byte cursorPos = cursors[page.cursor];
+  byte newPos = cursorPos;
   bool redraw = false;
 
-  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+  if (buttonPressedAndNotUsed) {
+
+    int lastEntry = page.numEntries-1; 
+
+    buttonPressedAndNotUsed = 0;
+    switch (deumButtonState) {
+      case BTN_DOWN:
+        if (cursorPos < lastEntry)
+          newPos = cursorPos+1;
+        break;
+
+      case BTN_ENTER:
+        redraw |= selectMenuOption(cursorPos, page.entries);
+        break;
+
+      case BTN_UP:
+        if (cursorPos > 0)
+          newPos = cursorPos-1;
+        break;
+
+      case BTN_MENU:
+        state = page.parentPage;
+        stateFirstRun = 1;
+        break;
+    }
+
+    if(newPos != cursorPos) {
+      drawMenuCursor(cursorPos, BLACK);
+      drawMenuCursor(newPos, WHITE);
+      cursorNow = BLACK;
+      clearSub();
+      redraw = true;
+      cursors[page.cursor] = newPos;
+    }
+  } else if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    // Only need to update cursor blink if no buttons were pressed
     if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
     drawMenuCursor(cursorPos, cursorNow);
     redraw = true;
     cursorBlinkTime = timeNow;
   }
-  if (buttonPressedAndNotUsed){
 
-    int numEntries = page.numEntries; 
-
-    buttonPressedAndNotUsed = 0;
-    switch (deumButtonState){
-      case BTN_DOWN:
-        if (cursorPos < numEntries){
-          drawMenuCursor(cursorPos, BLACK);
-          cursorPos++;
-          drawMenuCursor(cursorPos, WHITE);
-          cursorNow = BLACK;
-          clearSub();
-          redraw = true;
-        }
-        break;
-      case BTN_ENTER:
-        // enter
-        redraw |= selectMenuOption(cursorPos, page.entries);
-        break;
-      case BTN_UP:
-        // up
-        if (cursorPos > 0){
-          drawMenuCursor(cursorPos, BLACK);
-          cursorPos--;
-          drawMenuCursor(cursorPos, WHITE);
-          cursorNow = BLACK;
-          clearSub();
-          redraw = true;
-        }
-        break;
-      case BTN_MENU:
-        // menu
-        state = page.parentPage;
-        stateFirstRun = 1;
-        break;
-    }
-    cursors[page.cursor] = cursorPos;
-  }
   return redraw;
 }
-//***********************************************************
 
+//***********************************************************
+static void checkForPatchView()
+{
+  int trills = readTrills();
+
+  switch (deumButtonState){
+    case BTN_MENU+BTN_DOWN:
+      break;
+
+    case BTN_MENU+BTN_ENTER:
+      if (trills){
+        state = PATCH_VIEW;
+        stateFirstRun = 1;
+        setFPS(trills, patch);
+      }
+      break;
+
+    case BTN_MENU+BTN_UP:
+      if (trills){
+        state = PATCH_VIEW;
+        stateFirstRun = 1;
+        clearFPS(trills);
+      }
+      break;
+  }
+}
+
+//***********************************************************
 
 void menu() {
   unsigned long timeNow = millis();
-  bool redraw = false;
+  bool redraw = stateFirstRun;
   // read the state of the switches
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
 
@@ -1219,10 +1235,6 @@ void menu() {
     subVibDirection = 0;
   }
 
-  if (stateFirstRun) {
-    redraw = true;
-  }
-
   if        (state == DISPLAYOFF_IDL) {
     if (stateFirstRun) {
       display.ssd1306_command(SSD1306_DISPLAYOFF);
@@ -1234,33 +1246,28 @@ void menu() {
       switch (deumButtonState){
         case BTN_UP: // fallthrough
         case BTN_DOWN:
-          // down
           if (trills && (fastPatch[trills-1] > 0)){
             patch = fastPatch[trills-1];
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
           } else if (!trills) buttonPressedAndNotUsed = 1;
-          display.ssd1306_command(SSD1306_DISPLAYON);
           state = PATCH_VIEW;
           stateFirstRun = 1;
           break;
 
         case BTN_ENTER:
-          // enter
           if (trills && (fastPatch[trills-1] > 0)){
             patch = fastPatch[trills-1];
             activePatch = 0;
             doPatchUpdate = 1;
             FPD = 1;
           }
-          display.ssd1306_command(SSD1306_DISPLAYON);
           state = PATCH_VIEW;
           stateFirstRun = 1;
           break;
 
         case BTN_MENU:
-          // menu
           if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch breath activated legacy settings on/off
             legacyBrAct = !legacyBrAct;
             dipSwBits = dipSwBits ^ (1<<2);
@@ -1293,6 +1300,7 @@ void menu() {
             stateFirstRun = 1;
           }
           break;
+
         case 15:
           //all keys depressed, reboot to programming mode
           _reboot_Teensyduino_();
@@ -1300,6 +1308,7 @@ void menu() {
     }
   } else if (state == PATCH_VIEW) {
     if (stateFirstRun) {
+      display.ssd1306_command(SSD1306_DISPLAYON);
       drawPatchView();
       patchViewTime = timeNow;
       stateFirstRun = 0;
@@ -1313,6 +1322,7 @@ void menu() {
     }
     if (buttonPressedAndNotUsed){
       buttonPressedAndNotUsed = 0;
+      patchViewTime = timeNow;
       int trills = readTrills();
       switch (deumButtonState){
         case BTN_DOWN:
@@ -1333,7 +1343,6 @@ void menu() {
           }
           drawPatchView();
           redraw = true;
-          patchViewTime = timeNow;
           break;
         case BTN_ENTER:
           // enter
@@ -1345,7 +1354,6 @@ void menu() {
             drawPatchView();
             redraw = true;
           }
-          patchViewTime = timeNow;
           break;
         case BTN_UP:
           // up
@@ -1365,10 +1373,9 @@ void menu() {
           }
           drawPatchView();
           redraw = true;
-          patchViewTime = timeNow;
           break;
+
         case BTN_MENU:
-          // menu
           if (FPD < 2){
             state = DISPLAYOFF_IDL;
             stateFirstRun = 1;
@@ -1377,8 +1384,8 @@ void menu() {
           writeSetting(PATCH_ADDR,patch);
           FPD = 0;
           break;
-        case 10:
-          // enter + menu
+
+        case BTN_MENU+BTN_ENTER:
             midiPanic();
             display.clearDisplay();
             display.setTextColor(WHITE);
@@ -1388,9 +1395,9 @@ void menu() {
             display.setCursor(35,30);
             display.println("PANIC");
             redraw = true;
-            patchViewTime = timeNow;
             break;
-          case 15:
+
+          case BTN_MENU+BTN_ENTER+BTN_UP+BTN_DOWN:
           //all keys depressed, reboot to programming mode
           _reboot_Teensyduino_();
       }
@@ -1498,7 +1505,6 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (MIDIchannel > 1){
-              // plotMIDI(BLACK);
               clearSubValue();
               MIDIchannel--;
               plotMIDI(WHITE);
@@ -1507,8 +1513,8 @@ void menu() {
               cursorBlinkTime = timeNow;
             }
             break;
+
           case BTN_ENTER:
-            // enter
             readSwitches();
             if (pinkyKey){
               slowMidi = !slowMidi;
@@ -1525,11 +1531,10 @@ void menu() {
               writeSetting(MIDI_ADDR,MIDIchannel);
             }
             break;
+
           case BTN_UP:
-            // up
             if (MIDIchannel < 16){
               clearSubValue();
-              // plotMIDI(BLACK);
               MIDIchannel++;
               plotMIDI(WHITE);
               cursorNow = BLACK;
@@ -1537,8 +1542,8 @@ void menu() {
               cursorBlinkTime = timeNow;
             }
             break;
+
           case BTN_MENU:
-            // menu
             plotMIDI(WHITE);
             cursorNow = BLACK;
             redraw = true;
@@ -1548,73 +1553,14 @@ void menu() {
         }
       }
     } else {
-      if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(mainMenuCursor, cursorNow);
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        int trills = readTrills();
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (mainMenuCursor < 5){
-              drawMenuCursor(mainMenuCursor, BLACK);
-              mainMenuCursor++;
-              drawMenuCursor(mainMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              redraw = true;
-            }
-            break;
-          case BTN_ENTER:
-            // enter
-            redraw |= selectMenuOption(mainMenuCursor, mainMenuEntries);
-            break;
-          case BTN_UP:
-            // up
-            if (mainMenuCursor > 0){
-              drawMenuCursor(mainMenuCursor, BLACK);
-              mainMenuCursor--;
-              drawMenuCursor(mainMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              redraw = true;
-            }
-            break;
-          case BTN_MENU:
-            // menu
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            break;
-          case BTN_MENU+BTN_DOWN:
-            //menu+down
-
-            break;
-          case BTN_MENU+BTN_ENTER:
-            //menu+enter
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              setFPS(trills, patch);
-            }
-            break;
-          case BTN_MENU+BTN_UP:
-            //menu+up
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              clearFPS(trills);
-            }
-            break;
-        }
-      }
+      bool hadButtons = buttonPressedAndNotUsed;
+      redraw |= updateMenuPage( mainMenuPage, timeNow );
+      if (hadButtons)
+        checkForPatchView();
     }
   } else if (state == ROTATOR_MENU) {    // ROTATOR MENU HERE <<<<<<<<<<<<<<<
     if (stateFirstRun) {
       drawMenu(rotatorMenuPage);
-      // drawRotatorMenuScreen();
       stateFirstRun = 0;
     }
     if (subParallel){
@@ -1679,7 +1625,7 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (rotations[subRotator-1] > -24){
-              plotRotator(BLACK,rotations[subRotator-1]);
+              clearSubValue();
               rotations[subRotator-1]--;
               plotRotator(WHITE,rotations[subRotator-1]);
               cursorNow = BLACK;
@@ -1690,7 +1636,7 @@ void menu() {
           case BTN_UP:
             // up
             if (rotations[subRotator-1] < 24){
-              plotRotator(BLACK,rotations[subRotator-1]);
+              clearSubValue();
               rotations[subRotator-1]++;
               plotRotator(WHITE,rotations[subRotator-1]);
               cursorNow = BLACK;
@@ -1722,7 +1668,7 @@ void menu() {
           case BTN_DOWN:
           case BTN_UP:
             // up
-            plotPriority(BLACK);
+            clearSubValue();
             priority = !priority;
             cursorBlinkTime = timeNow;
             break;
@@ -1738,67 +1684,10 @@ void menu() {
         redraw = true;
       }
     } else {
-      if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(rotatorMenuCursor, cursorNow);
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        int trills = readTrills();
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (rotatorMenuCursor < 5){
-              drawMenuCursor(rotatorMenuCursor, BLACK);
-              rotatorMenuCursor++;
-              drawMenuCursor(rotatorMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              redraw = true;
-            }
-            break;
-
-          case BTN_ENTER:
-            redraw |= selectMenuOption(rotatorMenuCursor, rotatorMenuEntries);
-            break;
-
-          case BTN_UP:
-            if (rotatorMenuCursor > 0){
-              drawMenuCursor(rotatorMenuCursor, BLACK);
-              rotatorMenuCursor--;
-              drawMenuCursor(rotatorMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              redraw = true;
-            }
-            break;
-
-          case BTN_MENU:
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            break;
-
-          case BTN_MENU+BTN_DOWN:
-            break;
-
-          case BTN_MENU+BTN_ENTER:
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              setFPS(trills, patch);
-            }
-            break;
-
-          case BTN_MENU+BTN_UP:
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              clearFPS(trills);
-            }
-            break;
-        }
-      }
+      bool hadButtons = buttonPressedAndNotUsed;
+      redraw |= updateMenuPage( rotatorMenuPage, timeNow );
+      if (hadButtons)
+        checkForPatchView();
     }
   // end rotator menu
 
@@ -1979,7 +1868,7 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            plotVelSmpDl(BLACK);
+            clearSubValue();
             if (velSmpDl > 0){
               velSmpDl-=1;
             } else velSmpDl = 30;
@@ -1988,7 +1877,7 @@ void menu() {
             break;
           case BTN_UP:
             // up
-            plotVelSmpDl(BLACK);
+            clearSubValue();
             if (velSmpDl < 30){
               velSmpDl+=1;
             } else velSmpDl = 0;
@@ -2052,14 +1941,13 @@ void menu() {
       }
 
     } else {
-      redraw |= handleMenuPageInput( breathMenuPage, timeNow );
+      redraw |= updateMenuPage( breathMenuPage, timeNow );
     }
 
 
   } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
     if (stateFirstRun) {
-       drawMenu( controlMenuPage );
-      // drawSetupCtMenuScreen();
+      drawMenu( controlMenuPage );
       stateFirstRun = 0;
     }
     if (subPort){
@@ -2073,7 +1961,7 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            plotPort(BLACK);
+            clearSubValue();
             if (portamento > 0){
               portamento--;
             } else portamento = 2;
@@ -2082,7 +1970,7 @@ void menu() {
             break;
           case BTN_UP:
             // up
-            plotPort(BLACK);
+            clearSubValue();
             if (portamento < 2){
               portamento++;
             } else portamento = 0;
@@ -2112,7 +2000,7 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (PBdepth > 0){
-              plotPB(BLACK);
+              clearSubValue();
               PBdepth--;
               plotPB(WHITE);
               cursorNow = BLACK;
@@ -2123,7 +2011,7 @@ void menu() {
           case BTN_UP:
             // up
             if (PBdepth < 12){
-              plotPB(BLACK);
+              clearSubValue();
               PBdepth++;
               plotPB(WHITE);
               cursorNow = BLACK;
@@ -2153,7 +2041,7 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            plotExtra(BLACK);
+            clearSubValue();
             if (extraCT > 0){
               extraCT--;
             } else extraCT = 4;
@@ -2164,7 +2052,7 @@ void menu() {
             break;
           case BTN_UP:
             // up
-            plotExtra(BLACK);
+            clearSubValue();
             if (extraCT < 4){
               extraCT++;
             } else extraCT = 0;
@@ -2196,7 +2084,7 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (deglitch > 0){
-              plotDeglitch(BLACK);
+              clearSubValue();
               deglitch-=1;
               plotDeglitch(WHITE);
               cursorNow = BLACK;
@@ -2207,7 +2095,7 @@ void menu() {
           case BTN_UP:
             // up
             if (deglitch < 70){
-              plotDeglitch(BLACK);
+              clearSubValue();
               deglitch+=1;
               plotDeglitch(WHITE);
               cursorNow = BLACK;
@@ -2238,7 +2126,7 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (pinkySetting > 0){
-              plotPinkyKey(BLACK);
+              clearSubValue();
               pinkySetting-=1;
               plotPinkyKey(WHITE);
               cursorNow = BLACK;
@@ -2249,7 +2137,7 @@ void menu() {
           case BTN_UP:
             // up
             if (pinkySetting < 24){
-              plotPinkyKey(BLACK);
+              clearSubValue();
               pinkySetting+=1;
               plotPinkyKey(WHITE);
               cursorNow = BLACK;
@@ -2269,9 +2157,8 @@ void menu() {
         }
       }
     } else {
-      redraw |= handleMenuPageInput( controlMenuPage, timeNow );
+      redraw |= updateMenuPage( controlMenuPage, timeNow );
     }
-
 
   } else if (state == VIBRATO_MENU) {   // VIBRATO MENU HERE <<<<<<<<<<<<<
     if (stateFirstRun) {
@@ -2373,7 +2260,7 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            plotVibRetn(BLACK);
+            clearSubValue();
             if (vibRetn > 0){
               vibRetn--;
             }
@@ -2382,7 +2269,7 @@ void menu() {
             break;
           case BTN_UP:
             // up
-            plotVibRetn(BLACK);
+            clearSubValue();
             if (vibRetn < 4){
               vibRetn++;
             }
@@ -2412,7 +2299,7 @@ void menu() {
         switch (deumButtonState){
           case BTN_DOWN:
             if (vibSquelch > 1){
-              plotVibSquelch(BLACK);
+              clearSubValue();
               vibSquelch--;
               plotVibSquelch(WHITE);
               cursorNow = BLACK;
@@ -2423,7 +2310,7 @@ void menu() {
           case BTN_UP:
             // up
             if (vibSquelch < 30){
-              plotVibSquelch(BLACK);
+              clearSubValue();
               vibSquelch++;
               plotVibSquelch(WHITE);
               cursorNow = BLACK;
@@ -2453,14 +2340,14 @@ void menu() {
         buttonPressedAndNotUsed = 0;
         switch (deumButtonState){
           case BTN_DOWN:
-            plotVibDirection(BLACK);
+            clearSubValue();
             vibDirection = !vibDirection;
             plotVibDirection(WHITE);
             cursorBlinkTime = timeNow;
             break;
           case BTN_UP:
             // up
-            plotVibDirection(BLACK);
+            clearSubValue();
             vibDirection = !vibDirection;
             plotVibDirection(WHITE);
             cursorBlinkTime = timeNow;
@@ -2477,7 +2364,7 @@ void menu() {
         redraw = true;
       }
     } else {
-      redraw |= handleMenuPageInput( vibratoMenuPage, timeNow );
+      redraw |= updateMenuPage( vibratoMenuPage, timeNow );
     }
   }
 

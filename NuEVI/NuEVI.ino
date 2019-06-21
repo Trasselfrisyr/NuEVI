@@ -86,21 +86,6 @@ int parallel = 7; // semitones
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
-
-// // MAybe move these to config.h (as defines?)
-// const uint16_t breathLoLimit = 0;
-// const uint16_t breathHiLimit = 4095;
-// const uint16_t portamLoLimit = 700;
-// const uint16_t portamHiLimit = 4700;
-// const uint16_t pitchbLoLimit = 500;
-// const uint16_t pitchbHiLimit = 4000;
-// const uint16_t extracLoLimit = 500;
-// const uint16_t extracHiLimit = 4000;
-// const uint16_t ctouchLoLimit = 50;
-// const uint16_t ctouchHiLimit = 350;
-// const uint16_t ttouchLoLimit = 50;
-// const uint16_t ttouchHiLimit = 1900;
-
 int touch_Thr = 1300;
 
 byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20
