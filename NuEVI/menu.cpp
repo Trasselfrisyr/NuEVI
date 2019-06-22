@@ -37,7 +37,6 @@ static byte activeSub[CursorIdx::NUM_CURSORS];
 
 byte cursorNow;
 
-static byte forceRedraw = 0;
 static byte FPD = 0;
 
 
@@ -216,20 +215,15 @@ static void plotSubOption(const char* label, int color) {
 
 static bool drawSubMenu(const MenuPage &page, int color) {
     int index = cursors[page.cursor];
-    // TODO: Handle MenuEntrySubRotator case
     // TODO: Null check subMenuFunc
     const MenuEntry* subEntry =  page.entries[index];
     switch(subEntry->type) {
       case MenuType::ESub:
-        ((const MenuEntrySub*)subEntry)->subMenuFunc(color);
-        break;
-
-      case MenuType::ESubNew:
         {
           char buffer[12];
           const char* labelPtr = nullptr;
-          const MenuEntrySubNew* sub = (const MenuEntrySubNew*)subEntry;
-          sub->getSubTextFunc(buffer, &labelPtr);
+          const MenuEntrySub* sub = (const MenuEntrySub*)subEntry;
+          sub->getSubTextFunc(*sub, buffer, &labelPtr);
 
           // If ECustom flag is set, we assume that the getSubTextFunc 
           // rendered by it self.
@@ -354,7 +348,6 @@ static void drawPatchView(){
   }
 }
 
-
 static void drawSubBox(const char* label)
 {
   display.fillRect(63,11,64,52,BLACK);
@@ -372,20 +365,6 @@ void drawMenuCursor(byte itemNo, byte color){
   display.drawTriangle(57, ymid,61, ymid+2,61, ymid-2, color);
 }
 
-static void plotRotator(int color,int value){
-  char buff[12];
-  numToString(value, buff, true);
-  plotSubOption(buff, color);
-}
-
-static void plotPriority(int color){
-  if (priority){
-    plotSubOption("ROT", color);
-  } else {
-    plotSubOption("MEL", color);
-  }
-}
-
 static void plotMIDI(int color) {
   char buff[7];
   numToString(MIDIchannel, buff);
@@ -398,13 +377,6 @@ static void plotMIDI(int color) {
   display.setTextSize(1);
   display.setCursor(116,51);
   display.print("S");
-}
-
-static void drawSubRotator(int __unused color){
-  // HACKY HACK ROTATOR MENU
-  // drawSubBox("SEMITONES");
-  //plotRotator(WHITE,value);
-  forceRedraw = 1;
 }
 
 //***********************************************************
@@ -455,30 +427,30 @@ static void clearFPS(int trills) {
 
 //***********************************************************
 // Main menu
-const MenuEntrySubNew transposeMenu = {
-  MenuType::ESubNew, "TRANSPOSE", "TRANSPOSE", &transpose, 0, 24, MenuEntryFlags::ENone, 
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub transposeMenu = {
+  MenuType::ESub, "TRANSPOSE", "TRANSPOSE", &transpose, 0, 24, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(transpose - 12, out, true);
   },
-  []() { writeSetting(TRANSP_ADDR,transpose); }
+  [](const MenuEntrySub &sub) { writeSetting(TRANSP_ADDR,*sub.valuePtr); }
   , nullptr
 };
 
-const MenuEntrySubNew octaveMenu = {
-  MenuType::ESubNew, "OCTAVE", "OCTAVE", &octave, 0, 6, MenuEntryFlags::ENone, 
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub octaveMenu = {
+  MenuType::ESub, "OCTAVE", "OCTAVE", &octave, 0, 6, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(octave-3, out, true);
   },
-  []() { writeSetting(OCTAVE_ADDR,octave); }
+  [](SubMenuRef __unused) { writeSetting(OCTAVE_ADDR,octave); }
   , nullptr
 };
 
-const MenuEntrySubNew midiMenu = {
-  MenuType::ESubNew, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, MenuEntryFlags::ECustom | MenuEntryFlags::EEnterHandler, 
-  [](char* __unused out, const char** __unused unit) {
+const MenuEntrySub midiMenu = {
+  MenuType::ESub, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, MenuEntryFlags::ECustom | MenuEntryFlags::EEnterHandler, 
+  [](SubMenuRef __unused, char* __unused out, const char** __unused unit) {
     plotMIDI(WHITE);
   },
-  []() { writeSetting(MIDI_ADDR, MIDIchannel); },
+  [](const MenuEntrySub & __unused sub) { writeSetting(MIDI_ADDR, MIDIchannel); },
   []() -> bool { // On enter handler
     readSwitches();
     if (pinkyKey){
@@ -513,13 +485,80 @@ const MenuPage mainMenuPage = {
   ARR_LEN(mainMenuEntries), mainMenuEntries
 };
 
+
+//***********************************************************
 // Rotator menu
-const MenuEntrySub rotatorParaMenu      = { MenuType::ESub, "PARALLEL", "SEMITONES", &subParallel, drawSubRotator };
-const MenuEntrySubRotator rotator1Menu  = { MenuType::ESubRotator, "ROTATE 1", "SEMITONES", 1, &subRotator, drawSubRotator };
-const MenuEntrySubRotator rotator2Menu  = { MenuType::ESubRotator, "ROTATE 2", "SEMITONES", 2, &subRotator, drawSubRotator };
-const MenuEntrySubRotator rotator3Menu  = { MenuType::ESubRotator, "ROTATE 3", "SEMITONES", 3, &subRotator, drawSubRotator };
-const MenuEntrySubRotator rotator4Menu  = { MenuType::ESubRotator, "ROTATE 4", "SEMITONES", 4, &subRotator, drawSubRotator };
-const MenuEntrySub rotatorPrioMenu      = { MenuType::ESub, "PRIORITY", "MONO PRIO", &subPriority, plotPriority };
+
+static void rotatorSave(const MenuEntrySub& __unused sub) {
+  int16_t stored;
+  for(int i = 0; i < 4; ++i) {
+    stored = readSetting(ROTN1_ADDR+2*i);
+    if(stored != rotations[i])
+      writeSetting(ROTN1_ADDR+2*i,(rotations[i]));
+  }
+}
+
+static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
+  numToString((*sub.valuePtr) - 24, out, true);
+}
+
+static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
+  numToString(parallel-24, out, true);
+}
+
+static void parallelSave(SubMenuRef __unused) {
+  writeSetting(PARAL_ADDR, parallel);
+}
+
+const MenuEntrySub rotatorParaMenu  = {
+  MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
+  parallelOptionGet,
+  parallelSave,
+  nullptr
+};
+
+const MenuEntrySub rotator1Menu  = {
+  MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet,
+  rotatorSave,
+  nullptr
+};
+
+const MenuEntrySub rotator2Menu  = {
+  MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet,
+  rotatorSave,
+  nullptr
+};
+const MenuEntrySub rotator3Menu  = {
+  MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet,
+  rotatorSave,
+  nullptr
+};
+const MenuEntrySub rotator4Menu  = {
+  MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet,
+  rotatorSave,
+  nullptr
+};
+
+static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (priority) strncpy(out, "ROT", 4);
+    else strncpy(out, "MEL", 4);
+}
+
+static void rotatorPrioSave(SubMenuRef __unused) {
+  writeSetting(PRIO_ADDR,priority);
+}
+
+const MenuEntrySub rotatorPrioMenu = {
+  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EWrap, 
+  rotatorPrioOptionGet,
+  rotatorPrioSave, 
+  nullptr,
+};
+
 
 const MenuEntry* rotatorMenuEntries[] = {
   (MenuEntry*)&rotatorParaMenu,
@@ -539,14 +578,14 @@ const MenuPage rotatorMenuPage = {
 
 //***********************************************************
 // Breath menu
-const MenuEntrySubNew breathCCMenu = {
-  MenuType::ESubNew, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub breathCCMenu = {
+  MenuType::ESub, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
                                             "BR+", "VL+", "EX+", "CF", "20" };
     strncpy(out, breathCCMenuLabels[breathCC], 4);
   },
-  [](){
+  [](const MenuEntrySub & __unused sub){
     if (readSetting(BREATH_CC_ADDR) != breathCC) {
       writeSetting(BREATH_CC_ADDR,breathCC);
       midiReset();
@@ -555,11 +594,11 @@ const MenuEntrySubNew breathCCMenu = {
   , nullptr
 };
 
-const MenuEntrySubNew breathATMenu = {
-  MenuType::ESubNew, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EWrap,
-  [](char* out, const char ** __unused unit) {
+const MenuEntrySub breathATMenu = {
+  MenuType::ESub, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, breathAT?"ON":"OFF", 4);
-  }, []() {
+  }, [](const MenuEntrySub & __unused sub) {
     if (readSetting(BREATH_AT_ADDR) != breathAT) {
       writeSetting(BREATH_AT_ADDR, breathAT);
       midiReset();
@@ -568,46 +607,46 @@ const MenuEntrySubNew breathATMenu = {
   , nullptr
 };
 
-const MenuEntrySubNew velocityMenu = {
-  MenuType::ESubNew, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub velocityMenu = {
+  MenuType::ESub, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(velocity) numToString(velocity, out);
     else strncpy(out, "DYN", 4);
   },
-  []() { writeSetting(VELOCITY_ADDR,velocity); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VELOCITY_ADDR,velocity); }
   , nullptr
 };
 
-const MenuEntrySubNew curveMenu = {
-  MenuType::ESubNew, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub curveMenu = {
+  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
                                          "+3", "+4", "S1", "S2", "Z1", "Z2" };
     strncpy(out, curveMenuLabels[curve], 4);
   },
-  [](){ writeSetting(BREATHCURVE_ADDR,curve); }
+  [](const MenuEntrySub & __unused sub){ writeSetting(BREATHCURVE_ADDR,curve); }
   , nullptr
 };
 
-const MenuEntrySubNew velSmpDlMenu = {
-  MenuType::ESubNew, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EWrap,
-  [](char *out, const char** label) {
+const MenuEntrySub velSmpDlMenu = {
+  MenuType::ESub, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char *out, const char** label) {
     if (velSmpDl) {
       numToString(velSmpDl, out);
       *label = "ms";
     } else strncpy(out, "OFF", 4);
   },
-  []() { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
   , nullptr
 };
 
-const MenuEntrySubNew velBiasMenu = {
-  MenuType::ESubNew, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub velBiasMenu = {
+  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (velBias) numToString(velBias, out);
     else strncpy(out, "OFF", 4);
   },
-  [](){ writeSetting(VEL_BIAS_ADDR,velBias); }
+  [](SubMenuRef __unused){ writeSetting(VEL_BIAS_ADDR,velBias); }
   , nullptr
 };
 
@@ -629,63 +668,63 @@ const MenuPage breathMenuPage = {
 
 //***********************************************************
 // Control menu
-const MenuEntrySubNew portMenu = {
-  MenuType::ESubNew, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EWrap,
-  [](char* out, const char ** __unused unit) {
+const MenuEntrySub portMenu = {
+  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
     const char* labs[] = { "OFF", "ON", "SW" };
     strncpy(out, labs[portamento], 4);
   },
-  []() { writeSetting(PORTAM_ADDR,portamento); }
+  [](SubMenuRef __unused sub) { writeSetting(PORTAM_ADDR,portamento); }
   , nullptr
 };
 
-const MenuEntrySubNew pitchBendMenu = {
-  MenuType::ESubNew, "PITCHBEND", "PITCHBEND", &PBdepth, 0, 12, MenuEntryFlags::ENone,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub pitchBendMenu = {
+  MenuType::ESub, "PITCHBEND", "PITCHBEND", &PBdepth, 0, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(PBdepth) {
       memcpy(out, "1/", 2);
       numToString(PBdepth, &out[2]);
     }
     else strncpy(out, "OFF", 4);
   },
-  [](){ writeSetting(PB_ADDR,PBdepth); }
+  [](SubMenuRef __unused){ writeSetting(PB_ADDR,PBdepth); }
   , nullptr
 };
 
-const MenuEntrySubNew extraMenu = {
-  MenuType::ESubNew, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub extraMenu = {
+  MenuType::ESub, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused,char* out, const char** __unused unit) {
     const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
     strncpy(out, extraMenuLabels[extraCT], 12);
   },
-  []() { writeSetting(EXTRA_ADDR,extraCT); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_ADDR,extraCT); }
   , nullptr
 };
 
 const MenuEntryStateCh vibratoSubMenu = { MenuType::EStateChange, "VIBRATO", VIBRATO_MENU };
 
-const MenuEntrySubNew deglitchMenu = {
-  MenuType::ESubNew, "DEGLITCH", "DEGLITCH", &deglitch, 0, 70, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** label) {
+const MenuEntrySub deglitchMenu = {
+  MenuType::ESub, "DEGLITCH", "DEGLITCH", &deglitch, 0, 70, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** label) {
     if(deglitch) {
       numToString(deglitch, textBuffer);
       *label = "ms";
     } else
       strncpy(textBuffer, "OFF", 4);
   },
-  []() { writeSetting(DEGLITCH_ADDR,deglitch); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(DEGLITCH_ADDR,deglitch); }
   , nullptr
 };
 
-const MenuEntrySubNew pinkyMenu = {
-  MenuType::ESubNew, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused unit) {
+const MenuEntrySub pinkyMenu = {
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     if (pinkySetting == PBD)
       strncpy(textBuffer, "PBD", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },
-  []() { writeSetting(PINKY_KEY_ADDR,pinkySetting); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(PINKY_KEY_ADDR,pinkySetting); }
   , nullptr
 };
 
@@ -709,60 +748,60 @@ const MenuPage controlMenuPage = {
 //***********************************************************
 // Vibrato menu
 
-static void vibGetStr(char* textBuffer, const char** __unused unit) {
+static void vibGetStr(SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
   if(vibrato)
     numToString(vibrato, textBuffer);
   else
     strncpy(textBuffer, "OFF", 4);
 }
 
-static void vibStore() {
+static void vibStore(const MenuEntrySub & __unused sub) {
   writeSetting(VIBRATO_ADDR,vibrato);
 }
 
-const MenuEntrySubNew vibDepthMenu = {
-  MenuType::ESubNew, "DEPTH", "LEVEL", &vibrato, 0, 9, MenuEntryFlags::ENone,
+const MenuEntrySub vibDepthMenu = {
+  MenuType::ESub, "DEPTH", "LEVEL", &vibrato, 0, 9, MenuEntryFlags::ENone,
   vibGetStr, 
   vibStore,
   nullptr
 };
 
-const MenuEntrySubNew vibSenseMenu = {
-  MenuType::ESubNew, "SENSE", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused unit) {
+const MenuEntrySub vibSenseMenu = {
+  MenuType::ESub, "SENSE", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     numToString(vibSens, textBuffer);
   },
-  []() { writeSetting(VIB_SENS_ADDR,vibSens); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SENS_ADDR,vibSens); }
   , nullptr
 };
 
-const MenuEntrySubNew vibRetnMenu = {
-  MenuType::ESubNew, "RETURN", "LEVEL", &vibRetn, 0, 4, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused unit) {
+const MenuEntrySub vibRetnMenu = {
+  MenuType::ESub, "RETURN", "LEVEL", &vibRetn, 0, 4, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
     numToString(vibRetn, textBuffer);
   },
-  []() { writeSetting(VIB_RETN_ADDR,vibRetn); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_RETN_ADDR,vibRetn); }
   , nullptr
 };
 
-const MenuEntrySubNew vibSquelchMenu = {
-  MenuType::ESubNew, "SQUELCH", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused unit) {
+const MenuEntrySub vibSquelchMenu = {
+  MenuType::ESub, "SQUELCH", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
     numToString(vibSquelch, textBuffer);
   },
-  []() { writeSetting(VIB_SQUELCH_ADDR,vibSquelch); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SQUELCH_ADDR,vibSquelch); }
   , nullptr
 };
 
-const MenuEntrySubNew vibDirMenu = {
-  MenuType::ESubNew, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused unit) {
+const MenuEntrySub vibDirMenu = {
+  MenuType::ESub, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (DNWD == vibDirection)
       strncpy(out, "NRM", 4);
     else
       strncpy(out, "REV", 4);
   },
-  []() { writeSetting(VIB_DIRECTION_ADDR,vibDirection); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_DIRECTION_ADDR,vibDirection); }
   , nullptr
 };
 
@@ -784,25 +823,16 @@ const MenuPage vibratoMenuPage = {
 
 //***********************************************************
 
-static bool ExecuteMenuSelection(const MenuPage &page) //int cursorPosition, const struct MenuEntry *menuEntry)
-{
+static bool selectMenuOption(const MenuPage &page) {
   int cursorPosition = cursors[page.cursor];
   const MenuEntry* menuEntry = page.entries[cursorPosition];
   cursorBlinkTime = millis();
 
   switch(menuEntry->type) {
     case MenuType::ESub:
-      *((const MenuEntrySub*)menuEntry)->flag = 1;
       activeSub[page.cursor] = cursorPosition+1;
       drawMenuCursor(cursorPosition, WHITE);
       drawSubBox( ((const MenuEntrySub*)menuEntry)->subTitle);
-      ((const MenuEntrySub*)menuEntry)->subMenuFunc(WHITE);
-      return true;
-
-    case MenuType::ESubNew:
-      activeSub[page.cursor] = cursorPosition+1;
-      drawMenuCursor(cursorPosition, WHITE);
-      drawSubBox( ((const MenuEntrySubNew*)menuEntry)->subTitle);
       drawSubMenu(page, WHITE);
       return true;
 
@@ -810,24 +840,11 @@ static bool ExecuteMenuSelection(const MenuPage &page) //int cursorPosition, con
       state = ((const MenuEntryStateCh*)menuEntry)->state;
       stateFirstRun = 1;
       break;
-
-    case MenuType::ESubRotator:
-      activeSub[page.cursor] = cursorPosition+1;
-      *((const MenuEntrySubRotator*)menuEntry)->flag = ((const MenuEntrySubRotator*)menuEntry)->flagValue;
-      drawMenuCursor(cursorPosition, WHITE);
-      ((const MenuEntrySubRotator*)menuEntry)->subMenuFunc(WHITE);
-      break;
   }
 
   return false;
 }
 
-//***********************************************************
-
-static bool selectMenuOption(const MenuPage &page){
-  // const MenuEntry* entry = menuEntries[cursorPosition];
-  return ExecuteMenuSelection( page );
-}
 
 //***********************************************************
 
@@ -843,7 +860,7 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
     if( current_sub < 0)
       return false;
 
-    auto sub = (const MenuEntrySubNew*)page.entries[current_sub];
+    auto sub = (const MenuEntrySub*)page.entries[current_sub];
     uint16_t currentVal = *sub->valuePtr;
 
     switch (deumButtonState){
@@ -871,13 +888,13 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
           }
         } else {
           activeSub[page.cursor] = 0;
-          sub->applyFunc();
+          sub->applyFunc(*sub);
         }
         break;
 
       case BTN_MENU:
         activeSub[page.cursor] = 0;
-        sub->applyFunc();
+        sub->applyFunc(*sub);
         break;
     }
     *sub->valuePtr = currentVal;
@@ -1009,7 +1026,6 @@ void menu() {
   unsigned long timeNow = millis();
   const MenuPage *currentPage = nullptr;
 
-  bool redrawSubValue = false;
   bool redraw = stateFirstRun;
   // read the state of the switches
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
@@ -1225,109 +1241,21 @@ void menu() {
       redraw |= updateSubMenu(*currentPage, timeNow);
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage( *currentPage, timeNow );
+      redraw |= updateMenuPage(*currentPage, timeNow);
       if (hadButtons)
         checkForPatchView(deumButtonState);
     }
   } else if (state == ROTATOR_MENU) {    // ROTATOR MENU HERE <<<<<<<<<<<<<<<
+    currentPage = &rotatorMenuPage;
     if (stateFirstRun) {
-      drawMenu(rotatorMenuPage);
+      drawMenu(*currentPage);
       stateFirstRun = 0;
     }
-    currentPage = &rotatorMenuPage;
-    if (subParallel){
-      if (((timeNow - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        if (forceRedraw){
-          forceRedraw = 0;
-          cursorNow = WHITE;
-        }
-        plotRotator(cursorNow,parallel);
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (parallel > -24)
-              parallel--;
-            break;
-
-          case BTN_UP:
-            if (parallel < 24)
-              parallel++;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subParallel = 0;
-            writeSetting(PARAL_ADDR,(parallel + 24));
-            break;
-        }
-        clearSubValue();
-        plotRotator(WHITE,parallel);
-        cursorNow = BLACK;
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-    } else if (subRotator){
-      if (((timeNow - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        if (forceRedraw){
-          forceRedraw = 0;
-          cursorNow = WHITE;
-        }
-        plotRotator(cursorNow,rotations[subRotator-1]);
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (rotations[subRotator-1] > -24)
-              rotations[subRotator-1]--;
-            break;
-
-          case BTN_UP:
-            if (rotations[subRotator-1] < 24)
-              rotations[subRotator-1]++;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
-            subRotator = 0;
-            break;
-        }
-        clearSubValue();
-        plotRotator(WHITE,rotations[subRotator-1]);
-        cursorNow = BLACK;
-        redraw = true;
-        cursorBlinkTime = timeNow;
-      }
-    } else if (subPriority){
-      updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed) {
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN: // fallthrough
-          case BTN_UP:
-            priority = !priority;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subPriority = 0;
-            writeSetting(PRIO_ADDR,priority);
-            break;
-        }
-        redrawSubValue = true;
-      }
+    if(activeSub[currentPage->cursor]) {
+      redraw |= updateSubMenu(*currentPage, timeNow);
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage(*currentPage, timeNow );
+      redraw |= updateMenuPage(*currentPage, timeNow);
       if (hadButtons)
         checkForPatchView(deumButtonState);
     }
@@ -1357,13 +1285,6 @@ void menu() {
     redraw |= updatePage(controlMenuPage, timeNow);
   } else if (state == VIBRATO_MENU) {   // VIBRATO MENU HERE <<<<<<<<<<<<<
     redraw |= updatePage(vibratoMenuPage, timeNow);
-  }
-
-  if(redrawSubValue && currentPage) {
-    clearSubValue();
-    redraw |= drawSubMenu(*currentPage, WHITE);
-    cursorNow = BLACK;
-    cursorBlinkTime = timeNow;
   }
 
   if(redraw) {

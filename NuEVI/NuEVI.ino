@@ -81,8 +81,8 @@ unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
 byte rotatorOn = 0;
 byte currentRotation = 0;
-int rotations[4] = { -5, -10, -7, -14 }; // semitones { -5, -10, -7, -14 };
-int parallel = 7; // semitones
+uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
+uint16_t parallel; // = 7; // semitones
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
@@ -335,11 +335,11 @@ void setup() {
   fastPatch[5] = readSetting(FP6_ADDR);
   fastPatch[6] = readSetting(FP7_ADDR);
   dipSwBits    = readSetting(DIPSW_BITS_ADDR);
-  parallel     = readSetting(PARAL_ADDR)-24;
-  rotations[0] = readSetting(ROTN1_ADDR)-24;
-  rotations[1] = readSetting(ROTN2_ADDR)-24;
-  rotations[2] = readSetting(ROTN3_ADDR)-24;
-  rotations[3] = readSetting(ROTN4_ADDR)-24;
+  parallel     = readSetting(PARAL_ADDR);
+  rotations[0] = readSetting(ROTN1_ADDR);
+  rotations[1] = readSetting(ROTN2_ADDR);
+  rotations[2] = readSetting(ROTN3_ADDR);
+  rotations[3] = readSetting(ROTN4_ADDR);
   priority     = readSetting(PRIO_ADDR);
   vibSens      = readSetting(VIB_SENS_ADDR);
   vibRetn      = readSetting(VIB_RETN_ADDR);
@@ -639,10 +639,10 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          midiSendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend); // send Note On message for new note
+          midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
           if (currentRotation < 3) currentRotation++;
           else currentRotation = 0;
-          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend); // send Note On message for new note
+          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
         }
         if (!priority) { // mono prio to base note
           midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
@@ -676,8 +676,8 @@ void loop() {
         }
       }
       if (rotatorOn) {
-        midiSendNoteOff(noteValueCheck(activeNote + parallel)); // send Note Off message for old note
-        midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation])); // send Note Off message for old note
+        midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
+        midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
       }
       if (!priority) {
         midiSendNoteOff(activeNote); //  send Note Off message
@@ -725,8 +725,8 @@ void loop() {
             }
           }
           if (rotatorOn) {
-            midiSendNoteOff(noteValueCheck(activeNote + parallel)); // send Note Off message for old note
-            midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation])); // send Note Off message for old note
+            midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
+            midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
           }
           if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
             midiSendNoteOff(activeNote); // send Note Off message for old note
@@ -750,10 +750,10 @@ void loop() {
             }
           }
           if (rotatorOn) {
-            midiSendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend); // send Note On message for new note
+            midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
             if (currentRotation < 3) currentRotation++;
             else currentRotation = 0;
-            midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend); // send Note On message for new note
+            midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
           }
 
           if (!priority) {

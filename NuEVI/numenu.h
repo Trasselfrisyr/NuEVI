@@ -5,22 +5,7 @@
 
 enum MenuType {
   ESub,
-  ESubNew,
-  ESubRotator,
   EStateChange,
-};
-
-struct MenuEntry {
-  enum MenuType type;
-  const char* title;
-};
-
-struct MenuEntrySub {
-  enum MenuType type;
-  const char* title;
-  const char* subTitle;
-  byte* flag;
-  void (*subMenuFunc)(int color);
 };
 
 enum MenuEntryFlags {
@@ -30,7 +15,15 @@ enum MenuEntryFlags {
   EEnterHandler = (1<<2),
 };
 
-struct MenuEntrySubNew {
+struct MenuEntry {
+  enum MenuType type;
+  const char* title;
+};
+
+struct MenuEntrySub;
+typedef const MenuEntrySub& SubMenuRef;
+
+struct MenuEntrySub {
   enum MenuType type;
   const char* title;
   const char* subTitle;
@@ -38,19 +31,9 @@ struct MenuEntrySubNew {
   uint16_t min;
   uint16_t max;  
   uint16_t flags;
-  void (*getSubTextFunc)(char*textBuffer, const char**label);
-  void (*applyFunc)(void);
+  void (*getSubTextFunc)(SubMenuRef, char*textBuffer, const char**label);
+  void (*applyFunc)(SubMenuRef);
   bool (*onEnterFunc)(void);
-};
-
-
-struct MenuEntrySubRotator {
-  enum MenuType type;
-  const char* title;
-  const char* subTitle;
-  byte flagValue;
-  byte* flag;
-  void (*subMenuFunc)(int color);
 };
 
 struct MenuEntryStateCh {
@@ -69,8 +52,6 @@ struct MenuPage {
 
 
 //***********************************************************
-
-
 
 struct AdjustValue {
   uint16_t *value;

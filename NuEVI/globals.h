@@ -37,8 +37,8 @@ extern unsigned short vibDirection; //direction of first vibrato wave UPWD or DN
 extern unsigned short fastPatch[7];
 extern byte rotatorOn;
 extern byte currentRotation;
-extern int rotations[4];
-extern int parallel; // semitones
+extern uint16_t rotations[4];
+extern uint16_t parallel; // semitones
 
 extern int touch_Thr;
 
