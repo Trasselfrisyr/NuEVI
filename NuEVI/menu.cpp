@@ -27,7 +27,7 @@ enum CursorIdx {
   ERotator,
   EVibrato,
 
-  // NEVER ADD 
+  // NEVER ADD
   NUM_CURSORS
 };
 
@@ -60,15 +60,6 @@ unsigned long cursorBlinkTime = 0;          // the last time the cursor was togg
 static byte state = DISPLAYOFF_IDL;
 static byte stateFirstRun = 1;
 
-static byte subTranspose = 0;
-static byte subOctave = 0;
-static byte subMIDI = 0;
-static byte subBreathCC = 0;
-static byte subBreathAT = 0;
-static byte subVelocity = 0;
-static byte subCurve = 0;
-static byte subVelSmpDl = 0;
-static byte subVelBias = 0;
 static byte subParallel = 0;
 static byte subRotator = 0;
 static byte subPriority = 0;
@@ -223,18 +214,6 @@ static void plotSubOption(const char* label, int color) {
   display.println(label);
 }
 
-static void plotSubNum(int value, int color) {
-  int s = 0;
-  if(value > 99) s = 2*7;
-  else if(value > 9) s = 1*7;
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90-s ,33);
-  display.println(value);
-}
-
-
-
 static bool drawSubMenu(const MenuPage &page, int color) {
     int index = cursors[page.cursor];
     // TODO: Handle MenuEntrySubRotator case
@@ -249,13 +228,19 @@ static bool drawSubMenu(const MenuPage &page, int color) {
         {
           char buffer[12];
           const char* labelPtr = nullptr;
-          ((const MenuEntrySubNew*)subEntry)->getSubTextFunc(buffer, &labelPtr);
-          plotSubOption(buffer, color);
-          if(labelPtr != nullptr) {
-            // TODO: handle this better, we should center text + label
-            display.setCursor(105,40);
-            display.setTextSize(1);
-            display.println(labelPtr);
+          const MenuEntrySubNew* sub = (const MenuEntrySubNew*)subEntry;
+          sub->getSubTextFunc(buffer, &labelPtr);
+
+          // If ECustom flag is set, we assume that the getSubTextFunc 
+          // rendered by it self.
+          if( !(sub->flags & MenuEntryFlags::ECustom)) {
+            plotSubOption(buffer, color);
+            if(labelPtr != nullptr) {
+              // TODO: handle this better, we should center text + label
+              display.setCursor(105,40);
+              display.setTextSize(1);
+              display.println(labelPtr);
+            }
           }
         }
         break;
@@ -266,13 +251,25 @@ static bool drawSubMenu(const MenuPage &page, int color) {
     return true;
 }
 
+static void clearSub(){
+  display.fillRect(63,11,64,52,BLACK);
+}
+
+static void clearSubValue() {
+  display.fillRect(65, 24, 60, 37, BLACK);
+}
+
 static bool updateSubMenuCursor(const MenuPage &page, uint32_t timeNow)
 {
   if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
-    if (cursorNow == WHITE) cursorNow = BLACK;
-    else cursorNow = WHITE;
     cursorBlinkTime = timeNow;
-    return drawSubMenu( page, cursorNow );
+    if (cursorNow == WHITE) {
+      cursorNow = BLACK;
+      clearSubValue();
+    } else {
+      cursorNow = WHITE;
+      return drawSubMenu( page, cursorNow );
+    }
   }
   return false;
 }
@@ -357,13 +354,6 @@ static void drawPatchView(){
   }
 }
 
-static void clearSub(){
-  display.fillRect(63,11,64,52,BLACK);
-}
-
-static void clearSubValue() {
-  display.fillRect(65, 24, 60, 37, BLACK);
-}
 
 static void drawSubBox(const char* label)
 {
@@ -382,13 +372,6 @@ void drawMenuCursor(byte itemNo, byte color){
   display.drawTriangle(57, ymid,61, ymid+2,61, ymid-2, color);
 }
 
-
-static void plotTranspose(int color){
-  char buff[12];
-  numToString(transpose - 12, buff, true);
-  plotSubOption(buff, color);
-}
-
 static void plotRotator(int color,int value){
   char buff[12];
   numToString(value, buff, true);
@@ -403,14 +386,10 @@ static void plotPriority(int color){
   }
 }
 
-static void plotOctave(int color){
-  char buff[12];
-  numToString(octave-3, buff, true);
-  plotSubOption(buff, color);
-}
-
 static void plotMIDI(int color) {
-  plotSubNum(MIDIchannel, color);
+  char buff[7];
+  numToString(MIDIchannel, buff);
+  plotSubOption(buff, color);
   if (slowMidi && color) {
     display.setTextColor(WHITE);
   } else {
@@ -419,62 +398,6 @@ static void plotMIDI(int color) {
   display.setTextSize(1);
   display.setCursor(116,51);
   display.print("S");
-}
-
-static const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
-                                            "BR+", "VL+", "EX+", "CF", "20" };
-
-static void plotBreathCC(int color){
-  plotSubOption(breathCCMenuLabels[breathCC], color);
-}
-
-
-static void plotBreathAT(int color){
-  if (breathAT){
-    plotSubOption("ON", color);
-  } else {
-    plotSubOption("OFF", color);
-  }
-}
-
-
-static void plotVelocity(int color){
-  if (velocity){
-    plotSubNum(velocity, color);
-  } else {
-    plotSubOption("DYN", color);
-  }
-}
-
-static const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
-                                         "+3", "+4", "S1", "S2", "Z1", "Z2" };
-
-
-static void plotCurve(int color){
-  // Assumes curve is in rage 0..12
-  plotSubOption(curveMenuLabels[curve], color);
-}
-
-static void plotVelSmpDl(int color){
-  display.setTextColor(color);
-  display.setCursor(79,33);
-  display.setTextSize(2);
-  if (velSmpDl){
-    display.println(velSmpDl);
-    display.setCursor(105,40);
-    display.setTextSize(1);
-    display.println("ms");
-  } else {
-    display.println("OFF");
-  }
-}
-
-static void plotVelBias(int color){
-  if (velBias){
-    plotSubNum(velBias, color);
-  } else {
-    plotSubOption("OFF", color);
-  }
 }
 
 static void drawSubRotator(int __unused color){
@@ -532,24 +455,59 @@ static void clearFPS(int trills) {
 
 //***********************************************************
 // Main menu
-const MenuEntrySub transposeMenu      = { MenuType::ESub, "TRANSPOSE", "TRANSPOSE", &subTranspose, plotTranspose };
-const MenuEntrySub octaveMenu         = { MenuType::ESub, "OCTAVE",    "OCTAVE",    &subOctave, plotOctave };
-const MenuEntrySub midiMenu           = { MenuType::ESub, "MIDI CH",   "MIDI CHNL", &subMIDI, plotMIDI };
+const MenuEntrySubNew transposeMenu = {
+  MenuType::ESubNew, "TRANSPOSE", "TRANSPOSE", &transpose, 0, 24, MenuEntryFlags::ENone, 
+  [](char* out, const char** __unused unit) {
+    numToString(transpose - 12, out, true);
+  },
+  []() { writeSetting(TRANSP_ADDR,transpose); }
+  , nullptr
+};
+
+const MenuEntrySubNew octaveMenu = {
+  MenuType::ESubNew, "OCTAVE", "OCTAVE", &octave, 0, 6, MenuEntryFlags::ENone, 
+  [](char* out, const char** __unused unit) {
+    numToString(octave-3, out, true);
+  },
+  []() { writeSetting(OCTAVE_ADDR,octave); }
+  , nullptr
+};
+
+const MenuEntrySubNew midiMenu = {
+  MenuType::ESubNew, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, MenuEntryFlags::ECustom | MenuEntryFlags::EEnterHandler, 
+  [](char* __unused out, const char** __unused unit) {
+    plotMIDI(WHITE);
+  },
+  []() { writeSetting(MIDI_ADDR, MIDIchannel); },
+  []() -> bool { // On enter handler
+    readSwitches();
+    if (pinkyKey){
+      slowMidi = !slowMidi;
+      dipSwBits = dipSwBits ^ (1<<3);
+      writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+      return false;
+    } else {
+      writeSetting(MIDI_ADDR, MIDIchannel);
+      return true;
+    }
+  }
+};
+
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
 const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
 const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
 
-const MenuEntry* mainMenuEntries[] = { 
+const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&transposeMenu,
-  (MenuEntry*)&octaveMenu, 
-  (MenuEntry*)&midiMenu, 
-  (MenuEntry*)&adjustMenu, 
-  (MenuEntry*)&breathMenu, 
+  (MenuEntry*)&octaveMenu,
+  (MenuEntry*)&midiMenu,
+  (MenuEntry*)&adjustMenu,
+  (MenuEntry*)&breathMenu,
   (MenuEntry*)&controlMenu
 };
 
 const MenuPage mainMenuPage = {
-  nullptr, 
+  nullptr,
   CursorIdx::EMain,
   DISPLAYOFF_IDL,
   ARR_LEN(mainMenuEntries), mainMenuEntries
@@ -563,7 +521,7 @@ const MenuEntrySubRotator rotator3Menu  = { MenuType::ESubRotator, "ROTATE 3", "
 const MenuEntrySubRotator rotator4Menu  = { MenuType::ESubRotator, "ROTATE 4", "SEMITONES", 4, &subRotator, drawSubRotator };
 const MenuEntrySub rotatorPrioMenu      = { MenuType::ESub, "PRIORITY", "MONO PRIO", &subPriority, plotPriority };
 
-const MenuEntry* rotatorMenuEntries[] = { 
+const MenuEntry* rotatorMenuEntries[] = {
   (MenuEntry*)&rotatorParaMenu,
   (MenuEntry*)&rotator1Menu,
   (MenuEntry*)&rotator2Menu,
@@ -573,21 +531,87 @@ const MenuEntry* rotatorMenuEntries[] = {
 };
 
 const MenuPage rotatorMenuPage = {
-  "ROTATOR SETUP", 
+  "ROTATOR SETUP",
   CursorIdx::ERotator,
   DISPLAYOFF_IDL,
   ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
 };
 
+//***********************************************************
 // Breath menu
-const MenuEntrySub breathCCMenu      = { MenuType::ESub, "BREATH CC", "BREATH CC",  &subBreathCC, plotBreathCC };
-const MenuEntrySub breathATMenu      = { MenuType::ESub, "BREATH AT", "BREATH AT",  &subBreathAT, plotBreathAT };
-const MenuEntrySub velocityMenu      = { MenuType::ESub, "VELOCITY",  "VELOCITY",   &subVelocity, plotVelocity };
-const MenuEntrySub curveMenu         = { MenuType::ESub, "CURVE",     "CURVE",      &subCurve,    plotCurve };
-const MenuEntrySub velSmpDlMenu      = { MenuType::ESub, "VEL DELAY", "VEL DELAY",  &subVelSmpDl, plotVelSmpDl };
-const MenuEntrySub velBiasMenu       = { MenuType::ESub, "VEL BIAS",  "VEL BIAS",   &subVelBias,  plotVelBias };
+const MenuEntrySubNew breathCCMenu = {
+  MenuType::ESubNew, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EWrap,
+  [](char* out, const char** __unused unit) {
+    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
+                                            "BR+", "VL+", "EX+", "CF", "20" };
+    strncpy(out, breathCCMenuLabels[breathCC], 4);
+  },
+  [](){
+    if (readSetting(BREATH_CC_ADDR) != breathCC) {
+      writeSetting(BREATH_CC_ADDR,breathCC);
+      midiReset();
+    }
+  }
+  , nullptr
+};
 
-const MenuEntry* breathMenuEntries[] = { 
+const MenuEntrySubNew breathATMenu = {
+  MenuType::ESubNew, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EWrap,
+  [](char* out, const char ** __unused unit) {
+    strncpy(out, breathAT?"ON":"OFF", 4);
+  }, []() {
+    if (readSetting(BREATH_AT_ADDR) != breathAT) {
+      writeSetting(BREATH_AT_ADDR, breathAT);
+      midiReset();
+    }
+  }
+  , nullptr
+};
+
+const MenuEntrySubNew velocityMenu = {
+  MenuType::ESubNew, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EWrap,
+  [](char* out, const char** __unused unit) {
+    if(velocity) numToString(velocity, out);
+    else strncpy(out, "DYN", 4);
+  },
+  []() { writeSetting(VELOCITY_ADDR,velocity); }
+  , nullptr
+};
+
+const MenuEntrySubNew curveMenu = {
+  MenuType::ESubNew, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EWrap,
+  [](char* out, const char** __unused unit) {
+    const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
+                                         "+3", "+4", "S1", "S2", "Z1", "Z2" };
+    strncpy(out, curveMenuLabels[curve], 4);
+  },
+  [](){ writeSetting(BREATHCURVE_ADDR,curve); }
+  , nullptr
+};
+
+const MenuEntrySubNew velSmpDlMenu = {
+  MenuType::ESubNew, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EWrap,
+  [](char *out, const char** label) {
+    if (velSmpDl) {
+      numToString(velSmpDl, out);
+      *label = "ms";
+    } else strncpy(out, "OFF", 4);
+  },
+  []() { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
+  , nullptr
+};
+
+const MenuEntrySubNew velBiasMenu = {
+  MenuType::ESubNew, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EWrap,
+  [](char* out, const char** __unused unit) {
+    if (velBias) numToString(velBias, out);
+    else strncpy(out, "OFF", 4);
+  },
+  [](){ writeSetting(VEL_BIAS_ADDR,velBias); }
+  , nullptr
+};
+
+const MenuEntry* breathMenuEntries[] = {
   (MenuEntry*)&breathCCMenu,
   (MenuEntry*)&breathATMenu,
   (MenuEntry*)&velocityMenu,
@@ -597,7 +621,7 @@ const MenuEntry* breathMenuEntries[] = {
 };
 
 const MenuPage breathMenuPage = {
-  "SETUP BREATH", 
+  "SETUP BREATH",
   CursorIdx::EBreath,
   MAIN_MENU,
   ARR_LEN(breathMenuEntries), breathMenuEntries
@@ -607,16 +631,17 @@ const MenuPage breathMenuPage = {
 // Control menu
 const MenuEntrySubNew portMenu = {
   MenuType::ESubNew, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EWrap,
-  [](char* out, const char ** __unused label) {
+  [](char* out, const char ** __unused unit) {
     const char* labs[] = { "OFF", "ON", "SW" };
     strncpy(out, labs[portamento], 4);
   },
   []() { writeSetting(PORTAM_ADDR,portamento); }
+  , nullptr
 };
 
 const MenuEntrySubNew pitchBendMenu = {
   MenuType::ESubNew, "PITCHBEND", "PITCHBEND", &PBdepth, 0, 12, MenuEntryFlags::ENone,
-  [](char* out, const char** __unused label) {
+  [](char* out, const char** __unused unit) {
     if(PBdepth) {
       memcpy(out, "1/", 2);
       numToString(PBdepth, &out[2]);
@@ -624,15 +649,17 @@ const MenuEntrySubNew pitchBendMenu = {
     else strncpy(out, "OFF", 4);
   },
   [](){ writeSetting(PB_ADDR,PBdepth); }
+  , nullptr
 };
 
 const MenuEntrySubNew extraMenu = {
   MenuType::ESubNew, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EWrap,
-  [](char* out, const char** __unused label) {
+  [](char* out, const char** __unused unit) {
     const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
     strncpy(out, extraMenuLabels[extraCT], 12);
   },
   []() { writeSetting(EXTRA_ADDR,extraCT); }
+  , nullptr
 };
 
 const MenuEntryStateCh vibratoSubMenu = { MenuType::EStateChange, "VIBRATO", VIBRATO_MENU };
@@ -647,20 +674,22 @@ const MenuEntrySubNew deglitchMenu = {
       strncpy(textBuffer, "OFF", 4);
   },
   []() { writeSetting(DEGLITCH_ADDR,deglitch); }
+  , nullptr
 };
 
 const MenuEntrySubNew pinkyMenu = {
-  MenuType::ESubNew, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone, 
-  [](char* textBuffer, const char** __unused label) {
-    if (pinkySetting == PBD) 
+  MenuType::ESubNew, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone,
+  [](char* textBuffer, const char** __unused unit) {
+    if (pinkySetting == PBD)
       strncpy(textBuffer, "PBD", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },
   []() { writeSetting(PINKY_KEY_ADDR,pinkySetting); }
+  , nullptr
 };
 
-const MenuEntry* controlMenuEntries[] = { 
+const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
   (MenuEntry*)&pitchBendMenu,
   (MenuEntry*)&extraMenu,
@@ -670,7 +699,7 @@ const MenuEntry* controlMenuEntries[] = {
 };
 
 const MenuPage controlMenuPage = {
-  "SETUP CTRLS", 
+  "SETUP CTRLS",
   CursorIdx::EControl,
   MAIN_MENU,
   ARR_LEN(controlMenuEntries), controlMenuEntries
@@ -680,50 +709,61 @@ const MenuPage controlMenuPage = {
 //***********************************************************
 // Vibrato menu
 
+static void vibGetStr(char* textBuffer, const char** __unused unit) {
+  if(vibrato)
+    numToString(vibrato, textBuffer);
+  else
+    strncpy(textBuffer, "OFF", 4);
+}
+
+static void vibStore() {
+  writeSetting(VIBRATO_ADDR,vibrato);
+}
+
 const MenuEntrySubNew vibDepthMenu = {
   MenuType::ESubNew, "DEPTH", "LEVEL", &vibrato, 0, 9, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused label) {
-    if(vibrato)
-      numToString(vibrato, textBuffer);
-    else
-      strncpy(textBuffer, "OFF", 4);
-  },
-  []() { writeSetting(VIBRATO_ADDR,vibrato); }
+  vibGetStr, 
+  vibStore,
+  nullptr
 };
 
 const MenuEntrySubNew vibSenseMenu = {
   MenuType::ESubNew, "SENSE", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused label) {
+  [](char* textBuffer, const char** __unused unit) {
     numToString(vibSens, textBuffer);
   },
   []() { writeSetting(VIB_SENS_ADDR,vibSens); }
+  , nullptr
 };
 
 const MenuEntrySubNew vibRetnMenu = {
   MenuType::ESubNew, "RETURN", "LEVEL", &vibRetn, 0, 4, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused label) {
+  [](char* textBuffer, const char** __unused unit) {
     numToString(vibRetn, textBuffer);
   },
   []() { writeSetting(VIB_RETN_ADDR,vibRetn); }
+  , nullptr
 };
 
 const MenuEntrySubNew vibSquelchMenu = {
   MenuType::ESubNew, "SQUELCH", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
-  [](char* textBuffer, const char** __unused label) {
+  [](char* textBuffer, const char** __unused unit) {
     numToString(vibSquelch, textBuffer);
   },
   []() { writeSetting(VIB_SQUELCH_ADDR,vibSquelch); }
+  , nullptr
 };
 
 const MenuEntrySubNew vibDirMenu = {
-  MenuType::ESubNew, "DIRECTION", "DIRECTION", &vibDirection, 0, 1, MenuEntryFlags::EWrap,
-  [](char* textBuffer, const char** __unused label) {
+  MenuType::ESubNew, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EWrap,
+  [](char* out, const char** __unused unit) {
     if (DNWD == vibDirection)
-      strncpy(textBuffer, "NRM", 4);
+      strncpy(out, "NRM", 4);
     else
-      strncpy(textBuffer, "REV", 4);
+      strncpy(out, "REV", 4);
   },
   []() { writeSetting(VIB_DIRECTION_ADDR,vibDirection); }
+  , nullptr
 };
 
 const MenuEntry* vibratorMenuEntries[] = {
@@ -735,7 +775,7 @@ const MenuEntry* vibratorMenuEntries[] = {
 };
 
 const MenuPage vibratoMenuPage = {
-  "VIBRATO", 
+  "VIBRATO",
   CursorIdx::EVibrato,
   SETUP_CT_MENU,
   ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
@@ -744,7 +784,7 @@ const MenuPage vibratoMenuPage = {
 
 //***********************************************************
 
-static bool ExecuteMenuSelection( const MenuPage &page ) //int cursorPosition, const struct MenuEntry *menuEntry)
+static bool ExecuteMenuSelection(const MenuPage &page) //int cursorPosition, const struct MenuEntry *menuEntry)
 {
   int cursorPosition = cursors[page.cursor];
   const MenuEntry* menuEntry = page.entries[cursorPosition];
@@ -760,23 +800,11 @@ static bool ExecuteMenuSelection( const MenuPage &page ) //int cursorPosition, c
       return true;
 
     case MenuType::ESubNew:
-      {
-        char buffer[12];
-        const char* labelPtr = nullptr;
-        activeSub[page.cursor] = cursorPosition+1;
-        drawMenuCursor(cursorPosition, WHITE);
-        drawSubBox( ((const MenuEntrySubNew*)menuEntry)->subTitle);
-        ((const MenuEntrySubNew*)menuEntry)->getSubTextFunc(buffer, &labelPtr);
-        plotSubOption(buffer, WHITE);
-        if(labelPtr != nullptr) {
-          // TODO: handle this better, we should center text + label
-          display.setCursor(105,40);
-          display.setTextSize(1);
-          display.println(labelPtr);
-        }
-        return true;
-      }
-      break;
+      activeSub[page.cursor] = cursorPosition+1;
+      drawMenuCursor(cursorPosition, WHITE);
+      drawSubBox( ((const MenuEntrySubNew*)menuEntry)->subTitle);
+      drawSubMenu(page, WHITE);
+      return true;
 
     case MenuType::EStateChange:
       state = ((const MenuEntryStateCh*)menuEntry)->state;
@@ -813,7 +841,7 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
     int current_sub = activeSub[page.cursor] -1;
 
     if( current_sub < 0)
-      return false; 
+      return false;
 
     auto sub = (const MenuEntrySubNew*)page.entries[current_sub];
     uint16_t currentVal = *sub->valuePtr;
@@ -835,7 +863,18 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
         }
         break;
 
-      case BTN_ENTER: // fallthrough
+      case BTN_ENTER:
+        if(sub->flags & MenuEntryFlags::EEnterHandler) {
+          bool result = sub->onEnterFunc();
+          if(result) {
+            activeSub[page.cursor] = 0;
+          }
+        } else {
+          activeSub[page.cursor] = 0;
+          sub->applyFunc();
+        }
+        break;
+
       case BTN_MENU:
         activeSub[page.cursor] = 0;
         sub->applyFunc();
@@ -864,7 +903,7 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
 
   if (buttonPressedAndNotUsed) {
 
-    int lastEntry = page.numEntries-1; 
+    int lastEntry = page.numEntries-1;
 
     buttonPressedAndNotUsed = 0;
     switch (deumButtonState) {
@@ -934,7 +973,7 @@ static void checkForPatchView(int buttons) {
   }
 }
 
-// This should be moved to a separate file/process that handles only led 
+// This should be moved to a separate file/process that handles only led
 static void statusBlink() {
   digitalWrite(statusLedPin,LOW);
   delay(150);
@@ -956,7 +995,7 @@ void drawSensorPixels() {
 
 void menu() {
   unsigned long timeNow = millis();
-  const MenuPage *currentPage = nullptr; 
+  const MenuPage *currentPage = nullptr;
 
   bool redrawSubValue = false;
   bool redraw = stateFirstRun;
@@ -998,13 +1037,6 @@ void menu() {
   if (state && ((timeNow - menuTime) > menuTimeUp)) { // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
     state = DISPLAYOFF_IDL;
     stateFirstRun = 1;
-    subTranspose = 0;
-    subMIDI = 0;
-    subBreathCC = 0;
-    subBreathAT = 0;
-    subVelocity = 0;
-    subVelSmpDl = 0;
-    subVelBias = 0;
 
     subParallel = 0;
     subRotator = 0;
@@ -1169,91 +1201,14 @@ void menu() {
       }
     }
   } else if (state == MAIN_MENU) {    // MAIN MENU HERE <<<<<<<<<<<<<<<
+    currentPage = &mainMenuPage;
     if (stateFirstRun) {
       drawMenuScreen();
       stateFirstRun = 0;
     }
-    currentPage = &mainMenuPage;
-    if (subTranspose){
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (transpose > 0)
-              transpose--;
-            break;
 
-          case BTN_UP:
-            if (transpose < 24)
-              transpose++;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subTranspose = 0;
-            writeSetting(TRANSP_ADDR,transpose);
-            break;
-        }
-        redrawSubValue = true;
-      }
-    } else if (subOctave){
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (octave > 0)
-              octave--;
-            break;
-
-          case BTN_UP:
-            if (octave < 6)
-              octave++;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subOctave = 0;
-            writeSetting(OCTAVE_ADDR,octave);
-            break;
-        }
-        redrawSubValue = true;
-      }
-    } else if (subMIDI) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (MIDIchannel > 1)
-              MIDIchannel--;
-            break;
-
-          case BTN_UP:
-            if (MIDIchannel < 16)
-              MIDIchannel++;
-            break;
-
-          case BTN_ENTER:
-            readSwitches();
-            if (pinkyKey){
-              slowMidi = !slowMidi;
-              dipSwBits = dipSwBits ^ (1<<3);
-              writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            } else {
-              subMIDI = 0;
-              writeSetting(MIDI_ADDR,MIDIchannel);
-            }
-            break;
-
-          case BTN_MENU:
-            subMIDI = 0;
-            writeSetting(MIDI_ADDR,MIDIchannel);
-            break;
-        }
-        redrawSubValue = true;
-      }
+    if(activeSub[currentPage->cursor]) {
+      redraw |= updateSubMenu(*currentPage, timeNow);
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
       redraw |= updateMenuPage( *currentPage, timeNow );
@@ -1358,7 +1313,7 @@ void menu() {
       }
     } else {
       bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage( *currentPage, timeNow );
+      redraw |= updateMenuPage(*currentPage, timeNow );
       if (hadButtons)
         checkForPatchView(deumButtonState);
     }
@@ -1384,171 +1339,16 @@ void menu() {
       touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
     }
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
+    currentPage = &breathMenuPage;
     if (stateFirstRun) {
-      drawMenu( breathMenuPage );
+      drawMenu(*currentPage);
       stateFirstRun = 0;
     }
-    currentPage = &breathMenuPage;
-    if (subBreathCC){
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (breathCC > 0){
-              breathCC--;
-            } else {
-              breathCC = 10;
-            }
-            break;
-          case BTN_UP:
-            if (breathCC < 10){
-              breathCC++;
-            } else {
-              breathCC = 0;
-            }
-            break;
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            // menu
-            subBreathCC = 0;
-            if (readSetting(BREATH_CC_ADDR) != breathCC) {
-              writeSetting(BREATH_CC_ADDR,breathCC);
-              midiReset();
-            }
-            break;
-        }
-        redrawSubValue = true;
-      }
-    } else if (subBreathAT) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN: // fallthrough
-          case BTN_UP:
-            breathAT = !breathAT;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subBreathAT = 0;
-            if (readSetting(BREATH_AT_ADDR) != breathAT){
-              writeSetting(BREATH_AT_ADDR, breathAT);
-              midiReset();
-            }
-            break;
-        }
-        redrawSubValue = true;
-      }
-    } else if (subVelocity) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (velocity > 0){
-              velocity--;
-            } else velocity = 127;
-            break;
-
-          case BTN_UP:
-            if (velocity < 127){
-              velocity++;
-            } else velocity = 0;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subVelocity = 0;
-            writeSetting(VELOCITY_ADDR,velocity);
-            break;
-        }
-        redrawSubValue = true;
-      }
-
-    } else if (subCurve) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (curve > 0)
-              curve--;
-            else curve = 12;
-            break;
-
-          case BTN_UP:
-            if (curve < 12)
-              curve++;
-            else curve = 0;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subCurve = 0;
-            writeSetting(BREATHCURVE_ADDR,curve);
-            break;
-        }
-        redrawSubValue = true;
-      }
-
-    } else if (subVelSmpDl) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case BTN_DOWN:
-            if (velSmpDl > 0){
-              velSmpDl-=1;
-            } else velSmpDl = 30;
-            break;
-
-          case BTN_UP:
-            if (velSmpDl < 30){
-              velSmpDl+=1;
-            } else velSmpDl = 0;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subVelSmpDl = 0;
-            writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
-            break;
-        }
-        redrawSubValue = true;
-      }
-
-    } else if (subVelBias) {
-      redraw |= updateSubMenuCursor( *currentPage, timeNow );
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState) {
-          case BTN_DOWN:
-            if (velBias > 0){
-              velBias--;
-            } else velBias = 9;
-            break;
-
-          case BTN_UP:
-            if (velBias < 9){
-              velBias++;
-            } else velBias = 0;
-            break;
-
-          case BTN_ENTER: // fallthrough
-          case BTN_MENU:
-            subVelBias = 0;
-            writeSetting(VEL_BIAS_ADDR,velBias);
-            break;
-        }
-        redrawSubValue = true;
-      }
-
+    if (activeSub[currentPage->cursor]) {
+      redraw |= updateSubMenu(*currentPage, timeNow);
     } else {
-      redraw |= updateMenuPage( *currentPage, timeNow );
+      redraw |= updateMenuPage(*currentPage, timeNow);
     }
-
 
   } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
     currentPage = &controlMenuPage;

@@ -27,6 +27,7 @@ enum MenuEntryFlags {
   ENone = 0,
   EWrap = (1<<0),
   ECustom = (1<<1),
+  EEnterHandler = (1<<2),
 };
 
 struct MenuEntrySubNew {
@@ -39,6 +40,7 @@ struct MenuEntrySubNew {
   uint16_t flags;
   void (*getSubTextFunc)(char*textBuffer, const char**label);
   void (*applyFunc)(void);
+  bool (*onEnterFunc)(void);
 };
 
 
