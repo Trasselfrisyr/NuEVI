@@ -562,6 +562,12 @@ static int SimInit()
 
     analogInputs[vMeterPin] = 3025;
 
+    // Initialize touch sensors to not be poked 
+    for(int i = 0; i < 12; ++i) {
+        touchSensor.mockFilteredData(i, 4095);
+    }
+
+
     // Dummy to always force full reset of EEPROM, to circumvent bug in NuEVI.ino 
     digitalInputs[mPin] = 0;
     digitalInputs[ePin] = 0;
