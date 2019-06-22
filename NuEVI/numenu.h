@@ -5,6 +5,7 @@
 
 enum MenuType {
   ESub,
+  ESubNew,
   ESubRotator,
   EStateChange,
 };
@@ -21,6 +22,25 @@ struct MenuEntrySub {
   byte* flag;
   void (*subMenuFunc)(int color);
 };
+
+enum MenuEntryFlags {
+  ENone = 0,
+  EWrap = (1<<0),
+  ECustom = (1<<1),
+};
+
+struct MenuEntrySubNew {
+  enum MenuType type;
+  const char* title;
+  const char* subTitle;
+  uint16_t* valuePtr;
+  uint16_t min;
+  uint16_t max;  
+  uint16_t flags;
+  void (*getSubTextFunc)(char*textBuffer, const char**label);
+  void (*applyFunc)(void);
+};
+
 
 struct MenuEntrySubRotator {
   enum MenuType type;
