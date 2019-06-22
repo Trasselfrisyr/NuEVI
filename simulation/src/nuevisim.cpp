@@ -66,7 +66,7 @@ static GLuint displayTexture;
 
 void digitalWrite(uint8_t pin, uint8_t val)
 {
-    printf("digital write %d = %d\n", pin, val);
+    // printf("digital write %d = %d\n", pin, val);
     digitalOutputs[pin] = val;
 }
 
