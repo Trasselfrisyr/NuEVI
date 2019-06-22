@@ -947,6 +947,18 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
   return redraw;
 }
 
+static bool updatePage(const MenuPage &page, uint32_t timeNow) {
+  if (stateFirstRun) {
+    drawMenu(page);
+    stateFirstRun = 0;
+  }
+  if (activeSub[page.cursor]) {
+    return updateSubMenu(page, timeNow);
+  } else {
+    return updateMenuPage(page, timeNow);
+  }
+}
+
 //***********************************************************
 static void checkForPatchView(int buttons) {
   int trills = readTrills();
@@ -1034,7 +1046,8 @@ void menu() {
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastDeumButtons = deumButtons;
 
-  if (state && ((timeNow - menuTime) > menuTimeUp)) { // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
+  // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
+  if (state && ((timeNow - menuTime) > menuTimeUp)) {
     state = DISPLAYOFF_IDL;
     stateFirstRun = 1;
 
@@ -1043,6 +1056,7 @@ void menu() {
     subPriority = 0;
 
     subVibSquelch = 0;
+    memset(activeSub, 0, sizeof(activeSub));
   }
 
   if        (state == DISPLAYOFF_IDL) {
@@ -1322,14 +1336,13 @@ void menu() {
   } else if (state == ADJUST_MENU) {
     // This is a hack to update touch_Thr is it was changed..
     int old_thr = ctouchThrVal;
-    int result = updateAdjustMenu( timeNow, buttonPressedAndNotUsed ? deumButtonState : 0, stateFirstRun, updateSensorPixelsFlag);
+    int result = updateAdjustMenu(timeNow, buttonPressedAndNotUsed ? deumButtonState : 0, stateFirstRun, updateSensorPixelsFlag);
 
     updateSensorPixelsFlag = false;
     stateFirstRun = 0;
     buttonPressedAndNotUsed = 0;
 
-    if( result < 0)
-    {
+    if( result < 0) {
       // Go back to main menu
       state = MAIN_MENU;
       stateFirstRun = true;
@@ -1339,40 +1352,11 @@ void menu() {
       touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
     }
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
-    currentPage = &breathMenuPage;
-    if (stateFirstRun) {
-      drawMenu(*currentPage);
-      stateFirstRun = 0;
-    }
-    if (activeSub[currentPage->cursor]) {
-      redraw |= updateSubMenu(*currentPage, timeNow);
-    } else {
-      redraw |= updateMenuPage(*currentPage, timeNow);
-    }
-
+    redraw |= updatePage(breathMenuPage, timeNow);
   } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
-    currentPage = &controlMenuPage;
-    if (stateFirstRun) {
-      drawMenu(*currentPage);
-      stateFirstRun = 0;
-    }
-    if (activeSub[currentPage->cursor]) {
-      redraw |= updateSubMenu(*currentPage, timeNow);
-    } else {
-      redraw |= updateMenuPage(*currentPage, timeNow);
-    }
-
+    redraw |= updatePage(controlMenuPage, timeNow);
   } else if (state == VIBRATO_MENU) {   // VIBRATO MENU HERE <<<<<<<<<<<<<
-    currentPage = &vibratoMenuPage;
-    if (stateFirstRun) {
-      drawMenu(*currentPage);
-      stateFirstRun = 0;
-    }
-    if (activeSub[currentPage->cursor]) {
-      redraw |= updateSubMenu(*currentPage, timeNow);
-    } else {
-      redraw |= updateMenuPage(*currentPage, timeNow);
-    }
+    redraw |= updatePage(vibratoMenuPage, timeNow);
   }
 
   if(redrawSubValue && currentPage) {
