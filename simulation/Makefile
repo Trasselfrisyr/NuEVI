@@ -1,13 +1,21 @@
 CC=clang
 CXX=clang++
 
-CFLAGS= -O0 -g -Wall -Wextra -Wpedantic -Wno-gnu -mmacosx-version-min=10.9 -F/Library/Frameworks
+CFLAGS=-Wall -Wextra -Wpedantic -Wno-gnu -mmacosx-version-min=10.9 -F/Library/Frameworks
 CFLAGS += -DARDUINO=10808 -D__MK20DX256__
+
+RELEASE ?= 0
+ifeq ($(RELEASE), 1)
+   CFLAGS +=-O3
+else
+   CFLAGS += -O0 -g 
+endif
+
 
 CXXFLAGS= $(CFLAGS) -std=c++14
 
 LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
-LDFLAGS=-macosx_version_min 10.9
+LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
 
 SYSINC = ~/Documents/Arduino/libraries/Filters ./include
 INCS = ../NuEVI ./include ./imgui ./gl3w
