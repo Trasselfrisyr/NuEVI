@@ -1,4 +1,5 @@
 #include <functional>
+#include <string>
 
 #include <SDL2/SDL.h>
 
@@ -13,6 +14,8 @@
 #include "examples/imgui_impl_opengl3.h"
 
 #include <Arduino.h>
+
+#include "argparse.hpp"
 
 // Forward declarations
 static void SimQuit(void);
@@ -503,7 +506,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
     }
 }
 
-static int SimRun( )
+static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset)
 {
 	if( 0 != SimInit() ) { return 1; }
 
@@ -592,7 +595,27 @@ static void SimQuit()
 #include "NuEVI.ino"
 
 
-int main()
+int main(int argc, const char** argv)
 {
-    return SimRun();
+    ArgumentParser parser;
+
+    parser.addArgument("--eeprom-file", 1);
+    parser.addArgument("--eeprom-write");
+    parser.addArgument("--factory-reset");
+
+    parser.parse(argc, argv);
+
+    std::string eepromFile;
+    bool eepromWrite;
+    bool factoryReset;
+
+
+    eepromFile = parser.retrieve<std::string>("eeprom-file");
+    eepromWrite = parser.exists("eeprom-write");
+    factoryReset = parser.exists("factory-reset");
+
+    printf("%d: %s\n",eepromWrite, eepromFile.c_str());
+    return 0;
+
+    return SimRun(eepromFile, eepromWrite, factoryReset);
 }

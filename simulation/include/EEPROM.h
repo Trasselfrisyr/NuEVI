@@ -37,7 +37,7 @@ struct EEPROMClass
 //     }
 
 private:
-    char someFakeEEPROM_memory[4096];
+    char someFakeEEPROM_memory[2048];
 
 };
 
