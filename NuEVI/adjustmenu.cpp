@@ -158,10 +158,14 @@ static void drawAdjustBase(const char* title, bool all) {
   drawAdjCursor(WHITE);
 }
 
+static void drawLineCursor(uint16_t hPos, uint16_t vPos, int color) {
+  display.drawLine(hPos, vPos,hPos, vPos+6, color);
+}
+
 static bool updateAdjustLineCursor(uint32_t timeNow, uint16_t hPos, uint16_t vPos ) {
   if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
     if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-    display.drawLine(hPos, vPos,hPos, vPos+6, cursorNow);;
+    drawLineCursor(hPos, vPos, cursorNow);
     cursorBlinkTime = timeNow;
     return true;
   }
@@ -282,6 +286,21 @@ static bool updateAdjustCursor(uint32_t timeNow) {
   return false;
 }
 
+static bool handleInput(const AdjustMenuEntry *currentMenu, uint32_t timeNow, uint8_t buttons, uint16_t *xpos, int ypos, int index) {
+  if (buttons) {
+    drawAdjustBar( buttons, ypos, &currentMenu->entries[index], xpos );
+    int last = adjustCurrent;
+    if(buttons == BTN_ENTER)      adjustCurrent += 1;
+    else if( buttons == BTN_MENU) adjustCurrent = 0;
+
+    if(last != adjustCurrent) drawLineCursor(*xpos, ypos, WHITE);
+
+    return true;
+  } else { 
+    return updateAdjustLineCursor(timeNow, *xpos, ypos);
+  }
+}
+
 int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool drawSensor) {
   bool redraw = false;
   int result = 0; 
@@ -327,27 +346,13 @@ int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool draw
       currentMenu->saveFunc(*currentMenu);
 
   } else if( adjustCurrent == 1) {
-    if (buttons) {
-      drawAdjustBar( buttons, 20, &currentMenu->entries[0], &pos1 );
-      if(buttons == BTN_ENTER)      adjustCurrent += 1;
-      else if( buttons == BTN_MENU) adjustCurrent = 0;
-      redraw = true;
-    } else { 
-      redraw |= updateAdjustLineCursor( timeNow, pos1, 20 );
-    }
+    handleInput(currentMenu, timeNow, buttons, &pos1, 20, 0);
   } else {
-    if (buttons) {
-      drawAdjustBar( buttons, 50, &currentMenu->entries[1], &pos2 );
-      if(buttons == BTN_ENTER)      adjustCurrent += 1;
-      else if( buttons == BTN_MENU) adjustCurrent = 0;
-      redraw = true;
-    } else {
-      redraw |= updateAdjustLineCursor( timeNow, pos2, 50 );
-    }
+    handleInput(currentMenu, timeNow, buttons, &pos2, 50, 1);
   }
 
   // Keep adjustCurrent in range
-  if( adjustCurrent > 2 || (adjustCurrent == 2 && currentMenu->entries[1].value == nullptr))
+  if( (adjustCurrent > 2) || ((adjustCurrent == 2) && (currentMenu->entries[1].value == nullptr)))
     adjustCurrent = 0;
 
   // Keep adjust option in range.
