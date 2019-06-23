@@ -45,6 +45,6 @@ unsigned short readSetting(byte address);
 void writeSetting(byte address, unsigned short value);
 
 int updateAdjustMenu(uint32_t timeNow, uint8_t buttons, bool firstRun, bool updateSensor);
-
+bool adjustPageUpdate(uint16_t buttonChanges, uint32_t timeNow);
 
 #endif

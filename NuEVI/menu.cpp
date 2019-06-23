@@ -55,10 +55,6 @@ unsigned long cursorBlinkTime = 0;          // the last time the cursor was togg
 static byte state = DISPLAYOFF_IDL;
 static byte stateFirstRun = 1;
 
-static byte subParallel = 0;
-static byte subRotator = 0;
-static byte subPriority = 0;
-
 // The external function of subSquelch has been broken,
 // need to come up with a smart way to make it work again.
 // The status led was update when the Squelch menu was open.
@@ -223,7 +219,7 @@ static bool drawSubMenu(const MenuPage &page, int color) {
 
           // If ECustom flag is set, we assume that the getSubTextFunc 
           // rendered by it self.
-          if( !(sub->flags & MenuEntryFlags::ECustom)) {
+          if( !(sub->flags & EMenuEntryCustom)) {
             plotSubOption(buffer, color);
             if(labelPtr != nullptr) {
               // TODO: handle this better, we should center text + label
@@ -442,7 +438,7 @@ const MenuEntrySub octaveMenu = {
 };
 
 const MenuEntrySub midiMenu = {
-  MenuType::ESub, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, MenuEntryFlags::ECustom | MenuEntryFlags::EEnterHandler, 
+  MenuType::ESub, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, EMenuEntryCustom | EMenuEntryEnterHandler, 
   [](SubMenuRef __unused, char* __unused out, const char** __unused unit) {
     plotMIDI(WHITE);
   },
@@ -476,6 +472,7 @@ const MenuEntry* mainMenuEntries[] = {
 
 const MenuPage mainMenuPage = {
   nullptr,
+  EMenuPageRoot,
   CursorIdx::EMain,
   DISPLAYOFF_IDL,
   ARR_LEN(mainMenuEntries), mainMenuEntries
@@ -508,35 +505,27 @@ static void parallelSave(SubMenuRef __unused) {
 
 const MenuEntrySub rotatorParaMenu  = {
   MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
-  parallelOptionGet,
-  parallelSave,
-  nullptr
+  parallelOptionGet, parallelSave, nullptr
 };
 
 const MenuEntrySub rotator1Menu  = {
   MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet,
-  rotatorSave,
-  nullptr
+  rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator2Menu  = {
   MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet,
-  rotatorSave,
-  nullptr
+  rotatorOptionGet, rotatorSave, nullptr
 };
+
 const MenuEntrySub rotator3Menu  = {
   MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet,
-  rotatorSave,
-  nullptr
+  rotatorOptionGet, rotatorSave, nullptr
 };
+
 const MenuEntrySub rotator4Menu  = {
   MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet,
-  rotatorSave,
-  nullptr
+  rotatorOptionGet, rotatorSave, nullptr
 };
 
 static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
@@ -549,12 +538,9 @@ static void rotatorPrioSave(SubMenuRef __unused) {
 }
 
 const MenuEntrySub rotatorPrioMenu = {
-  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EWrap, 
-  rotatorPrioOptionGet,
-  rotatorPrioSave, 
-  nullptr,
+  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  rotatorPrioOptionGet, rotatorPrioSave, nullptr,
 };
-
 
 const MenuEntry* rotatorMenuEntries[] = {
   (MenuEntry*)&rotatorParaMenu,
@@ -567,6 +553,7 @@ const MenuEntry* rotatorMenuEntries[] = {
 
 const MenuPage rotatorMenuPage = {
   "ROTATOR SETUP",
+  EMenuPageRoot,
   CursorIdx::ERotator,
   DISPLAYOFF_IDL,
   ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
@@ -575,7 +562,7 @@ const MenuPage rotatorMenuPage = {
 //***********************************************************
 // Breath menu
 const MenuEntrySub breathCCMenu = {
-  MenuType::ESub, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EWrap,
+  MenuType::ESub, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
                                             "BR+", "VL+", "EX+", "CF", "20" };
@@ -591,7 +578,7 @@ const MenuEntrySub breathCCMenu = {
 };
 
 const MenuEntrySub breathATMenu = {
-  MenuType::ESub, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EWrap,
+  MenuType::ESub, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, breathAT?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
@@ -604,7 +591,7 @@ const MenuEntrySub breathATMenu = {
 };
 
 const MenuEntrySub velocityMenu = {
-  MenuType::ESub, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EWrap,
+  MenuType::ESub, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(velocity) numToString(velocity, out);
     else strncpy(out, "DYN", 4);
@@ -614,7 +601,7 @@ const MenuEntrySub velocityMenu = {
 };
 
 const MenuEntrySub curveMenu = {
-  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EWrap,
+  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
                                          "+3", "+4", "S1", "S2", "Z1", "Z2" };
@@ -625,7 +612,7 @@ const MenuEntrySub curveMenu = {
 };
 
 const MenuEntrySub velSmpDlMenu = {
-  MenuType::ESub, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EWrap,
+  MenuType::ESub, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char *out, const char** label) {
     if (velSmpDl) {
       numToString(velSmpDl, out);
@@ -637,7 +624,7 @@ const MenuEntrySub velSmpDlMenu = {
 };
 
 const MenuEntrySub velBiasMenu = {
-  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EWrap,
+  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (velBias) numToString(velBias, out);
     else strncpy(out, "OFF", 4);
@@ -657,6 +644,7 @@ const MenuEntry* breathMenuEntries[] = {
 
 const MenuPage breathMenuPage = {
   "SETUP BREATH",
+  0,
   CursorIdx::EBreath,
   MAIN_MENU,
   ARR_LEN(breathMenuEntries), breathMenuEntries
@@ -665,7 +653,7 @@ const MenuPage breathMenuPage = {
 //***********************************************************
 // Control menu
 const MenuEntrySub portMenu = {
-  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EWrap,
+  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
     const char* labs[] = { "OFF", "ON", "SW" };
     strncpy(out, labs[portamento], 4);
@@ -688,7 +676,7 @@ const MenuEntrySub pitchBendMenu = {
 };
 
 const MenuEntrySub extraMenu = {
-  MenuType::ESub, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EWrap,
+  MenuType::ESub, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char** __unused unit) {
     const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
     strncpy(out, extraMenuLabels[extraCT], 12);
@@ -735,6 +723,7 @@ const MenuEntry* controlMenuEntries[] = {
 
 const MenuPage controlMenuPage = {
   "SETUP CTRLS",
+  0,
   CursorIdx::EControl,
   MAIN_MENU,
   ARR_LEN(controlMenuEntries), controlMenuEntries
@@ -790,7 +779,7 @@ const MenuEntrySub vibSquelchMenu = {
 };
 
 const MenuEntrySub vibDirMenu = {
-  MenuType::ESub, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EWrap,
+  MenuType::ESub, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (DNWD == vibDirection)
       strncpy(out, "NRM", 4);
@@ -811,6 +800,7 @@ const MenuEntry* vibratorMenuEntries[] = {
 
 const MenuPage vibratoMenuPage = {
   "VIBRATO",
+  0,
   CursorIdx::EVibrato,
   SETUP_CT_MENU,
   ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
@@ -863,7 +853,7 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
       case BTN_DOWN:
         if(currentVal > sub->min) {
           currentVal -= 1;
-        } else if(sub->flags & MenuEntryFlags::EWrap) {
+        } else if(sub->flags & MenuEntryFlags::EMenuEntryWrap) {
           currentVal = sub->max;
         }
         break;
@@ -871,13 +861,13 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
       case BTN_UP:
         if(currentVal < sub->max) {
           currentVal += 1;
-        } else if(sub->flags & MenuEntryFlags::EWrap) {
+        } else if(sub->flags & MenuEntryFlags::EMenuEntryWrap) {
           currentVal = sub->min;
         }
         break;
 
       case BTN_ENTER:
-        if(sub->flags & MenuEntryFlags::EEnterHandler) {
+        if(sub->flags & EMenuEntryEnterHandler) {
           bool result = sub->onEnterFunc();
           if(result) {
             activeSub[page.cursor] = 0;
@@ -915,7 +905,6 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
   bool redraw = false;
 
   if (buttonPressedAndNotUsed) {
-
     int lastEntry = page.numEntries-1;
 
     buttonPressedAndNotUsed = 0;
@@ -1053,7 +1042,6 @@ void menu() {
     }
   }
 
-
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastDeumButtons = deumButtons;
 
@@ -1061,10 +1049,6 @@ void menu() {
   if (state && ((timeNow - menuTime) > menuTimeUp)) {
     state = DISPLAYOFF_IDL;
     stateFirstRun = 1;
-
-    subParallel = 0;
-    subRotator = 0;
-    subPriority = 0;
 
     subVibSquelch = 0;
     memset(activeSub, 0, sizeof(activeSub));

@@ -10,10 +10,16 @@ enum MenuType {
 
 enum MenuEntryFlags {
   ENone = 0,
-  EWrap = (1<<0),
-  ECustom = (1<<1),
-  EEnterHandler = (1<<2),
+  EMenuEntryWrap = (1u<<0),
+  EMenuEntryCustom = (1u<<1),
+  EMenuEntryEnterHandler = (1u<<2),
 };
+
+enum MenuPageFlags {
+  EMenuPageCustom = (1u<<0),
+  EMenuPageRoot = (1u<<1),
+};
+
 
 struct MenuEntry {
   enum MenuType type;
@@ -44,12 +50,18 @@ struct MenuEntryStateCh {
 
 struct MenuPage {
   const char* title;
+  uint16_t flags;
   byte cursor;
   byte parentPage;
   byte numEntries;
   const MenuEntry** entries;
 };
 
+struct MenuPageCustom {
+  const char* title;
+  uint16_t flags;
+  bool (*menuUpdateFunc)(void);
+};
 
 //***********************************************************
 
