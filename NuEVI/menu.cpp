@@ -799,11 +799,7 @@ const MenuEntry* vibratorMenuEntries[] = {
 };
 
 const MenuPage vibratoMenuPage = {
-  "VIBRATO",
-  0,
-  CursorIdx::EVibrato,
-  SETUP_CT_MENU,
-  ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
+  "VIBRATO", 0, CursorIdx::EVibrato, SETUP_CT_MENU, ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
 };
 
 //***********************************************************
@@ -936,7 +932,6 @@ static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeN
         break;
 
       case BTN_MENU:
-        Serial.print("back to parent...");
         menuState= page->parentPage;
         stateFirstRun = 1;
         break;
@@ -961,9 +956,6 @@ static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeN
   return redraw;
 }
 
-static void checkForPatchView(int buttons);
-
-
 static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
   if(page->flags & EMenuPageCustom) {
     auto custom = (const MenuPageCustom*)page;
@@ -981,38 +973,30 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
   } else {
     redraw = updateMenuPage(page, input, timeNow);
 
-    if((page->flags & EMenuPageRoot) && input.changed)
-      checkForPatchView(input.current);
-  }
+    if((page->flags & EMenuPageRoot) && input.changed) {
+        int trills = readTrills();
+        switch (input.current) {
+          case BTN_MENU+BTN_ENTER:
+            if (trills) {
+              menuState = PATCH_VIEW;
+              stateFirstRun = 1;
+              setFPS(trills, patch);
+            }
+            break;
 
+          case BTN_MENU+BTN_UP:
+            if (trills) {
+              menuState = PATCH_VIEW;
+              stateFirstRun = 1;
+              clearFPS(trills);
+            }
+            break;
+          default: break;
+        }
+    }
+  }
 
   return redraw;
-}
-
-
-//***********************************************************
-
-static void checkForPatchView(int buttons) {
-  int trills = readTrills();
-
-  switch (buttons) {
-    case BTN_MENU+BTN_ENTER:
-      if (trills) {
-        menuState= PATCH_VIEW;
-        stateFirstRun = 1;
-        setFPS(trills, patch);
-      }
-      break;
-
-    case BTN_MENU+BTN_UP:
-      if (trills) {
-        menuState= PATCH_VIEW;
-        stateFirstRun = 1;
-        clearFPS(trills);
-      }
-      break;
-    default: break;
-  }
 }
 
 //***********************************************************
@@ -1083,7 +1067,6 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
     int trills = readTrills();
     switch (input.current){
       case BTN_DOWN:
-        // down
         if (trills && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
@@ -1101,8 +1084,8 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
         drawPatchView();
         redraw = true;
         break;
+
       case BTN_ENTER:
-        // enter
         if (trills && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
@@ -1112,8 +1095,8 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
           redraw = true;
         }
         break;
+
       case BTN_UP:
-        // up
         if (trills && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
@@ -1239,9 +1222,9 @@ static KeyState readInput(uint32_t timeNow) {
   static uint8_t lastDeumButtons = 0;
   static uint8_t deumButtonState = 0;
 
-
   KeyState keys = { deumButtonState, 0 };
 
+  // read the state of the switches (note that they are active low, so we invert the values)
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
 
   // check to see if you just pressed the button
@@ -1287,7 +1270,6 @@ void menu() {
   bool redraw = stateFirstRun;
 
   KeyState input = readInput(timeNow);
-  // read the state of the switches
 
   // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
   if (menuState&& ((timeNow - menuTime) > menuTimeUp)) {
