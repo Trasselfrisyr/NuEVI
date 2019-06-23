@@ -11,14 +11,10 @@
 #include "settings.h"
 #include "numenu.h"
 
-// TODO: Ask Johan the reason for using this..
-// static const uint16_t minOffset = 50;
-
 static uint8_t lastDeumButtons = 0;
 static uint8_t deumButtonState = 0;
 static byte buttonPressedAndNotUsed = 0;
 
-// Allocate some space for cursors
 
 enum CursorIdx {
   EMain,
@@ -27,16 +23,16 @@ enum CursorIdx {
   ERotator,
   EVibrato,
 
-  // NEVER ADD
+  // NEVER ADD ANYTHING AFTER THIS, ONLY ABOVE
   NUM_CURSORS
 };
 
+// Allocate some space for cursors
 static byte cursors[CursorIdx::NUM_CURSORS];
 static byte offsets[CursorIdx::NUM_CURSORS];
 static byte activeSub[CursorIdx::NUM_CURSORS];
 
 byte cursorNow;
-
 static byte FPD = 0;
 
 
@@ -852,7 +848,7 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
 
   bool redraw = false;
   bool redrawSubValue = false;
-  if (buttonPressedAndNotUsed){
+  if (buttonPressedAndNotUsed) {
     buttonPressedAndNotUsed = 0;
 
     int current_sub = activeSub[page.cursor] -1;
@@ -930,7 +926,6 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
         break;
 
       case BTN_ENTER:
-        // redraw |= selectMenuOption(cursorPos, page.entries);
         redraw |= selectMenuOption(page);
         break;
 
@@ -985,7 +980,7 @@ static void checkForPatchView(int buttons) {
       break;
 
     case BTN_MENU+BTN_ENTER:
-      if (trills){
+      if (trills) {
         state = PATCH_VIEW;
         stateFirstRun = 1;
         setFPS(trills, patch);
@@ -993,7 +988,7 @@ static void checkForPatchView(int buttons) {
       break;
 
     case BTN_MENU+BTN_UP:
-      if (trills){
+      if (trills) {
         state = PATCH_VIEW;
         stateFirstRun = 1;
         clearFPS(trills);
@@ -1270,10 +1265,12 @@ void menu() {
     stateFirstRun = 0;
     buttonPressedAndNotUsed = 0;
 
-    if( result < 0) {
+    if(result < 0) {
       // Go back to main menu
       state = MAIN_MENU;
       stateFirstRun = true;
+    } else {
+      redraw = result;
     }
 
     if( old_thr != ctouchThrVal) {
