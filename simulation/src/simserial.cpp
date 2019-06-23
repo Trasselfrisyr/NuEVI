@@ -42,7 +42,7 @@ void SimSerial::println(const char *str)
 }
 
 //Used to send serial midi
-void SimSerial::write(const uint8_t str)
+void SimSerial::write(const uint8_t __unused str)
 {
 
 }

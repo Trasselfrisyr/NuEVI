@@ -12,7 +12,7 @@ else
 endif
 
 
-CXXFLAGS= $(CFLAGS) -std=c++14 -Wno-unused-parameter
+CXXFLAGS= $(CFLAGS) -std=c++14
 
 LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
 LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
