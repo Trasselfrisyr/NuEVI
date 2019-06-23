@@ -12,7 +12,7 @@ else
 endif
 
 
-CXXFLAGS= $(CFLAGS) -std=c++14
+CXXFLAGS= $(CFLAGS) -std=c++14 -Wno-unused-parameter
 
 LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
 LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
@@ -32,8 +32,9 @@ CXXFILES=		../NuEVI/menu.cpp \
 				src/Print.cpp \
 				src/simserial.cpp \
 				src/simwire.cpp \
-				src/simmidi.cpp \
+				src/simusbmidi.cpp \
 				src/filters.cpp \
+				../NuEVI/midi.cpp \
 				src/Adafruit_GFX_sim.cpp \
 				src/Adafruit_SSD1306_sim.cpp \
 				src/Adafruit_MPR121_sim.cpp \

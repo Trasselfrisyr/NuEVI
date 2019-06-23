@@ -41,3 +41,15 @@ void SimSerial::println(const char *str)
 	printf( "[Serial::println] %s\n", str );
 }
 
+//Used to send serial midi
+void SimSerial::write(const uint8_t str)
+{
+
+}
+
+
+void SimSerial::flush()
+{
+
+}
+
