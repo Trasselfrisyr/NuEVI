@@ -289,20 +289,6 @@ static void doGlobalsWindow()
 // int vibThrLo;
 // int vibZero;
 
-// // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
-// byte K1;   // Valve 1 (pitch change -2)
-// byte K2;   // Valve 2 (pitch change -1)
-// byte K3;   // Valve 3 (pitch change -3)
-// byte K4;   // Left Hand index finger (pitch change -5)
-// byte K5;   // Trill key 1 (pitch change +2)
-// byte K6;   // Trill key 2 (pitch change +1)
-// byte K7;   // Trill key 3 (pitch change +4)
-
-// byte halfPitchBendKey;
-// byte specialKey;
-// byte pinkyKey;
-
-
     }
 
     ImGui::End();
@@ -439,6 +425,14 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_RIGHT:    digitalInputs[ePin] = 0; break;
                     case SDLK_UP:       digitalInputs[uPin] = 0; break;
                     case SDLK_DOWN:     digitalInputs[dPin] = 0; break;
+
+                    case SDLK_1:        touchSensor.mockFilteredData(K1Pin, ctouchThrVal -100); break;
+                    case SDLK_2:        touchSensor.mockFilteredData(K2Pin, ctouchThrVal -100); break;
+                    case SDLK_3:        touchSensor.mockFilteredData(K3Pin, ctouchThrVal -100); break;
+                    case SDLK_4:        touchSensor.mockFilteredData(K4Pin, ctouchThrVal -100); break;
+                    case SDLK_5:        touchSensor.mockFilteredData(K5Pin, ctouchThrVal -100); break;
+                    case SDLK_6:        touchSensor.mockFilteredData(K6Pin, ctouchThrVal -100); break;
+                    case SDLK_7:        touchSensor.mockFilteredData(K7Pin, ctouchThrVal -100); break;
                 }
             }
             else if(event.type == SDL_KEYUP )
@@ -450,6 +444,15 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_UP:       digitalInputs[uPin] = 1; break;
                     case SDLK_DOWN:     digitalInputs[dPin] = 1; break;
                     case SDLK_w:        toggleAnalogAnimation(); break;
+
+                    case SDLK_1:        touchSensor.mockFilteredData(K1Pin, ctouchThrVal +100); break;
+                    case SDLK_2:        touchSensor.mockFilteredData(K2Pin, ctouchThrVal +100); break;
+                    case SDLK_3:        touchSensor.mockFilteredData(K3Pin, ctouchThrVal +100); break;
+                    case SDLK_4:        touchSensor.mockFilteredData(K4Pin, ctouchThrVal +100); break;
+                    case SDLK_5:        touchSensor.mockFilteredData(K5Pin, ctouchThrVal +100); break;
+                    case SDLK_6:        touchSensor.mockFilteredData(K6Pin, ctouchThrVal +100); break;
+                    case SDLK_7:        touchSensor.mockFilteredData(K7Pin, ctouchThrVal +100); break;
+
                 }
                 fflush(stdout);
             }
@@ -503,12 +506,16 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
 static int SimRun( )
 {
 	if( 0 != SimInit() ) { return 1; }
+
+    // Dummy to always force full reset of EEPROM, to circumvent bug in NuEVI.ino 
+    digitalInputs[mPin] = 0;
+    digitalInputs[ePin] = 0;
+
     setup();
-    {
-        // See comment in SimInit why I do this..
-        digitalInputs[mPin] = 1;
-        digitalInputs[ePin] = 1;
-    }
+
+    digitalInputs[mPin] = 1;
+    digitalInputs[ePin] = 1;
+
     SimLoop( []() -> bool { return true; }, loop );
     SimQuit();
 	return 0;
@@ -567,11 +574,6 @@ static int SimInit()
     for(int i = 0; i < 12; ++i) {
         touchSensor.mockFilteredData(i, 4095);
     }
-
-
-    // Dummy to always force full reset of EEPROM, to circumvent bug in NuEVI.ino 
-    digitalInputs[mPin] = 0;
-    digitalInputs[ePin] = 0;
 
     return result;
 }
