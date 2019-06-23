@@ -1,6 +1,15 @@
 #ifndef __NUMENU_H
 #define __NUMENU_H
 
+#include <stdint.h>
+
+//***********************************************************
+
+struct KeyState {
+  uint8_t current;
+  uint8_t changed;
+};
+
 //***********************************************************
 
 enum MenuType {
@@ -18,6 +27,7 @@ enum MenuEntryFlags {
 enum MenuPageFlags {
   EMenuPageCustom = (1u<<0),
   EMenuPageRoot = (1u<<1),
+  EMenuCustomTitle = (1u << 2),
 };
 
 
@@ -45,22 +55,22 @@ struct MenuEntrySub {
 struct MenuEntryStateCh {
   enum MenuType type;
   const char* title;
-  byte state;
+  uint8_t state;
 };
 
 struct MenuPage {
   const char* title;
   uint16_t flags;
-  byte cursor;
-  byte parentPage;
-  byte numEntries;
+  uint8_t cursor;
+  uint8_t parentPage;
+  uint8_t numEntries;
   const MenuEntry** entries;
 };
 
 struct MenuPageCustom {
   const char* title;
   uint16_t flags;
-  bool (*menuUpdateFunc)(void);
+  bool (*menuUpdateFunc)(KeyState &input, uint32_t timeNow);
 };
 
 //***********************************************************
@@ -76,6 +86,5 @@ struct AdjustMenuEntry {
   AdjustValue entries[2];
   void (*saveFunc)(const AdjustMenuEntry&);
 };
-
 
 #endif

@@ -11,11 +11,6 @@
 #include "settings.h"
 #include "numenu.h"
 
-static uint8_t lastDeumButtons = 0;
-static uint8_t deumButtonState = 0;
-static byte buttonPressedAndNotUsed = 0;
-
-
 enum CursorIdx {
   EMain,
   EBreath,
@@ -44,15 +39,13 @@ const unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle int
 const unsigned long patchViewTimeUp = 2000;       // ms until patch view shuts off
 const unsigned long menuTimeUp = 60000;           // menu shuts off after one minute of button inactivity
 
-static unsigned long lastDebounceTime = 0;         // the last time the output pin was toggled
-static unsigned long buttonRepeatTime = 0;
-static unsigned long buttonPressedTime = 0;
+
 static unsigned long menuTime = 0;
 static unsigned long patchViewTime = 0;
 unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
 
 //Display state
-static byte state = DISPLAYOFF_IDL;
+static byte menuState= DISPLAYOFF_IDL;
 static byte stateFirstRun = 1;
 
 // The external function of subSquelch has been broken,
@@ -205,10 +198,10 @@ static void plotSubOption(const char* label, int color) {
   display.println(label);
 }
 
-static bool drawSubMenu(const MenuPage &page, int color) {
-    int index = cursors[page.cursor];
+static bool drawSubMenu(const MenuPage *page, int color) {
+    int index = cursors[page->cursor];
     // TODO: Null check subMenuFunc
-    const MenuEntry* subEntry =  page.entries[index];
+    const MenuEntry* subEntry =  page->entries[index];
     switch(subEntry->type) {
       case MenuType::ESub:
         {
@@ -245,7 +238,7 @@ static void clearSubValue() {
   display.fillRect(65, 24, 60, 37, BLACK);
 }
 
-static bool updateSubMenuCursor(const MenuPage &page, uint32_t timeNow)
+static bool updateSubMenuCursor(const MenuPage *page, uint32_t timeNow)
 {
   if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
     cursorBlinkTime = timeNow;
@@ -260,35 +253,42 @@ static bool updateSubMenuCursor(const MenuPage &page, uint32_t timeNow)
   return false;
 }
 
-static void plotMenuEntries(const MenuPage &page, bool clear = false) {
+static void plotMenuEntries(const MenuPage *page, bool clear = false) {
   int row = 0;
   if(clear) {
     display.fillRect( 0, MENU_HEADER_OFFSET, 56, 64-MENU_HEADER_OFFSET, BLACK );
   }
-  for(int item = offsets[page.cursor]; (item < page.numEntries) && (row < MENU_NUM_ROWS); item++, row++) {
+  for(int item = offsets[page->cursor]; (item < page->numEntries) && (row < MENU_NUM_ROWS); item++, row++) {
     int rowPixel = (row)*MENU_ROW_HEIGHT + MENU_HEADER_OFFSET;
-    const char* lineText = page.entries[item]->title;
+    const char* lineText = page->entries[item]->title;
     display.setCursor(0,rowPixel);
     display.println(lineText);
   }
 }
 
-static void drawMenu(const MenuPage &page, const char* customTitle = nullptr) {
+typedef void (*MenuTitleGetFunc)(char*out);
+
+static void drawMenu(const MenuPage *page) {
   //Initialize display and draw menu header + line
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  if(customTitle)
-    display.println(customTitle);
-  else
-    display.println(page.title);
+
+  if(page->flags & EMenuCustomTitle) {
+    // This is a bit hacky, but we are reusing the title pointer as a function pointer
+    MenuTitleGetFunc func = (MenuTitleGetFunc)page->title;
+    char buffer[23];
+    func(buffer);
+    display.println(buffer);
+  } else
+    display.println(page->title);
   display.drawLine(0, MENU_ROW_HEIGHT, 127, MENU_ROW_HEIGHT, WHITE);
 
   plotMenuEntries(page);
 }
 
-static void drawMenuScreen() {
+static void mainTitleGetStr(char* out) {
   //Construct the title including voltage reading.
   //Involves intricate splicing of the title string with battery voltage
   char menuTitle[] = "MENU         XXX Y.YV"; //Allocate string buffer of appropriate size with some placeholders
@@ -304,7 +304,7 @@ static void drawMenuScreen() {
     splice2[0] = (voltage/10)+'0';
     splice2[2] = (voltage%10)+'0';
   }
-  drawMenu(mainMenuPage, menuTitle);
+  strncpy(out, menuTitle, 22);
 }
 
 static void drawTrills(){
@@ -471,8 +471,8 @@ const MenuEntry* mainMenuEntries[] = {
 };
 
 const MenuPage mainMenuPage = {
-  nullptr,
-  EMenuPageRoot,
+  (const char*)mainTitleGetStr,
+  EMenuPageRoot | EMenuCustomTitle,
   CursorIdx::EMain,
   DISPLAYOFF_IDL,
   ARR_LEN(mainMenuEntries), mainMenuEntries
@@ -806,24 +806,41 @@ const MenuPage vibratoMenuPage = {
   ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
 };
 
+//***********************************************************
+
+static bool patchPageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
+static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
+
+const MenuPageCustom adjustMenuPage = {
+  nullptr, EMenuPageCustom, adjustPageUpdate, 
+};
+
+const MenuPageCustom patchMenuPage = {
+  nullptr, EMenuPageCustom, patchPageUpdate, 
+};
+
+const MenuPageCustom idleMenuPage = {
+  nullptr, EMenuPageCustom, idlePageUpdate, 
+};
+
 
 //***********************************************************
 
-static bool selectMenuOption(const MenuPage &page) {
-  int cursorPosition = cursors[page.cursor];
-  const MenuEntry* menuEntry = page.entries[cursorPosition];
+static bool selectMenuOption(const MenuPage *page) {
+  int cursorPosition = cursors[page->cursor];
+  const MenuEntry* menuEntry = page->entries[cursorPosition];
   cursorBlinkTime = millis();
 
   switch(menuEntry->type) {
     case MenuType::ESub:
-      activeSub[page.cursor] = cursorPosition+1;
+      activeSub[page->cursor] = cursorPosition+1;
       drawMenuCursor(cursorPosition, WHITE);
       drawSubBox( ((const MenuEntrySub*)menuEntry)->subTitle);
       drawSubMenu(page, WHITE);
       return true;
 
     case MenuType::EStateChange:
-      state = ((const MenuEntryStateCh*)menuEntry)->state;
+      menuState= ((const MenuEntryStateCh*)menuEntry)->state;
       stateFirstRun = 1;
       break;
   }
@@ -831,25 +848,22 @@ static bool selectMenuOption(const MenuPage &page) {
   return false;
 }
 
-
 //***********************************************************
 
-static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
+static bool updateSubMenu(const MenuPage *page, KeyState &input, uint32_t timeNow) {
 
   bool redraw = false;
   bool redrawSubValue = false;
-  if (buttonPressedAndNotUsed) {
-    buttonPressedAndNotUsed = 0;
-
-    int current_sub = activeSub[page.cursor] -1;
+  if (input.changed) {
+    int current_sub = activeSub[page->cursor] -1;
 
     if( current_sub < 0)
       return false;
 
-    auto sub = (const MenuEntrySub*)page.entries[current_sub];
+    auto sub = (const MenuEntrySub*)page->entries[current_sub];
     uint16_t currentVal = *sub->valuePtr;
 
-    switch (deumButtonState){
+    switch (input.current){
       case BTN_DOWN:
         if(currentVal > sub->min) {
           currentVal -= 1;
@@ -870,16 +884,16 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
         if(sub->flags & EMenuEntryEnterHandler) {
           bool result = sub->onEnterFunc();
           if(result) {
-            activeSub[page.cursor] = 0;
+            activeSub[page->cursor] = 0;
           }
         } else {
-          activeSub[page.cursor] = 0;
+          activeSub[page->cursor] = 0;
           sub->applyFunc(*sub);
         }
         break;
 
       case BTN_MENU:
-        activeSub[page.cursor] = 0;
+        activeSub[page->cursor] = 0;
         sub->applyFunc(*sub);
         break;
     }
@@ -899,16 +913,14 @@ static bool updateSubMenu(const MenuPage &page, uint32_t timeNow) {
   return redraw;
 }
 
-static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
-  byte cursorPos = cursors[page.cursor];
+static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+  byte cursorPos = cursors[page->cursor];
   byte newPos = cursorPos;
   bool redraw = false;
 
-  if (buttonPressedAndNotUsed) {
-    int lastEntry = page.numEntries-1;
-
-    buttonPressedAndNotUsed = 0;
-    switch (deumButtonState) {
+  if (input.changed) {
+    int lastEntry = page->numEntries-1;
+    switch (input.current) {
       case BTN_DOWN:
         if (cursorPos < lastEntry)
           newPos = cursorPos+1;
@@ -924,7 +936,8 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
         break;
 
       case BTN_MENU:
-        state = page.parentPage;
+        Serial.print("back to parent...");
+        menuState= page->parentPage;
         stateFirstRun = 1;
         break;
     }
@@ -935,7 +948,7 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
       cursorNow = BLACK;
       clearSub();
       redraw = true;
-      cursors[page.cursor] = newPos;
+      cursors[page->cursor] = newPos;
     }
   } else if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
     // Only need to update cursor blink if no buttons were pressed
@@ -948,60 +961,44 @@ static bool updateMenuPage( const MenuPage &page, uint32_t timeNow ) {
   return redraw;
 }
 
-static bool updatePage(const MenuPage &page, uint32_t timeNow) {
+static void checkForPatchView(int buttons);
+
+
+static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+  if(page->flags & EMenuPageCustom) {
+    auto custom = (const MenuPageCustom*)page;
+    return custom->menuUpdateFunc(input, timeNow);
+  }
+
+  bool redraw = false;
+
   if (stateFirstRun) {
     drawMenu(page);
     stateFirstRun = 0;
   }
-  if (activeSub[page.cursor]) {
-    return updateSubMenu(page, timeNow);
+  if (activeSub[page->cursor]) {
+    redraw = updateSubMenu(page, input, timeNow);
   } else {
-    return updateMenuPage(page, timeNow);
-  }
-}
+    redraw = updateMenuPage(page, input, timeNow);
 
-
-
-
-static bool updateSensorPixelsFlag = false;
-void drawSensorPixels() {
-  updateSensorPixelsFlag = true;
-}
-
-bool adjustPageUpdate(uint16_t buttonChanges, uint32_t timeNow) {
-  // This is a hack to update touch_Thr is it was changed..
-  int old_thr = ctouchThrVal;
-  int result = updateAdjustMenu(timeNow, buttonChanges, stateFirstRun, updateSensorPixelsFlag);
-  bool redraw = false;
-
-  updateSensorPixelsFlag = false;
-  stateFirstRun = 0;
-  buttonPressedAndNotUsed = 0;
-
-  if(result < 0) {
-    // Go back to main menu
-    state = MAIN_MENU;
-    stateFirstRun = true;
-  } else {
-    redraw = result;
+    if((page->flags & EMenuPageRoot) && input.changed)
+      checkForPatchView(input.current);
   }
 
-  if( old_thr != ctouchThrVal) {
-    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-  }
+
   return redraw;
 }
+
+
 //***********************************************************
+
 static void checkForPatchView(int buttons) {
   int trills = readTrills();
 
-  switch (buttons){
-    case BTN_MENU+BTN_DOWN:
-      break;
-
+  switch (buttons) {
     case BTN_MENU+BTN_ENTER:
       if (trills) {
-        state = PATCH_VIEW;
+        menuState= PATCH_VIEW;
         stateFirstRun = 1;
         setFPS(trills, patch);
       }
@@ -1009,14 +1006,16 @@ static void checkForPatchView(int buttons) {
 
     case BTN_MENU+BTN_UP:
       if (trills) {
-        state = PATCH_VIEW;
+        menuState= PATCH_VIEW;
         stateFirstRun = 1;
         clearFPS(trills);
       }
       break;
+    default: break;
   }
 }
 
+//***********************************************************
 // This should be moved to a separate file/process that handles only led
 static void statusBlink() {
   digitalWrite(statusLedPin,LOW);
@@ -1030,12 +1029,219 @@ static void statusBlink() {
 
 //***********************************************************
 
-void menu() {
-  unsigned long timeNow = millis();
-  const MenuPage *currentPage = nullptr;
 
-  bool redraw = stateFirstRun;
-  // read the state of the switches
+static bool updateSensorPixelsFlag = false;
+void drawSensorPixels() {
+  updateSensorPixelsFlag = true;
+}
+
+//***********************************************************
+
+
+bool adjustPageUpdate(KeyState &input, uint32_t timeNow) {
+  // This is a hack to update touch_Thr is it was changed..
+  int old_thr = ctouchThrVal;
+  int result = updateAdjustMenu(timeNow, input, stateFirstRun, updateSensorPixelsFlag);
+  bool redraw = false;
+
+  updateSensorPixelsFlag = false;
+  stateFirstRun = 0;
+
+  if(result < 0) {
+    // Go back to main menu
+    menuState= MAIN_MENU;
+    stateFirstRun = true;
+  } else {
+    redraw = result;
+  }
+
+  if( old_thr != ctouchThrVal) {
+    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+  }
+  return redraw;
+}
+
+
+static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
+  bool redraw = false;
+
+  if (stateFirstRun) {
+    display.ssd1306_command(SSD1306_DISPLAYON);
+    drawPatchView();
+    patchViewTime = timeNow;
+    stateFirstRun = 0;
+  }
+  if ((timeNow - patchViewTime) > patchViewTimeUp) {
+    menuState= DISPLAYOFF_IDL;
+    stateFirstRun = 1;
+    doPatchUpdate = 1;
+    FPD = 0;
+    writeSetting(PATCH_ADDR,patch);
+  }
+  if (input.changed) {
+    patchViewTime = timeNow;
+    int trills = readTrills();
+    switch (input.current){
+      case BTN_DOWN:
+        // down
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          writeSetting(PATCH_ADDR,patch);
+        } else if (!trills){
+          if (patch > 1){
+            patch--;
+          } else patch = 128;
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 0;
+        }
+        drawPatchView();
+        redraw = true;
+        break;
+      case BTN_ENTER:
+        // enter
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          drawPatchView();
+          redraw = true;
+        }
+        break;
+      case BTN_UP:
+        // up
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          writeSetting(PATCH_ADDR,patch);
+        } else if (!trills){
+          if (patch < 128){
+            patch++;
+          } else patch = 1;
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 0;
+        }
+        drawPatchView();
+        redraw = true;
+        break;
+
+      case BTN_MENU:
+        if (FPD < 2){
+          menuState= DISPLAYOFF_IDL;
+          stateFirstRun = 1;
+          doPatchUpdate = 1;
+        }
+        writeSetting(PATCH_ADDR,patch);
+        FPD = 0;
+        break;
+
+      case BTN_MENU+BTN_ENTER:
+          midiPanic();
+          display.clearDisplay();
+          display.setTextColor(WHITE);
+          display.setTextSize(2);
+          display.setCursor(35,15);
+          display.println("DON'T");
+          display.setCursor(35,30);
+          display.println("PANIC");
+          redraw = true;
+          break;
+
+        case BTN_MENU+BTN_ENTER+BTN_UP+BTN_DOWN:
+        //all keys depressed, reboot to programming mode
+        _reboot_Teensyduino_();
+    }
+  }
+
+  return redraw;
+}
+
+
+static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) {
+  bool redraw = false;
+  if (stateFirstRun) {
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+    display.clearDisplay();
+    redraw = true;
+    stateFirstRun = 0;
+  }
+  if (input.changed) {
+    int trills = readTrills();
+    switch (input.current){
+      case BTN_UP: // fallthrough
+      case BTN_DOWN:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+        } // else if (!trills) buttonPressedAndNotUsed = 1; // <- TODO: this is now broken, all input is consumed... solve in another way.
+        menuState= PATCH_VIEW;
+        stateFirstRun = 1;
+        break;
+
+      case BTN_ENTER:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+        }
+        menuState= PATCH_VIEW;
+        stateFirstRun = 1;
+        break;
+
+      case BTN_MENU:
+        if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch breath activated legacy settings on/off
+          legacyBrAct = !legacyBrAct;
+          dipSwBits = dipSwBits ^ (1<<2);
+          writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+          statusBlink();
+        } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
+          legacy = !legacy;
+          dipSwBits = dipSwBits ^ (1<<1);
+          writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+          statusBlink();
+        } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
+          display.ssd1306_command(SSD1306_DISPLAYON);
+          menuState= ROTATOR_MENU;
+          stateFirstRun = 1;
+        } else {
+          display.ssd1306_command(SSD1306_DISPLAYON);
+          menuState= MAIN_MENU;
+          stateFirstRun = 1;
+        }
+        break;
+
+      case BTN_UP | BTN_DOWN | BTN_ENTER | BTN_MENU:
+        //all keys depressed, reboot to programming mode
+        _reboot_Teensyduino_();
+    }
+  }
+  return redraw;
+}
+
+
+//***********************************************************
+
+static KeyState readInput(uint32_t timeNow) {
+
+  static uint32_t lastDebounceTime = 0;         // the last time the output pin was toggled
+  static uint32_t buttonRepeatTime = 0;
+  static uint32_t buttonPressedTime = 0;
+  static uint8_t lastDeumButtons = 0;
+  static uint8_t deumButtonState = 0;
+
+
+  KeyState keys = { deumButtonState, 0 };
+
   uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
 
   // check to see if you just pressed the button
@@ -1048,230 +1254,65 @@ void menu() {
     lastDebounceTime = timeNow;
   }
 
+
   if ((timeNow - lastDebounceTime) > debounceDelay) {
     // whatever the reading is at, it's been there for longer than the debounce
     // delay, so take it as the actual current state:
 
     // if the button state has changed:
     if (deumButtons != deumButtonState) {
+      keys.current = deumButtons;
+      keys.changed = deumButtonState ^ deumButtons;
+
       deumButtonState = deumButtons;
       menuTime = timeNow;
-      buttonPressedAndNotUsed = 1;
       buttonPressedTime = timeNow;
     }
 
-    if (((deumButtons == 1) || (deumButtons == 4)) && (timeNow - buttonPressedTime > buttonRepeatDelay) && (timeNow - buttonRepeatTime > buttonRepeatInterval)){
-      buttonPressedAndNotUsed = 1;
+    if (((deumButtons == BTN_DOWN) || (deumButtons == BTN_UP)) && (timeNow - buttonPressedTime > buttonRepeatDelay) && (timeNow - buttonRepeatTime > buttonRepeatInterval)){
       buttonRepeatTime = timeNow;
+      keys.changed = deumButtons; // Key repeat
     }
   }
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastDeumButtons = deumButtons;
 
-  // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
-  if (state && ((timeNow - menuTime) > menuTimeUp)) {
-    state = DISPLAYOFF_IDL;
-    stateFirstRun = 1;
+  return keys;
+}
 
+void menu() {
+  unsigned long timeNow = millis();
+
+  bool redraw = stateFirstRun;
+
+  KeyState input = readInput(timeNow);
+  // read the state of the switches
+
+  // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
+  if (menuState&& ((timeNow - menuTime) > menuTimeUp)) {
+    menuState= DISPLAYOFF_IDL;
+    stateFirstRun = 1;
     subVibSquelch = 0;
     memset(activeSub, 0, sizeof(activeSub));
   }
 
-  if        (state == DISPLAYOFF_IDL) {
-    if (stateFirstRun) {
-      display.ssd1306_command(SSD1306_DISPLAYOFF);
-      stateFirstRun = 0;
-    }
-    if (buttonPressedAndNotUsed) {
-      buttonPressedAndNotUsed = 0;
-      int trills = readTrills();
-      switch (deumButtonState){
-        case BTN_UP: // fallthrough
-        case BTN_DOWN:
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-          } else if (!trills) buttonPressedAndNotUsed = 1;
-          state = PATCH_VIEW;
-          stateFirstRun = 1;
-          break;
-
-        case BTN_ENTER:
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-          }
-          state = PATCH_VIEW;
-          stateFirstRun = 1;
-          break;
-
-        case BTN_MENU:
-          if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch breath activated legacy settings on/off
-            legacyBrAct = !legacyBrAct;
-            dipSwBits = dipSwBits ^ (1<<2);
-            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            statusBlink();
-          } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
-            legacy = !legacy;
-            dipSwBits = dipSwBits ^ (1<<1);
-            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            statusBlink();
-          } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
-            display.ssd1306_command(SSD1306_DISPLAYON);
-            state = ROTATOR_MENU;
-            stateFirstRun = 1;
-          } else {
-            display.ssd1306_command(SSD1306_DISPLAYON);
-            state = MAIN_MENU;
-            stateFirstRun = 1;
-          }
-          break;
-
-        case 15:
-          //all keys depressed, reboot to programming mode
-          _reboot_Teensyduino_();
-      }
-    }
-  } else if (state == PATCH_VIEW) {
-    if (stateFirstRun) {
-      display.ssd1306_command(SSD1306_DISPLAYON);
-      drawPatchView();
-      patchViewTime = timeNow;
-      stateFirstRun = 0;
-    }
-    if ((timeNow - patchViewTime) > patchViewTimeUp) {
-      state = DISPLAYOFF_IDL;
-      stateFirstRun = 1;
-      doPatchUpdate = 1;
-      FPD = 0;
-      writeSetting(PATCH_ADDR,patch);
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      patchViewTime = timeNow;
-      int trills = readTrills();
-      switch (deumButtonState){
-        case BTN_DOWN:
-          // down
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            writeSetting(PATCH_ADDR,patch);
-          } else if (!trills){
-            if (patch > 1){
-              patch--;
-            } else patch = 128;
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 0;
-          }
-          drawPatchView();
-          redraw = true;
-          break;
-        case BTN_ENTER:
-          // enter
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            drawPatchView();
-            redraw = true;
-          }
-          break;
-        case BTN_UP:
-          // up
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            writeSetting(PATCH_ADDR,patch);
-          } else if (!trills){
-            if (patch < 128){
-              patch++;
-            } else patch = 1;
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 0;
-          }
-          drawPatchView();
-          redraw = true;
-          break;
-
-        case BTN_MENU:
-          if (FPD < 2){
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            doPatchUpdate = 1;
-          }
-          writeSetting(PATCH_ADDR,patch);
-          FPD = 0;
-          break;
-
-        case BTN_MENU+BTN_ENTER:
-            midiPanic();
-            display.clearDisplay();
-            display.setTextColor(WHITE);
-            display.setTextSize(2);
-            display.setCursor(35,15);
-            display.println("DON'T");
-            display.setCursor(35,30);
-            display.println("PANIC");
-            redraw = true;
-            break;
-
-          case BTN_MENU+BTN_ENTER+BTN_UP+BTN_DOWN:
-          //all keys depressed, reboot to programming mode
-          _reboot_Teensyduino_();
-      }
-    }
-  } else if (state == MAIN_MENU) {    // MAIN MENU HERE <<<<<<<<<<<<<<<
-    currentPage = &mainMenuPage;
-    if (stateFirstRun) {
-      drawMenuScreen();
-      stateFirstRun = 0;
-    }
-
-    if(activeSub[currentPage->cursor]) {
-      redraw |= updateSubMenu(*currentPage, timeNow);
-    } else {
-      bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage(*currentPage, timeNow);
-      if (hadButtons)
-        checkForPatchView(deumButtonState);
-    }
-  } else if (state == ROTATOR_MENU) {    // ROTATOR MENU HERE <<<<<<<<<<<<<<<
-    currentPage = &rotatorMenuPage;
-    if (stateFirstRun) {
-      drawMenu(*currentPage);
-      stateFirstRun = 0;
-    }
-    if(activeSub[currentPage->cursor]) {
-      redraw |= updateSubMenu(*currentPage, timeNow);
-    } else {
-      bool hadButtons = buttonPressedAndNotUsed;
-      redraw |= updateMenuPage(*currentPage, timeNow);
-      if (hadButtons)
-        checkForPatchView(deumButtonState);
-    }
-  // end rotator menu
-
-  } else if (state == ADJUST_MENU) {
-    adjustPageUpdate(buttonPressedAndNotUsed ? deumButtonState : 0, timeNow);
-  } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
-    redraw |= updatePage(breathMenuPage, timeNow);
-  } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
-    redraw |= updatePage(controlMenuPage, timeNow);
-  } else if (state == VIBRATO_MENU) {   // VIBRATO MENU HERE <<<<<<<<<<<<<
-    redraw |= updatePage(vibratoMenuPage, timeNow);
+  if (menuState== DISPLAYOFF_IDL) {
+    redraw |= updatePage((const MenuPage*)&idleMenuPage, input, timeNow);
+  } else if (menuState== PATCH_VIEW) {
+    redraw |= updatePage((const MenuPage*)&patchMenuPage, input, timeNow);
+  } else if (menuState== MAIN_MENU) {
+    redraw |= updatePage(&mainMenuPage, input, timeNow);
+  } else if (menuState== ROTATOR_MENU) {
+    redraw |= updatePage(&rotatorMenuPage, input, timeNow);
+  } else if (menuState== ADJUST_MENU) {
+    redraw |= updatePage((const MenuPage*)&adjustMenuPage, input, timeNow);
+  } else if (menuState== SETUP_BR_MENU) {
+    redraw |= updatePage(&breathMenuPage, input, timeNow);
+  } else if (menuState== SETUP_CT_MENU) {
+    redraw |= updatePage(&controlMenuPage, input, timeNow);
+  } else if (menuState== VIBRATO_MENU) {
+    redraw |= updatePage(&vibratoMenuPage, input, timeNow);
   }
 
   if(redraw) {

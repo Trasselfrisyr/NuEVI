@@ -2,6 +2,7 @@
 #define __MENU_H
 
 #include "Wiring.h"
+#include "numenu.h"
 
 #define MENU_ROW_HEIGHT 9
 #define MENU_HEADER_OFFSET 12
@@ -11,11 +12,11 @@
 #define DISPLAYOFF_IDL 0
 #define MAIN_MENU 1
 #define PATCH_VIEW 2
-#define ADJUST_MENU   70
-#define SETUP_BR_MENU 80
-#define SETUP_CT_MENU 90
-#define ROTATOR_MENU 100
-#define VIBRATO_MENU 110
+#define ADJUST_MENU   3
+#define SETUP_BR_MENU 4
+#define SETUP_CT_MENU 5
+#define ROTATOR_MENU 6
+#define VIBRATO_MENU 7
 
 #define ARR_LEN(a)  (sizeof (a) / sizeof (a[0]))
 
@@ -25,7 +26,6 @@
 #define BTN_MENU 8
 
 
-
 extern const unsigned long debounceDelay;           // the debounce time; increase if the output flickers
 extern const unsigned long buttonRepeatInterval;
 extern const unsigned long buttonRepeatDelay;
@@ -33,9 +33,7 @@ extern const unsigned long cursorBlinkInterval;    // the cursor blink toggle in
 extern const unsigned long patchViewTimeUp;       // ms until patch view shuts off
 extern const unsigned long menuTimeUp;           // menu shuts off after one minute of button inactivity
 
-
-
-extern byte subVibSquelch;
+extern byte subVibSquelch;  // TODO: This is broken <- subVibSquelch is never set, we need another way to expose what menu is open.
 
 void initDisplay();
 void showVersion();
@@ -44,7 +42,7 @@ void drawSensorPixels();
 unsigned short readSetting(byte address);
 void writeSetting(byte address, unsigned short value);
 
-int updateAdjustMenu(uint32_t timeNow, uint8_t buttons, bool firstRun, bool updateSensor);
-bool adjustPageUpdate(uint16_t buttonChanges, uint32_t timeNow);
+int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool drawSensor);
+bool adjustPageUpdate(KeyState &input, uint32_t timeNow);
 
 #endif

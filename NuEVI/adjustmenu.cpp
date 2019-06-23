@@ -274,11 +274,13 @@ static bool updateAdjustCursor(uint32_t timeNow) {
   return false;
 }
 
-int updateAdjustMenu(uint32_t timeNow, uint8_t buttons, bool firstRun, bool drawSensor) {
+int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool drawSensor) {
   bool redraw = false;
   int result = 0; 
 
   const AdjustMenuEntry *currentMenu = adjustMenuEntries[adjustOption];
+
+  uint8_t buttons = input.changed ? input.current : 0;
 
   if(firstRun || refreshScreen) {
     adjustCurrent = 0;
@@ -294,7 +296,6 @@ int updateAdjustMenu(uint32_t timeNow, uint8_t buttons, bool firstRun, bool draw
     redraw |= updateAdjustCursor(timeNow);
 
     bool save = false;
-
     if( buttons == BTN_DOWN ) {
       adjustOption += 1;
       refreshScreen = 1;
@@ -357,3 +358,4 @@ int updateAdjustMenu(uint32_t timeNow, uint8_t buttons, bool firstRun, bool draw
 
   return result;
 }
+
