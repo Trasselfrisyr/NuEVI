@@ -32,6 +32,10 @@ static bool refreshScreen;
 
 //***********************************************************
 
+static void breathSave(const AdjustMenuEntry& e) {
+    writeSetting(BREATH_THR_ADDR, *e.entries[0].value);
+    writeSetting(BREATH_MAX_ADDR, *e.entries[1].value);
+}
 
 const AdjustMenuEntry breathAdjustMenu  = {
   "BREATH",
@@ -39,11 +43,13 @@ const AdjustMenuEntry breathAdjustMenu  = {
     { &breathThrVal, breathLoLimit, breathHiLimit },
     { &breathMaxVal, breathLoLimit, breathHiLimit }
   },
-  [] (const AdjustMenuEntry& e) {
-    writeSetting(BREATH_THR_ADDR, *e.entries[0].value);
-    writeSetting(BREATH_MAX_ADDR, *e.entries[1].value);
-  }
+  breathSave
 };
+
+static void portamentoSave(const AdjustMenuEntry& e) {
+  writeSetting(PORTAM_THR_ADDR, *e.entries[0].value);
+  writeSetting(PORTAM_MAX_ADDR, *e.entries[1].value);
+}
 
 const AdjustMenuEntry portamentoAdjustMenu = {
   "PORTAMENTO", 
@@ -51,11 +57,13 @@ const AdjustMenuEntry portamentoAdjustMenu = {
     { &portamThrVal, portamLoLimit, portamHiLimit },
     { &portamMaxVal, portamLoLimit, portamHiLimit }
   }, 
-  [] (const AdjustMenuEntry& e) {
-    writeSetting(PORTAM_THR_ADDR, *e.entries[0].value);
-    writeSetting(PORTAM_MAX_ADDR, *e.entries[1].value);
-  }
+  portamentoSave
 };
+
+static void pbSave(const AdjustMenuEntry& e) {
+  writeSetting(PITCHB_THR_ADDR, *e.entries[0].value);
+  writeSetting(PITCHB_MAX_ADDR, *e.entries[1].value);
+}
 
 const AdjustMenuEntry pitchBendAdjustMenu = {
   "PITCH BEND", 
@@ -63,11 +71,13 @@ const AdjustMenuEntry pitchBendAdjustMenu = {
     { &pitchbThrVal, pitchbLoLimit, pitchbHiLimit },
     { &pitchbMaxVal, pitchbLoLimit, pitchbHiLimit }
   }, 
-  [] (const AdjustMenuEntry& e) {
-    writeSetting(PITCHB_THR_ADDR, *e.entries[0].value);
-    writeSetting(PITCHB_MAX_ADDR, *e.entries[1].value);
-  }
+  pbSave
 };
+
+static void extracSave(const AdjustMenuEntry& e) {
+  writeSetting(EXTRAC_THR_ADDR, *e.entries[0].value);
+  writeSetting(EXTRAC_MAX_ADDR, *e.entries[1].value);
+}
 
 const AdjustMenuEntry extraSensorAdjustMenu = {
   "EXTRA CONTROLLER", 
@@ -75,11 +85,13 @@ const AdjustMenuEntry extraSensorAdjustMenu = {
     { &extracThrVal, extracLoLimit, extracHiLimit },
     { &extracMaxVal, extracLoLimit, extracHiLimit }
   }, 
-  [] (const AdjustMenuEntry& e) {
-    writeSetting(EXTRAC_THR_ADDR, *e.entries[0].value);
-    writeSetting(EXTRAC_MAX_ADDR, *e.entries[1].value);
-  }
+  extracSave
 };
+
+
+static void ctouchThrSave(const AdjustMenuEntry& e) {
+  writeSetting(CTOUCH_THR_ADDR, *e.entries[0].value);
+}
 
 const AdjustMenuEntry ctouchAdjustMenu = {
   "TOUCH SENSE", 
@@ -87,9 +99,7 @@ const AdjustMenuEntry ctouchAdjustMenu = {
     { &ctouchThrVal, ctouchLoLimit, ctouchHiLimit },
     { nullptr, 0, 0 }
   }, 
-  [] (const AdjustMenuEntry& e) {
-    writeSetting(CTOUCH_THR_ADDR, *e.entries[0].value);
-  }
+  ctouchThrSave
 };
 
 const AdjustMenuEntry* adjustMenuEntries[] = {
@@ -233,7 +243,6 @@ void plotSensorPixels(){
   }
   forcePix = 0;
 }
-
 
 //***********************************************************
 
