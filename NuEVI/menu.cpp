@@ -960,6 +960,37 @@ static bool updatePage(const MenuPage &page, uint32_t timeNow) {
   }
 }
 
+
+
+
+static bool updateSensorPixelsFlag = false;
+void drawSensorPixels() {
+  updateSensorPixelsFlag = true;
+}
+
+bool adjustPageUpdate(uint16_t buttonChanges, uint32_t timeNow) {
+  // This is a hack to update touch_Thr is it was changed..
+  int old_thr = ctouchThrVal;
+  int result = updateAdjustMenu(timeNow, buttonChanges, stateFirstRun, updateSensorPixelsFlag);
+  bool redraw = false;
+
+  updateSensorPixelsFlag = false;
+  stateFirstRun = 0;
+  buttonPressedAndNotUsed = 0;
+
+  if(result < 0) {
+    // Go back to main menu
+    state = MAIN_MENU;
+    stateFirstRun = true;
+  } else {
+    redraw = result;
+  }
+
+  if( old_thr != ctouchThrVal) {
+    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+  }
+  return redraw;
+}
 //***********************************************************
 static void checkForPatchView(int buttons) {
   int trills = readTrills();
@@ -996,13 +1027,6 @@ static void statusBlink() {
   delay(150);
   digitalWrite(statusLedPin,HIGH);
 }
-
-static bool updateSensorPixelsFlag = false;
-
-void drawSensorPixels() {
-  updateSensorPixelsFlag = true;
-}
-
 
 //***********************************************************
 
@@ -1241,25 +1265,7 @@ void menu() {
   // end rotator menu
 
   } else if (state == ADJUST_MENU) {
-    // This is a hack to update touch_Thr is it was changed..
-    int old_thr = ctouchThrVal;
-    int result = updateAdjustMenu(timeNow, buttonPressedAndNotUsed ? deumButtonState : 0, stateFirstRun, updateSensorPixelsFlag);
-
-    updateSensorPixelsFlag = false;
-    stateFirstRun = 0;
-    buttonPressedAndNotUsed = 0;
-
-    if(result < 0) {
-      // Go back to main menu
-      state = MAIN_MENU;
-      stateFirstRun = true;
-    } else {
-      redraw = result;
-    }
-
-    if( old_thr != ctouchThrVal) {
-      touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-    }
+    adjustPageUpdate(buttonPressedAndNotUsed ? deumButtonState : 0, timeNow);
   } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
     redraw |= updatePage(breathMenuPage, timeNow);
   } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
