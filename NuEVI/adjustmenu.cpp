@@ -130,7 +130,6 @@ static void drawAdjustBase(const char* title, bool all) {
   display.drawLine(120,36,120,40,WHITE);
 
   display.setTextSize(1);
-  display.setTextColor(WHITE);
   display.setCursor(25,2);
   display.println(title);
 

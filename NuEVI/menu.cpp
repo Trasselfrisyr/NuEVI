@@ -190,15 +190,14 @@ static const char* numToString(int16_t value, char* dest, bool plusSign = false)
   return dest;
 }
 
-static void plotSubOption(const char* label, int color) {
-  display.setTextColor(color);
+static void plotSubOption(const char* label) {
   display.setTextSize(2);
   int x_pos = 96-strlen(label)*6;
   display.setCursor(x_pos,33);
   display.println(label);
 }
 
-static bool drawSubMenu(const MenuPage *page, int color) {
+static bool drawSubMenu(const MenuPage *page) {
     int index = cursors[page->cursor];
     // TODO: Null check subMenuFunc
     const MenuEntry* subEntry =  page->entries[index];
@@ -213,7 +212,7 @@ static bool drawSubMenu(const MenuPage *page, int color) {
           // If ECustom flag is set, we assume that the getSubTextFunc 
           // rendered by it self.
           if( !(sub->flags & EMenuEntryCustom)) {
-            plotSubOption(buffer, color);
+            plotSubOption(buffer);
             if(labelPtr != nullptr) {
               // TODO: handle this better, we should center text + label
               display.setCursor(105,40);
@@ -247,7 +246,7 @@ static bool updateSubMenuCursor(const MenuPage *page, uint32_t timeNow)
       clearSubValue();
     } else {
       cursorNow = WHITE;
-      return drawSubMenu( page, cursorNow );
+      return drawSubMenu(page);
     }
   }
   return false;
@@ -272,7 +271,6 @@ static void drawMenu(const MenuPage *page) {
   //Initialize display and draw menu header + line
   display.clearDisplay();
   display.setTextSize(1);
-  display.setTextColor(WHITE);
   display.setCursor(0,0);
 
   if(page->flags & EMenuCustomTitle) {
@@ -318,7 +316,6 @@ static void drawPatchView(){
   if (FPD){
     drawTrills();
   }
-  display.setTextColor(WHITE);
   display.setTextSize(6);
   if (FPD < 2){
     int align;
@@ -344,7 +341,6 @@ static void drawSubBox(const char* label)
 {
   display.fillRect(63,11,64,52,BLACK);
   display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
   display.setTextSize(1);
   int len = strlen(label);
 
@@ -355,20 +351,6 @@ static void drawSubBox(const char* label)
 void drawMenuCursor(byte itemNo, byte color){
   byte ymid = 15 + 9 * itemNo;
   display.drawTriangle(57, ymid,61, ymid+2,61, ymid-2, color);
-}
-
-static void plotMIDI(int color) {
-  char buff[7];
-  numToString(MIDIchannel, buff);
-  plotSubOption(buff, color);
-  if (slowMidi && color) {
-    display.setTextColor(WHITE);
-  } else {
-    display.setTextColor(BLACK);
-  }
-  display.setTextSize(1);
-  display.setCursor(116,51);
-  display.print("S");
 }
 
 //***********************************************************
@@ -437,24 +419,34 @@ const MenuEntrySub octaveMenu = {
   , nullptr
 };
 
+static void midiSaveFunc(const MenuEntrySub & __unused sub) { writeSetting(MIDI_ADDR, MIDIchannel); }
+static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char** __unused) {
+  char buff[7];
+  numToString(MIDIchannel, buff);
+  plotSubOption(buff);
+  if (slowMidi) {
+    display.setTextSize(1);
+    display.setCursor(116,51);
+    display.print("S");
+  }
+}
+
+static bool midiEnterHandlerFunc() {
+  readSwitches();
+  if (pinkyKey){
+    slowMidi = !slowMidi;
+    dipSwBits = dipSwBits ^ (1<<3);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    return false;
+  } else {
+    writeSetting(MIDI_ADDR, MIDIchannel);
+    return true;
+  }
+}
+
 const MenuEntrySub midiMenu = {
   MenuType::ESub, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, EMenuEntryCustom | EMenuEntryEnterHandler, 
-  [](SubMenuRef __unused, char* __unused out, const char** __unused unit) {
-    plotMIDI(WHITE);
-  },
-  [](const MenuEntrySub & __unused sub) { writeSetting(MIDI_ADDR, MIDIchannel); },
-  []() -> bool { // On enter handler
-    readSwitches();
-    if (pinkyKey){
-      slowMidi = !slowMidi;
-      dipSwBits = dipSwBits ^ (1<<3);
-      writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-      return false;
-    } else {
-      writeSetting(MIDI_ADDR, MIDIchannel);
-      return true;
-    }
-  }
+  midiCustomDrawFunc, midiSaveFunc, midiEnterHandlerFunc
 };
 
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
@@ -832,7 +824,7 @@ static bool selectMenuOption(const MenuPage *page) {
       activeSub[page->cursor] = cursorPosition+1;
       drawMenuCursor(cursorPosition, WHITE);
       drawSubBox( ((const MenuEntrySub*)menuEntry)->subTitle);
-      drawSubMenu(page, WHITE);
+      drawSubMenu(page);
       return true;
 
     case MenuType::EStateChange:
@@ -901,7 +893,7 @@ static bool updateSubMenu(const MenuPage *page, KeyState &input, uint32_t timeNo
 
   if(redrawSubValue) {
     clearSubValue();
-    redraw |= drawSubMenu(page, WHITE);
+    redraw |= drawSubMenu(page);
     cursorNow = BLACK;
     cursorBlinkTime = timeNow;
   }
@@ -957,6 +949,9 @@ static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeN
 }
 
 static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+
+  display.setTextColor(WHITE);
+
   if(page->flags & EMenuPageCustom) {
     auto custom = (const MenuPageCustom*)page;
     return custom->menuUpdateFunc(input, timeNow);
@@ -1128,7 +1123,6 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
       case BTN_MENU+BTN_ENTER:
           midiPanic();
           display.clearDisplay();
-          display.setTextColor(WHITE);
           display.setTextSize(2);
           display.setCursor(35,15);
           display.println("DON'T");
