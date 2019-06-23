@@ -190,11 +190,25 @@ static const char* numToString(int16_t value, char* dest, bool plusSign = false)
   return dest;
 }
 
-static void plotSubOption(const char* label) {
-  display.setTextSize(2);
-  int x_pos = 96-strlen(label)*6;
-  display.setCursor(x_pos,33);
-  display.println(label);
+static void plotSubOption(const char* label, const char* unit = nullptr) {
+  int text_x, unit_x;
+  int label_pixel_width = strlen(label)*12;
+
+  if(unit == nullptr) {
+    text_x = 96 - (label_pixel_width/2);
+  } else {
+      int unit_pixel_width = strlen(unit)*6;
+      int halfSum = (label_pixel_width + unit_pixel_width)/2;
+      text_x = 96 - halfSum;
+      unit_x = 96 + halfSum - unit_pixel_width;
+      display.setCursor(unit_x,40);
+      display.setTextSize(1);
+      display.println(unit);
+  }
+
+    display.setTextSize(2);
+    display.setCursor(text_x,33);
+    display.println(label);
 }
 
 static bool drawSubMenu(const MenuPage *page) {
@@ -209,16 +223,10 @@ static bool drawSubMenu(const MenuPage *page) {
           const MenuEntrySub* sub = (const MenuEntrySub*)subEntry;
           sub->getSubTextFunc(*sub, buffer, &labelPtr);
 
-          // If ECustom flag is set, we assume that the getSubTextFunc 
+          // If EMenuEntryCustom flag is set, we assume that the getSubTextFunc 
           // rendered by it self.
           if( !(sub->flags & EMenuEntryCustom)) {
-            plotSubOption(buffer);
-            if(labelPtr != nullptr) {
-              // TODO: handle this better, we should center text + label
-              display.setCursor(105,40);
-              display.setTextSize(1);
-              display.println(labelPtr);
-            }
+            plotSubOption(buffer, labelPtr);
           }
         }
         break;
