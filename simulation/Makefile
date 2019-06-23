@@ -32,8 +32,9 @@ CXXFILES=		../NuEVI/menu.cpp \
 				src/Print.cpp \
 				src/simserial.cpp \
 				src/simwire.cpp \
-				src/simmidi.cpp \
+				src/simusbmidi.cpp \
 				src/filters.cpp \
+				../NuEVI/midi.cpp \
 				src/Adafruit_GFX_sim.cpp \
 				src/Adafruit_SSD1306_sim.cpp \
 				src/Adafruit_MPR121_sim.cpp \

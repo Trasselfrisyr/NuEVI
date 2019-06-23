@@ -67,9 +67,29 @@ public:
 	void println(const char* str);
 	void print(const char* str);
 	void print(uint32_t intValue);
+	void write(const uint8_t str);
+	void flush();
+
+};
+
+class SimUsbMidi
+{
+public:
+	void sendNoteOff(uint8_t note, uint8_t velocity, uint8_t channel, uint8_t cable=0);
+	void sendNoteOn(uint8_t note, uint8_t velocity, uint8_t channel, uint8_t cable=0);
+	void sendPolyPressure(uint8_t note, uint8_t pressure, uint8_t channel, uint8_t cable=0);
+	void sendAfterTouchPoly(uint8_t note, uint8_t pressure, uint8_t channel, uint8_t cable=0);
+	void sendControlChange(uint8_t control, uint8_t value, uint8_t channel, uint8_t cable=0);
+	void sendProgramChange(uint8_t program, uint8_t channel, uint8_t cable=0);
+	void sendAfterTouch(uint8_t pressure, uint8_t channel, uint8_t cable=0);
+	void sendPitchBend(int value, uint8_t channel, uint8_t cable=0);
+	void sendSysEx(uint16_t length, const uint8_t *data, bool hasTerm=false, uint8_t cable=0);
+	bool read(uint8_t channel=0);
 };
 
 extern SimSerial Serial;
+extern SimSerial Serial3; //Used for MIDI serial putput with default hardware
+extern SimUsbMidi usbMIDI;
 
 //extern void putString(int row, int col, int color, const char* msg, const FONT_INFO fontInfo);
 

@@ -26,7 +26,8 @@ extern Adafruit_SSD1306 display;
 extern Adafruit_MPR121 touchSensor;
 SimWire Wire;
 SimSerial Serial;
-
+SimSerial Serial3; //Midi
+SimUsbMidi usbMIDI;
 
 static const int scale = 3;
 
