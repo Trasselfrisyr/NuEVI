@@ -961,11 +961,11 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
   display.setTextColor(WHITE);
 
   if(page->flags & EMenuPageCustom) {
-    auto custom = (const MenuPageCustom*)page;
+    const MenuPageCustom* custom = (const MenuPageCustom*)page;
     return custom->menuUpdateFunc(input, timeNow);
   }
 
-  bool redraw = false;
+  bool redraw = stateFirstRun;
 
   if (stateFirstRun) {
     drawMenu(page);
@@ -1050,7 +1050,7 @@ bool adjustPageUpdate(KeyState &input, uint32_t timeNow) {
 
 
 static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
-  bool redraw = false;
+  bool redraw = stateFirstRun;
 
   if (stateFirstRun) {
     display.ssd1306_command(SSD1306_DISPLAYON);
@@ -1129,14 +1129,14 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
         break;
 
       case BTN_MENU+BTN_ENTER:
-          midiPanic();
           display.clearDisplay();
           display.setTextSize(2);
           display.setCursor(35,15);
           display.println("DON'T");
           display.setCursor(35,30);
           display.println("PANIC");
-          redraw = true;
+          display.display(); // call display explicitly _before_ we call midiPanic
+          midiPanic();
           break;
 
         case BTN_MENU+BTN_ENTER+BTN_UP+BTN_DOWN:
@@ -1200,7 +1200,7 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
           stateFirstRun = 1;
         } else {
           display.ssd1306_command(SSD1306_DISPLAYON);
-          menuState= MAIN_MENU;
+          menuState = MAIN_MENU;
           stateFirstRun = 1;
         }
         break;
