@@ -44,7 +44,7 @@ void midiSendAfterTouch(uint8_t value) {
 
 
 void midiSendPitchBend(uint16_t value) {
-    #if defined(NEWTEENSYDUINO)
+    #if (TEENSYDUINO > 140)
     usbMIDI.sendPitchBend(value-8192, midiChannel); // newer teensyduino "pitchBend-8192" older just "pitchBend"... strange thing to change
     #else
     usbMIDI.sendPitchBend(value, midiChannel);
