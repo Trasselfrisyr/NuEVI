@@ -38,6 +38,14 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 // A note is sounding
 #define NOTE_ON 3
 
+//Make sure compiler is set to the appropriate platform
+#ifndef __MK20DX256__
+  #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
+#endif
+
+#ifndef USB_MIDI
+  #error "USB_MIDI not enabled. Please set USB type to include MIDI."
+#endif
 
 
 //_______________________________________________________________________________________________ DECLARATIONS
