@@ -109,13 +109,9 @@ int16_t EEPROMClass::setStorage(const char* filename, bool write)
 }
 
 void EEPROMClass::closeStorage() {
-    if(storage==NULL)
+    if(storage!=NULL)
     {
-        return;
+        fclose(storage);
+        storage=NULL;
     }
-
-    printf("Closing EEPROM storage\n");
-
-    fclose(storage);
-    storage=NULL;
 }

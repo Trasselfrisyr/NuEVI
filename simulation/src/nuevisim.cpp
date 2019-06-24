@@ -620,5 +620,14 @@ int main(int argc, const char** argv)
 
     parser.ParseCLI(argc, argv);
 
-    return SimRun(args::get(eepromFile), args::get(eepromWrite), args::get(factoryReset));
+    std::string eepromFileName = args::get(eepromFile);
+
+    //Use a default EEPROM file if none is provided.
+    if(eepromFileName.length()==0)
+    {
+        eepromFileName = SDL_GetPrefPath("Vulk Data System", "NuEVI Simulator");
+        eepromFileName += "eeprom.bin";
+    }
+
+    return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset));
 }
