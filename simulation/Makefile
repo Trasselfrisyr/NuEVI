@@ -2,7 +2,7 @@ CC=clang
 CXX=clang++
 
 CFLAGS=-Wall -Wextra -Wpedantic -Wno-gnu -mmacosx-version-min=10.9 -F/Library/Frameworks
-CFLAGS += -DARDUINO=10808 -D__MK20DX256__
+CFLAGS += -DARDUINO=10808 -DTEENSYDUINO=146 -D__MK20DX256__ -DUSB_MIDI
 
 RELEASE ?= 0
 ifeq ($(RELEASE), 1)
