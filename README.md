@@ -28,10 +28,6 @@ and then add that in the Arduino IDE (under Sketch -> Include Library -> Add .ZI
 Open NuEVI.ino in the Arduino IDE. Under "Tools -> Board", select "Teensy 3.2 / 3.1". Then set
 "Tools -> USB Type" to "MIDI".
 
-If you have Teensyduino 1.4.0 or earlier, you also need to change an option in the code. In the
-Arduino Editor (where you have NuEVI.ino open), comment out the line with `#define NEWTEENSYDUINO`. If
-this does not match the Teensyduino version, pitch bend over USB-MIDI will not work properly.
-
 ### Building and uploading
 
 Connect the NuEVI via USB to your computer, open the Teensy application and make sure the "Auto"
