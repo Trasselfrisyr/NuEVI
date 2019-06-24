@@ -3,10 +3,6 @@
 
 #define REVB
 
-//Comment out the following line if you have Teensyduino 1.4.0 or earlier, to make pitch bend over USB-MIDI work.
-#define NEWTEENSYDUINO
-
-
 // Pin definitions
 
 // Teensy pins
