@@ -43,8 +43,8 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
   #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
 #endif
 
-#ifndef USB_MIDI
-  #error "USB_MIDI not enabled. Please set USB type to include MIDI."
+#if !defined(USB_MIDI) && !defined(USB_MIDI_SERIAL)
+  #error "USB MIDI not enabled. Please set USB type to 'MIDI' or 'Serial + MIDI'."
 #endif
 
 
