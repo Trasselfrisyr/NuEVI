@@ -1,4 +1,5 @@
 #include <functional>
+#include <string>
 
 #include <SDL2/SDL.h>
 
@@ -11,13 +12,16 @@
 #include "GL/gl3w.h"
 #include "examples/imgui_impl_sdl.h"
 #include "examples/imgui_impl_opengl3.h"
+#include "EEPROM.h"
 
 #include <Arduino.h>
+
+#include "args.hxx"
 
 // Forward declarations
 static void SimQuit(void);
 static int SimInit(void);
-static int SimRun(void);
+static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset);
 static void SimLoop(std::function<bool()>, std::function<void()>);
 
 
@@ -28,6 +32,8 @@ SimWire Wire;
 SimSerial Serial;
 SimSerial Serial3; //Midi
 SimUsbMidi usbMIDI;
+EEPROMClass EEPROM;
+
 
 static const int scale = 3;
 
@@ -503,16 +509,24 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
     }
 }
 
-static int SimRun( )
+static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset)
 {
 	if( 0 != SimInit() ) { return 1; }
 
-    // Dummy to always force full reset of EEPROM, to circumvent bug in NuEVI.ino 
-    digitalInputs[mPin] = 0;
-    digitalInputs[ePin] = 0;
+    //Set up EEPROM file storage
+    if(eepromFile.length()>0) {
+        EEPROM.setStorage(eepromFile.c_str(), eepromWrite);
+    }
+
+    // Holding down buttons if doing a factory reset on startup
+    if(factoryReset) {
+        digitalInputs[mPin] = 0;
+        digitalInputs[ePin] = 0;
+    }
 
     setup();
 
+    //Let it go, let it go, not resetting any more
     digitalInputs[mPin] = 1;
     digitalInputs[ePin] = 1;
 
@@ -582,6 +596,8 @@ static void SimQuit()
 {
     printf("Leaving Sim, see you later!\n");
 
+    EEPROM.closeStorage();
+
     if( window != NULL ) {
         SDL_DestroyWindow( window );
         // SDL_FreeSurface( surface );
@@ -592,7 +608,26 @@ static void SimQuit()
 #include "NuEVI.ino"
 
 
-int main()
+int main(int argc, const char** argv)
 {
-    return SimRun();
+
+    args::ArgumentParser parser("This is a test program.", "This goes after the options.");
+
+
+    args::ValueFlag<std::string> eepromFile(parser, "eeprom-write", "File to use for EEPROM data", {'e', "eeprom-file"});
+    args::Flag eepromWrite(parser, "eeprom-write", "Write EEPROM changes to file", {'w', "eeprom-write"});
+    args::Flag factoryReset(parser, "factory-reset", "Trigger factory reset", {'r', "factory-reset"});
+
+    parser.ParseCLI(argc, argv);
+
+    std::string eepromFileName = args::get(eepromFile);
+
+    //Use a default EEPROM file if none is provided.
+    if(eepromFileName.length()==0)
+    {
+        eepromFileName = SDL_GetPrefPath("Vulk Data System", "NuEVI Simulator");
+        eepromFileName += "eeprom.bin";
+    }
+
+    return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset));
 }

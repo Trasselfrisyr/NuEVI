@@ -2,6 +2,7 @@
 #define __EEPROM_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 struct EEPROMClass
 {
@@ -36,12 +37,19 @@ struct EEPROMClass
 //         return t;
 //     }
 
+    //Make EEPROM persistent by storing to a file
+    int16_t setStorage(const char* filename, bool write);
+    void closeStorage();
+
 private:
-    char someFakeEEPROM_memory[4096];
+    uint8_t someFakeEEPROM_memory[2048]; //Teensy 3.2 size
+    FILE *storage;
+    bool autoUpdate;
+
 
 };
 
-static EEPROMClass EEPROM __attribute__ ((unused));
+extern EEPROMClass EEPROM  __unused;
 
 
 #endif
