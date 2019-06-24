@@ -23,6 +23,13 @@ uint8_t EEPROMClass::read( int idx )
 void  EEPROMClass::write( int idx, uint8_t val )
 {
     printf("Writing to EEPROM address %u = %u\n", idx, val);
+
+    if(val == someFakeEEPROM_memory[idx])
+    {
+        //Value unchanged, do nothing.
+        return;
+    }
+
     someFakeEEPROM_memory[idx] = val;
 
     if(autoUpdate && storage)
