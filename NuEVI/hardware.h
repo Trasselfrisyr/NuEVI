@@ -21,6 +21,7 @@
 #define biteJumperGndPin 12 //PBITE
 
 #define breathSensorPin A0
+#define bitePressurePin A7
 
 #define dPin 3
 #define ePin 4

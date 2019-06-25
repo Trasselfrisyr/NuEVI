@@ -257,7 +257,7 @@ void setup() {
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor on A7 instead of capacitive bite sensing)
+      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
         writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
         writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
       } else {
@@ -443,10 +443,10 @@ void loop() {
     if (legacy || legacyBrAct) {
       #if defined(CASSIDY)
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(0) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
+          ((analogRead(breathSensorPin) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
       #else
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(0) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
+          ((analogRead(breathSensorPin) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
       #endif  
         readSwitches();
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
@@ -495,7 +495,7 @@ void loop() {
           }
         }
       } else {
-        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(0) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
+        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
           programonce = true;
           readSwitches();
 
@@ -564,7 +564,7 @@ void loop() {
       }
     }
 
-    if (analogRead(0) > (breathCalZero - 800)) programonce = false;
+    if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
 
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     if (lastSpecialKey != specialKey) {
@@ -1206,8 +1206,8 @@ void extraController() {
 
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
-    biteSensor = analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
+  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+    biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
    } else { 
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
