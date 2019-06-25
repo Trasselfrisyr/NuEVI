@@ -74,7 +74,7 @@
  *
  */
 
-# else
+# else //REV A
 
 // MPR121 pins Rev A (upright pins below MPR121 for main keys and rollers)
 
