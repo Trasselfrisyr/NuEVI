@@ -89,32 +89,12 @@ unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
 byte rotatorOn = 0;
 byte currentRotation = 0;
-int rotations[4] = { -5, -10, -7, -14 }; // semitones { -5, -10, -7, -14 };
-int parallel = 7; // semitones
+uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
+uint16_t parallel; // = 7; // semitones
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 
-int breathLoLimit = 0;
-int breathHiLimit = 4095;
-int portamLoLimit = 700;
-int portamHiLimit = 4700;
-int pitchbLoLimit = 500;
-int pitchbHiLimit = 4000;
-int extracLoLimit = 500;
-int extracHiLimit = 4000;
-int ctouchLoLimit = 50;
-int ctouchHiLimit = 350;
-int ttouchLoLimit = 50;
-int ttouchHiLimit = 1900;
-
 int touch_Thr = 1300;
-
-
-int breathStep;
-int portamStep;
-int pitchbStep;
-int extracStep;
-int ctouchStep;
 
 byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20
 
@@ -270,7 +250,7 @@ void setup() {
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
 
   // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
-  
+
   uint16_t settingsVersion = readSetting(VERSION_ADDR);
 
   if (((settingsVersion != VERSION) && (settingsVersion < 24)) || (!digitalRead(ePin) && !digitalRead(mPin)) || (settingsVersion == 0xffffu)) {
@@ -363,11 +343,11 @@ void setup() {
   fastPatch[5] = readSetting(FP6_ADDR);
   fastPatch[6] = readSetting(FP7_ADDR);
   dipSwBits    = readSetting(DIPSW_BITS_ADDR);
-  parallel     = readSetting(PARAL_ADDR)-24;
-  rotations[0] = readSetting(ROTN1_ADDR)-24;
-  rotations[1] = readSetting(ROTN2_ADDR)-24;
-  rotations[2] = readSetting(ROTN3_ADDR)-24;
-  rotations[3] = readSetting(ROTN4_ADDR)-24;
+  parallel     = readSetting(PARAL_ADDR);
+  rotations[0] = readSetting(ROTN1_ADDR);
+  rotations[1] = readSetting(ROTN2_ADDR);
+  rotations[2] = readSetting(ROTN3_ADDR);
+  rotations[3] = readSetting(ROTN4_ADDR);
   priority     = readSetting(PRIO_ADDR);
   vibSens      = readSetting(VIB_SENS_ADDR);
   vibRetn      = readSetting(VIB_RETN_ADDR);
@@ -378,12 +358,6 @@ void setup() {
   legacyBrAct = dipSwBits & (1<<2);
   slowMidi = dipSwBits & (1<<3);
   activePatch = patch;
-
-  breathStep = (breathHiLimit - breathLoLimit)/92; // 92 is the number of pixels in the settings bar
-  portamStep = (portamHiLimit - portamLoLimit)/92;
-  pitchbStep = (pitchbHiLimit - pitchbLoLimit)/92;
-  extracStep = (extracHiLimit - extracLoLimit)/92;
-  ctouchStep = (ctouchHiLimit - ctouchLoLimit)/92;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
 
@@ -673,10 +647,10 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          midiSendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend); // send Note On message for new note
+          midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
           if (currentRotation < 3) currentRotation++;
           else currentRotation = 0;
-          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend); // send Note On message for new note
+          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
         }
         if (!priority) { // mono prio to base note
           midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
@@ -710,8 +684,8 @@ void loop() {
         }
       }
       if (rotatorOn) {
-        midiSendNoteOff(noteValueCheck(activeNote + parallel)); // send Note Off message for old note
-        midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation])); // send Note Off message for old note
+        midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
+        midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
       }
       if (!priority) {
         midiSendNoteOff(activeNote); //  send Note Off message
@@ -759,8 +733,8 @@ void loop() {
             }
           }
           if (rotatorOn) {
-            midiSendNoteOff(noteValueCheck(activeNote + parallel)); // send Note Off message for old note
-            midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation])); // send Note Off message for old note
+            midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
+            midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
           }
           if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
             midiSendNoteOff(activeNote); // send Note Off message for old note
@@ -784,10 +758,10 @@ void loop() {
             }
           }
           if (rotatorOn) {
-            midiSendNoteOn(noteValueCheck(fingeredNote + parallel), velocitySend); // send Note On message for new note
+            midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
             if (currentRotation < 3) currentRotation++;
             else currentRotation = 0;
-            midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]), velocitySend); // send Note On message for new note
+            midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
           }
 
           if (!priority) {
@@ -1233,9 +1207,9 @@ void extraController() {
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
   if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
-    biteSensor=analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
+    biteSensor = analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
    } else { 
-    biteSensor=touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
   if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
     if (!portIsOn) {

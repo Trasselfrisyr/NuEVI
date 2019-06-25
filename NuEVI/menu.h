@@ -2,38 +2,38 @@
 #define __MENU_H
 
 #include "Wiring.h"
+#include "numenu.h"
 
 #define MENU_ROW_HEIGHT 9
-#define MENU_HEADER_OFFSET 3
-
+#define MENU_HEADER_OFFSET 12
+#define MENU_NUM_ROWS 6
 
 //display states
 #define DISPLAYOFF_IDL 0
 #define MAIN_MENU 1
 #define PATCH_VIEW 2
-#define BREATH_ADJ_IDL 10
-#define BREATH_ADJ_THR 11
-#define BREATH_ADJ_MAX 12
-#define PORTAM_ADJ_IDL 20
-#define PORTAM_ADJ_THR 21
-#define PORTAM_ADJ_MAX 22
-#define PITCHB_ADJ_IDL 30
-#define PITCHB_ADJ_THR 31
-#define PITCHB_ADJ_MAX 32
-#define EXTRAC_ADJ_IDL 40
-#define EXTRAC_ADJ_THR 41
-#define EXTRAC_ADJ_MAX 42
-#define VIBRAT_ADJ_IDL 50
-#define VIBRAT_ADJ_THR 51
-#define VIBRAT_ADJ_DPT 52
-#define CTOUCH_ADJ_IDL 60
-#define CTOUCH_ADJ_THR 61
-#define SETUP_BR_MENU 80
-#define SETUP_CT_MENU 90
-#define ROTATOR_MENU 100
-#define VIBRATO_MENU 110
+#define ADJUST_MENU   3
+#define SETUP_BR_MENU 4
+#define SETUP_CT_MENU 5
+#define ROTATOR_MENU 6
+#define VIBRATO_MENU 7
 
-extern byte subVibSquelch;
+#define ARR_LEN(a)  (sizeof (a) / sizeof (a[0]))
+
+#define BTN_DOWN 1
+#define BTN_ENTER 2
+#define BTN_UP 4
+#define BTN_MENU 8
+
+
+extern const unsigned long debounceDelay;           // the debounce time; increase if the output flickers
+extern const unsigned long buttonRepeatInterval;
+extern const unsigned long buttonRepeatDelay;
+extern const unsigned long cursorBlinkInterval;    // the cursor blink toggle interval time
+extern const unsigned long patchViewTimeUp;       // ms until patch view shuts off
+extern const unsigned long menuTimeUp;           // menu shuts off after one minute of button inactivity
+
+extern byte subVibSquelch;  // TODO: This is broken <- subVibSquelch is never set, we need another way to expose what menu is open.
 
 void initDisplay();
 void showVersion();
@@ -41,5 +41,8 @@ void menu();
 void drawSensorPixels();
 unsigned short readSetting(byte address);
 void writeSetting(byte address, unsigned short value);
+
+int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool drawSensor);
+bool adjustPageUpdate(KeyState &input, uint32_t timeNow);
 
 #endif

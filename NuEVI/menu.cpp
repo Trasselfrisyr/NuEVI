@@ -9,85 +9,49 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPR121.h>
 #include "settings.h"
+#include "numenu.h"
 
-//#ifndef SSD1306_128_64
-//#error("Incorrect display type, please fix Adafruit_SSD1306.h!");
-//#endif
+enum CursorIdx {
+  EMain,
+  EBreath,
+  EControl,
+  ERotator,
+  EVibrato,
 
+  // NEVER ADD ANYTHING AFTER THIS, ONLY ABOVE
+  NUM_CURSORS
+};
 
-#define OLED_RESET 4
-Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+// Allocate some space for cursors
+static byte cursors[CursorIdx::NUM_CURSORS];
+static byte offsets[CursorIdx::NUM_CURSORS];
+static byte activeSub[CursorIdx::NUM_CURSORS];
 
-
-
-static int minOffset = 50;
-
-static int deumButtons = 0;
-static int lastDeumButtons = 0;
-static int deumButtonState = 0;
-static byte buttonPressedAndNotUsed = 0;
-
-static byte mainMenuCursor = 1;
-static byte setupBrMenuCursor = 1;
-static byte setupCtMenuCursor = 1;
-static byte rotatorMenuCursor = 1;
-static byte vibratoMenuCursor = 1;
-
-
-static byte cursorNow;
-static byte forcePix = 0;
-static byte forceRedraw = 0;
+byte cursorNow;
 static byte FPD = 0;
 
 
-static int pos1;
-static int pos2;
+// constants
+const unsigned long debounceDelay = 30;           // the debounce time; increase if the output flickers
+const unsigned long buttonRepeatInterval = 50;
+const unsigned long buttonRepeatDelay = 400;
+const unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
+const unsigned long patchViewTimeUp = 2000;       // ms until patch view shuts off
+const unsigned long menuTimeUp = 60000;           // menu shuts off after one minute of button inactivity
 
-static const unsigned long debounceDelay = 30;           // the debounce time; increase if the output flickers
-static const unsigned long buttonRepeatInterval = 50;
-static const unsigned long buttonRepeatDelay = 400;
-static const unsigned long cursorBlinkInterval = 300;    // the cursor blink toggle interval time
-static const unsigned long patchViewTimeUp = 2000;       // ms until patch view shuts off
-static const unsigned long menuTimeUp = 60000;           // menu shuts off after one minute of button inactivity
 
-static unsigned long lastDebounceTime = 0;         // the last time the output pin was toggled
-static unsigned long buttonRepeatTime = 0;
-static unsigned long buttonPressedTime = 0;
 static unsigned long menuTime = 0;
 static unsigned long patchViewTime = 0;
 unsigned long cursorBlinkTime = 0;          // the last time the cursor was toggled
 
-static int lastPbUp = 0;
-static int lastPbDn = 0;
-
-
 //Display state
-static byte state = DISPLAYOFF_IDL;
+static byte menuState= DISPLAYOFF_IDL;
 static byte stateFirstRun = 1;
 
-byte subTranspose = 0;
-byte subOctave = 0;
-byte subMIDI = 0;
-byte subBreathCC = 0;
-byte subBreathAT = 0;
-byte subVelocity = 0;
-byte subCurve = 0;
-byte subPort = 0;
-byte subPB = 0;
-byte subExtra = 0;
-byte subVibrato = 0;
-byte subDeglitch = 0;
-byte subPinky = 0;
-byte subVelSmpDl = 0;
-byte subVelBias = 0;
-byte subParallel = 0;
-byte subRotator = 0;
-byte subPriority = 0;
+// The external function of subSquelch has been broken,
+// need to come up with a smart way to make it work again.
+// The status led was update when the Squelch menu was open.
 byte subVibSquelch = 0; //extern
-byte subVibSens = 0;
-byte subVibRetn = 0;
-byte subVibDirection = 0;
-
 
  // 'NuEVI' logo
 #define LOGO16_GLCD_WIDTH  128
@@ -163,52 +127,11 @@ static const unsigned char PROGMEM nuevi_logo_bmp[] = {
 extern void readSwitches(void);
 extern Adafruit_MPR121 touchSensor;
 
-// Forward declare local function
-
-static int readTrills(void);
-static void clearFPS(int trills);
-static void setFPS(int trills);
-
-static void clearSub(void);
-static void drawRotatorMenuScreen(void);
-static void drawSubRotator(void);
-static void drawMenuScreen(void);
-static void drawMenuCursor(byte itemNo, byte color);
-static void drawSubTranspose(void);
-static void drawPatchView(void);
-static void drawTrills(void);
-static void drawBreathScreen(void);
-static void drawAdjCursor(byte color);
-
-static void plotTranspose(int color);
-static void plotBreathCC(int color);
-static void plotBreathAT(int color);
-static void plotRotator(int color,int value);
-static void plotOctave(int cursorNow);
-static void plotMIDI(int color);
-static void plotPriority(int color);
-static void plotPort(int color);
-static void plotPB(int color);
-static void plotExtra(int color);
-static void plotVibrato(int color);
-static void plotVibSens(int color);
-static void plotVibRetn(int color);
-static void plotVibSquelch(int color);
-static void plotVibDirection(int color);
-static void plotDeglitch(int color);
-static void plotCurve(int color);
-static void plotVelocity(int color);
-static void plotPinkyKey(int color);
-static void plotVelSmpDl(int color);
-static void plotVelBias(int color);
+extern const MenuPage mainMenuPage; // Forward declaration.
 
 
-
-// static void selectMainMenu(void);
-// static void selectRotatorMenu(void);
-// static void selectSetupBrMenu(void);
-// static void selectSetupCtMenu(void);
-
+#define OLED_RESET 4
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
 void initDisplay() {
 
@@ -223,6 +146,9 @@ void initDisplay() {
   display.drawBitmap(0,0,nuevi_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
   display.display();
 
+  memset(cursors, 0, sizeof(cursors));
+  memset(offsets, 0, sizeof(offsets));
+  memset(activeSub, 0, sizeof(activeSub));
 }
 
 void showVersion() {
@@ -242,258 +168,133 @@ void showVersion() {
   display.display();
 }
 
-void drawBreathScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
+// Assumes dest points to a buffer of atleast 7 bytes.
+static const char* numToString(int16_t value, char* dest, bool plusSign = false) {
+  char* ptr = dest;
+  uint16_t absVal = abs(value);
+  int c = 1;
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(25,2);
-  display.println("BREATH");
-  //display.drawLine(0,10,127,10,WHITE);
-  display.setCursor(0,20);
-  display.println("THR");
-  display.drawLine(25,17,120,17,WHITE);
-  display.drawLine(25,18,25,19,WHITE);
-  display.drawLine(120,18,120,19,WHITE);
-  display.drawLine(25,29,120,29,WHITE);
-  display.drawLine(25,27,25,28,WHITE);
-  display.drawLine(120,27,120,28,WHITE);
-  display.setCursor(0,35);
-  display.println("SNS");
-  //display.drawLine(25,38,120,38,WHITE);
-  display.drawLine(25,36,25,40,WHITE);
-  display.drawLine(120,36,120,40,WHITE);
-  display.setCursor(0,50);
-  display.println("MAX");
-  display.drawLine(25,47,120,47,WHITE);
-  display.drawLine(25,48,25,49,WHITE);
-  display.drawLine(120,48,120,49,WHITE);
-  display.drawLine(25,60,120,60,WHITE);
-  display.drawLine(25,58,25,59,WHITE);
-  display.drawLine(120,58,120,59,WHITE);
-
-  //display.drawLine(38,20,38,26,WHITE); // indikation thr
-  pos1 = map(breathThrVal, breathLoLimit, breathHiLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-  cursorNow = WHITE;
-  //display.drawLine(115,50,115,57,WHITE); // indikation max
-  pos2 = map(breathMaxVal, breathLoLimit, breathHiLimit, 27, 119);
-  display.drawLine(pos2,50,pos2,57,WHITE);
-  //display.drawPixel(34, 38, WHITE);
-  drawAdjCursor(WHITE);
-  display.display();
+  if(value < 0) {
+    *ptr++ = '-';
+  } else if(plusSign && value) {
+    *ptr++ = '+';
+  }
+  while((c*10) < absVal+1) c *= 10;
+  while(c > 0) {
+    int tmp = absVal / c;
+    *ptr++ = tmp + '0';
+    absVal %= c;
+    c /= 10;
+  }
+  *ptr = 0;
+  return dest;
 }
 
-void drawPortamScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
+static void plotSubOption(const char* label, const char* unit = nullptr) {
+  int text_x, unit_x;
+  int label_pixel_width = strlen(label)*12;
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(25,2);
-  display.println("PORTAMENTO");
-  //display.drawLine(0,10,127,10,WHITE);
-  display.setCursor(0,20);
-  display.println("THR");
-  display.drawLine(25,17,120,17,WHITE);
-  display.drawLine(25,18,25,19,WHITE);
-  display.drawLine(120,18,120,19,WHITE);
-  display.drawLine(25,29,120,29,WHITE);
-  display.drawLine(25,27,25,28,WHITE);
-  display.drawLine(120,27,120,28,WHITE);
-  display.setCursor(0,35);
-  display.println("SNS");
-  //display.drawLine(25,38,120,38,WHITE);
-  display.drawLine(25,36,25,40,WHITE);
-  display.drawLine(120,36,120,40,WHITE);
-  display.setCursor(0,50);
-  display.println("MAX");
-  display.drawLine(25,47,120,47,WHITE);
-  display.drawLine(25,48,25,49,WHITE);
-  display.drawLine(120,48,120,49,WHITE);
-  display.drawLine(25,60,120,60,WHITE);
-  display.drawLine(25,58,25,59,WHITE);
-  display.drawLine(120,58,120,59,WHITE);
+  if(unit == nullptr) {
+    text_x = 96 - (label_pixel_width/2);
+  } else {
+      int unit_pixel_width = strlen(unit)*6;
+      int halfSum = (label_pixel_width + unit_pixel_width)/2;
+      text_x = 96 - halfSum;
+      unit_x = 96 + halfSum - unit_pixel_width;
+      display.setCursor(unit_x,40);
+      display.setTextSize(1);
+      display.println(unit);
+  }
 
-  //display.drawLine(38,20,38,26,WHITE); // indikation thr
-  pos1 = map(portamThrVal, portamLoLimit, portamHiLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-  cursorNow = WHITE;
-  //display.drawLine(115,50,115,57,WHITE); // indikation max
-  pos2 = map(portamMaxVal, portamLoLimit, portamHiLimit, 27, 119);
-  display.drawLine(pos2,50,pos2,57,WHITE);
-  //display.drawPixel(34, 38, WHITE);
-  drawAdjCursor(WHITE);
-  display.display();
+    display.setTextSize(2);
+    display.setCursor(text_x,33);
+    display.println(label);
 }
 
-void drawPitchbScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
+static bool drawSubMenu(const MenuPage *page) {
+    int index = cursors[page->cursor];
+    // TODO: Null check subMenuFunc
+    const MenuEntry* subEntry =  page->entries[index];
+    switch(subEntry->type) {
+      case MenuType::ESub:
+        {
+          char buffer[12];
+          const char* labelPtr = nullptr;
+          const MenuEntrySub* sub = (const MenuEntrySub*)subEntry;
+          sub->getSubTextFunc(*sub, buffer, &labelPtr);
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(25,2);
-  display.println("PITCH BEND");
-  //display.drawLine(0,10,127,10,WHITE);
-  display.setCursor(0,20);
-  display.println("THR");
-  display.drawLine(25,17,120,17,WHITE);
-  display.drawLine(25,18,25,19,WHITE);
-  display.drawLine(120,18,120,19,WHITE);
-  display.drawLine(25,29,120,29,WHITE);
-  display.drawLine(25,27,25,28,WHITE);
-  display.drawLine(120,27,120,28,WHITE);
-  display.setCursor(0,35);
-  display.println("SNS");
-  //display.drawLine(25,38,120,38,WHITE);
-  display.drawLine(25,36,25,40,WHITE);
-  display.drawLine(120,36,120,40,WHITE);
-  display.setCursor(0,50);
-  display.println("MAX");
-  display.drawLine(25,47,120,47,WHITE);
-  display.drawLine(25,48,25,49,WHITE);
-  display.drawLine(120,48,120,49,WHITE);
-  display.drawLine(25,60,120,60,WHITE);
-  display.drawLine(25,58,25,59,WHITE);
-  display.drawLine(120,58,120,59,WHITE);
+          // If EMenuEntryCustom flag is set, we assume that the getSubTextFunc 
+          // rendered by it self.
+          if( !(sub->flags & EMenuEntryCustom)) {
+            plotSubOption(buffer, labelPtr);
+          }
+        }
+        break;
 
-  //display.drawLine(38,20,38,26,WHITE); // indikation thr
-  pos1 = map(pitchbThrVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-  cursorNow = WHITE;
-  //display.drawLine(115,50,115,57,WHITE); // indikation max
-  pos2 = map(pitchbMaxVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-  display.drawLine(pos2,50,pos2,57,WHITE);
-  //display.drawPixel(34, 38, WHITE);
-  drawAdjCursor(WHITE);
-  display.display();
+      default:
+        break;
+    }
+    return true;
 }
 
-void drawExtracScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(25,2);
-  display.println("EXTRA CONTROLLER");
-  //display.drawLine(0,10,127,10,WHITE);
-  display.setCursor(0,20);
-  display.println("THR");
-  display.drawLine(25,17,120,17,WHITE);
-  display.drawLine(25,18,25,19,WHITE);
-  display.drawLine(120,18,120,19,WHITE);
-  display.drawLine(25,29,120,29,WHITE);
-  display.drawLine(25,27,25,28,WHITE);
-  display.drawLine(120,27,120,28,WHITE);
-  display.setCursor(0,35);
-  display.println("SNS");
-  //display.drawLine(25,38,120,38,WHITE);
-  display.drawLine(25,36,25,40,WHITE);
-  display.drawLine(120,36,120,40,WHITE);
-  display.setCursor(0,50);
-  display.println("MAX");
-  display.drawLine(25,47,120,47,WHITE);
-  display.drawLine(25,48,25,49,WHITE);
-  display.drawLine(120,48,120,49,WHITE);
-  display.drawLine(25,60,120,60,WHITE);
-  display.drawLine(25,58,25,59,WHITE);
-  display.drawLine(120,58,120,59,WHITE);
-
-  //display.drawLine(38,20,38,26,WHITE); // indikation thr
-  pos1 = map(extracThrVal, extracLoLimit, extracHiLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-  cursorNow = WHITE;
-  //display.drawLine(115,50,115,57,WHITE); // indikation max
-  pos2 = map(extracMaxVal, extracLoLimit, extracHiLimit, 27, 119);
-  display.drawLine(pos2,50,pos2,57,WHITE);
-  //display.drawPixel(34, 38, WHITE);
-  drawAdjCursor(WHITE);
-  display.display();
+static void clearSub(){
+  display.fillRect(63,11,64,52,BLACK);
 }
 
-
-void drawCtouchScreen(){
-    // Clear the buffer.
-  display.clearDisplay();
-
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(25,2);
-  display.println("TOUCH SENSE");
-  //display.drawLine(0,10,127,10,WHITE);
-  display.setCursor(0,20);
-  display.println("THR");
-  display.drawLine(25,17,120,17,WHITE);
-  display.drawLine(25,18,25,19,WHITE);
-  display.drawLine(120,18,120,19,WHITE);
-  display.drawLine(25,29,120,29,WHITE);
-  display.drawLine(25,27,25,28,WHITE);
-  display.drawLine(120,27,120,28,WHITE);
-  display.setCursor(0,35);
-  display.println("SNS");
-  //display.drawLine(25,38,120,38,WHITE);
-  display.drawLine(25,36,25,40,WHITE);
-  display.drawLine(120,36,120,40,WHITE);
-
-  //display.drawLine(38,20,38,26,WHITE); // indikation thr
-  pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
-  display.drawLine(pos1,20,pos1,26,WHITE);
-  cursorNow = WHITE;
-
-  //display.drawPixel(34, 38, WHITE);
-  drawAdjCursor(WHITE);
-  display.display();
+static void clearSubValue() {
+  display.fillRect(65, 24, 60, 37, BLACK);
 }
 
-/*
- * Draw a regular list of text menu items
- * header - first header line
- * selectedItem - the currently selected item (draw a triangle next to it). -1 for none. 1..nItems (1-based, 0 is header row)
- * nItems - number of menu items
- * ... - a list (nItems long) of text items to show
- */
-static void drawMenu(const char* header, byte selected, byte nItems, ...) {
-  va_list valist;
+static bool updateSubMenuCursor(const MenuPage *page, uint32_t timeNow)
+{
+  if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    cursorBlinkTime = timeNow;
+    if (cursorNow == WHITE) {
+      cursorNow = BLACK;
+      clearSubValue();
+    } else {
+      cursorNow = WHITE;
+      return drawSubMenu(page);
+    }
+  }
+  return false;
+}
 
-  //Initialize display and draw menu header + line
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println(header);
-  display.drawLine(0,MENU_ROW_HEIGHT,127,MENU_ROW_HEIGHT, WHITE);
-
-  va_start(valist, nItems);
-  for(byte row=0; row<nItems; row++) {
-    int rowPixel = (row+1)*MENU_ROW_HEIGHT + MENU_HEADER_OFFSET;
-    const char* lineText = va_arg(valist, const char*);
+static void plotMenuEntries(const MenuPage *page, bool clear = false) {
+  int row = 0;
+  if(clear) {
+    display.fillRect( 0, MENU_HEADER_OFFSET, 56, 64-MENU_HEADER_OFFSET, BLACK );
+  }
+  for(int item = offsets[page->cursor]; (item < page->numEntries) && (row < MENU_NUM_ROWS); item++, row++) {
+    int rowPixel = (row)*MENU_ROW_HEIGHT + MENU_HEADER_OFFSET;
+    const char* lineText = page->entries[item]->title;
     display.setCursor(0,rowPixel);
     display.println(lineText);
   }
-
-  if(selected>=0) drawMenuCursor(selected, WHITE);
-
-  va_end(valist);
-
-  display.display();
 }
 
+typedef void (*MenuTitleGetFunc)(char*out);
 
-void drawMenuCursor(byte itemNo, byte color){
-  byte xmid = 6 + 9 * itemNo;
-  display.drawTriangle(57,xmid,61,xmid+2,61,xmid-2,color);
+static void drawMenu(const MenuPage *page) {
+  //Initialize display and draw menu header + line
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+
+  if(page->flags & EMenuCustomTitle) {
+    // This is a bit hacky, but we are reusing the title pointer as a function pointer
+    MenuTitleGetFunc func = (MenuTitleGetFunc)page->title;
+    char buffer[23];
+    func(buffer);
+    display.println(buffer);
+  } else
+    display.println(page->title);
+  display.drawLine(0, MENU_ROW_HEIGHT, 127, MENU_ROW_HEIGHT, WHITE);
+
+  plotMenuEntries(page);
 }
 
-void drawAdjCursor(byte color){
-  display.drawTriangle(16,4,20,4,18,1,color);
-  display.drawTriangle(16,6,20,6,18,9,color);
-}
-
-void drawMenuScreen(){
-
+static void mainTitleGetStr(char* out) {
   //Construct the title including voltage reading.
   //Involves intricate splicing of the title string with battery voltage
   char menuTitle[] = "MENU         XXX Y.YV"; //Allocate string buffer of appropriate size with some placeholders
@@ -509,57 +310,7 @@ void drawMenuScreen(){
     splice2[0] = (voltage/10)+'0';
     splice2[2] = (voltage%10)+'0';
   }
-
-  drawMenu(menuTitle, mainMenuCursor, 6,
-    "TRANSPOSE",
-    "OCTAVE",
-    "MIDI CH",
-    "ADJUST",
-    "SETUP BR",
-    "SETUP CTL");
-}
-
-static void drawRotatorMenuScreen(){
-  drawMenu("ROTATOR SETUP", rotatorMenuCursor, 6,
-    "PARALLEL",
-    "ROTATE 1",
-    "ROTATE 2",
-    "ROTATE 3",
-    "ROTATE 4",
-    "PRIORITY");
-}
-
-static void drawPatchView(){
-  display.clearDisplay();
-  if (FPD){
-    drawTrills();
-  }
-  if (FPD < 2){
-    display.setTextColor(WHITE);
-    display.setTextSize(6);
-    if (patch < 10){
-      // 1-9
-      display.setCursor(48,10);
-    } else if (patch < 100){
-      // 10-99
-      display.setCursor(31,10);
-    } else {
-      // 99-128
-      display.setCursor(10,10);
-    }
-    display.println(patch);
-  } else if (FPD == 2){
-    display.setTextColor(WHITE);
-    display.setTextSize(6);
-    display.setCursor(10,10);
-    display.println("SET");
-  } else {
-    display.setTextColor(WHITE);
-    display.setTextSize(6);
-    display.setCursor(10,10);
-    display.println("CLR");
-  }
-  display.display();
+  strncpy(out, menuTitle, 22);
 }
 
 static void drawTrills(){
@@ -568,719 +319,59 @@ static void drawTrills(){
   if (K7) display.fillRect(20,0,5,5,WHITE); else display.drawRect(20,0,5,5,WHITE);
 }
 
-static void clearSub(){
-  display.fillRect(63,11,64,52,BLACK);
-}
-
-static void drawSubTranspose(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("TRANSPOSE");
-  plotTranspose(WHITE);
-  display.display();
-}
-
-static void plotTranspose(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(80,33);
-  if ((transpose-12) > -1){
-    display.println("+");
-    display.setCursor(93,33);
-    display.println(transpose-12);
-  } else {
-    display.println("-");
-    display.setCursor(93,33);
-    display.println(abs(transpose-12));
+static void drawPatchView(){
+  display.clearDisplay();
+  if (FPD){
+    drawTrills();
   }
-}
-
-static void drawSubRotator(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("SEMITONES");
-  //plotRotator(WHITE,value);
-  forceRedraw = 1;
-  display.display();
-}
-
-static void plotRotator(int color,int value){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(80,33);
-  if ((value) > -1){
-    display.println("+");
-    display.setCursor(93,33);
-    display.println(value);
-  } else {
-    display.println("-");
-    display.setCursor(93,33);
-    display.println(abs(value));
-  }
-}
-
-static void drawSubPriority(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("MONO PRIO");
-  plotPriority(WHITE);
-  display.display();
-}
-
-static void plotPriority(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (priority){
-    display.println("ROT");
-  } else {
-    display.println("MEL");
-  }
-}
-
-
-static void drawSubOctave(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(77,15);
-  display.println("OCTAVE");
-  plotOctave(WHITE);
-  display.display();
-}
-
-static void plotOctave(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(80,33);
-  if ((octave-3) > -1){
-    display.println("+");
-    display.setCursor(93,33);
-    display.println(octave-3);
-  } else {
-    display.println("-");
-    display.setCursor(93,33);
-    display.println(abs(octave-3));
-  }
-}
-
-static void drawSubMIDI(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("MIDI CHNL");
-  plotMIDI(WHITE);
-  display.display();
-}
-
-static void plotMIDI(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(MIDIchannel);
-  if (slowMidi){
-    display.setTextColor(WHITE);
-  } else {
-    display.setTextColor(BLACK);
-  }
-  display.setTextSize(1);
-  display.setCursor(116,51);
-  display.print("S");
-}
-
-static void drawSubBreathCC(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("BREATH CC");
-  plotBreathCC(WHITE);
-  display.display();
-}
-
-static void plotBreathCC(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  if (breathCC){
-    switch (breathCC){
-      case 1:
-        display.setCursor(83,33);
-        display.println("MW");
-        break;
-      case 2:
-        display.setCursor(83,33);
-        display.println("BR");
-        break;
-      case 3:
-        display.setCursor(83,33);
-        display.println("VL");
-        break;
-      case 4:
-        display.setCursor(83,33);
-        display.println("EX");
-        break;
-      case 5:
-        display.setCursor(79,33);
-        display.println("MW+");
-        break;
-      case 6:
-        display.setCursor(79,33);
-        display.println("BR+");
-        break;
-      case 7:
-        display.setCursor(79,33);
-        display.println("VL+");
-        break;
-      case 8:
-        display.setCursor(79,33);
-        display.println("EX+");
-        break;
-      case 9:
-        display.setCursor(83,33);
-        display.println("CF");
-        break;
-      case 10:
-        display.setCursor(83,33);
-        display.println("20");
-      break;
+  display.setTextSize(6);
+  if (FPD < 2){
+    int align;
+    if (patch < 10) { // 1-9
+      align = 48;
+    } else if (patch < 100) { // 10-99
+      align = 31;
+    } else { // 100-128 use default
+      align = 10;
     }
+    display.setCursor(align,10);
+    display.println(patch);
+  } else if (FPD == 2){
+    display.setCursor(10,10);
+    display.println("SET");
   } else {
-    display.setCursor(79,33);
-    display.println("OFF");
+    display.setCursor(10,10);
+    display.println("CLR");
   }
 }
 
-static void drawSubBreathAT(){
+static void drawSubBox(const char* label)
+{
   display.fillRect(63,11,64,52,BLACK);
   display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
   display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("BREATH AT");
-  plotBreathAT(WHITE);
-  display.display();
+  int len = strlen(label);
+
+  display.setCursor(95-len*3,15);
+  display.println(label);
 }
 
-static void plotBreathAT(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (breathAT){
-    display.println("ON");
-  } else {
-    display.println("OFF");
-  }
+void drawMenuCursor(byte itemNo, byte color){
+  byte ymid = 15 + 9 * itemNo;
+  display.drawTriangle(57, ymid,61, ymid+2,61, ymid-2, color);
 }
 
-static void drawSubVelocity(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(71,15);
-  display.println("VELOCITY");
-  plotVelocity(WHITE);
-  display.display();
-}
+//***********************************************************
 
-static void plotVelocity(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (velocity){
-    display.println(velocity);
-  } else {
-    display.println("DYN");
-  }
-}
-
-
-static void drawSubCurve(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(80,15);
-  display.println("CURVE");
-  plotCurve(WHITE);
-  display.display();
-}
-
-static void plotCurve(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  switch (curve){
-    case 0:
-      display.setCursor(83,33);
-      display.println("-4");
-      break;
-    case 1:
-      display.setCursor(83,33);
-      display.println("-3");
-      break;
-    case 2:
-      display.setCursor(83,33);
-      display.println("-2");
-      break;
-    case 3:
-      display.setCursor(83,33);
-      display.println("-1");
-      break;
-    case 4:
-      display.setCursor(79,33);
-      display.println("LIN");
-      break;
-    case 5:
-      display.setCursor(83,33);
-      display.println("+1");
-      break;
-    case 6:
-      display.setCursor(83,33);
-      display.println("+2");
-      break;
-    case 7:
-      display.setCursor(83,33);
-      display.println("+3");
-      break;
-    case 8:
-      display.setCursor(83,33);
-      display.println("+4");
-      break;
-    case 9:
-      display.setCursor(83,33);
-      display.println("S1");
-      break;
-    case 10:
-      display.setCursor(83,33);
-      display.println("S2");
-      break;
-    case 11:
-      display.setCursor(83,33);
-      display.println("Z1");
-      break;
-    case 12:
-      display.setCursor(83,33);
-      display.println("Z2");
-      break;
-  }
-}
-
-
-static void drawSubPort(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(71,15);
-  display.println("PORT/GLD");
-  plotPort(WHITE);
-  display.display();
-}
-
-static void plotPort(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (portamento == 1){
-    display.println("ON");
-  } else if (portamento == 2){
-    display.println("SW");
-  } else {
-    display.println("OFF");
-  }
-}
-
-static void drawSubPB(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("PITCHBEND");
-  plotPB(WHITE);
-  display.display();
-}
-
-static void plotPB(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(76,33);
-  if (PBdepth){
-    display.println("1/");
-    display.setCursor(101,33);
-    display.println(PBdepth);
-  } else {
-    display.println("OFF");
-  }
-}
-
-static void drawSubExtra(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("EXTRA CTR");
-  plotExtra(WHITE);
-  display.display();
-}
-
-static void plotExtra(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  switch (extraCT){
-  case 0:
-    display.setCursor(79,33);
-    display.println("OFF");
-    break;
-  case 1:
-    display.setCursor(83,33);
-    display.println("MW");
-    break;
-  case 2:
-    display.setCursor(83,33);
-    display.println("FP");
-    break;
-  case 3:
-    display.setCursor(83,33);
-    display.println("CF");
-    break;
-  case 4:
-    display.setCursor(83,33);
-    display.println("SP");
-    break;
-  }
-}
-
-static void drawSubVibrato(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(81,15);
-  display.println("LEVEL");
-  plotVibrato(WHITE);
-  display.display();
-}
-
-static void plotVibrato(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  if (vibrato){
-    display.setCursor(90,33);
-    display.println(vibrato);
-  } else {
-    display.setCursor(79,33);
-    display.println("OFF");
-  }
-}
-
-static void drawSubVibSens(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(81,15);
-  display.println("LEVEL");
-  plotVibSens(WHITE);
-  display.display();
-}
-
-static void plotVibSens(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(vibSens);
-}
-
-static void drawSubVibRetn(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(81,15);
-  display.println("LEVEL");
-  plotVibRetn(WHITE);
-  display.display();
-}
-
-static void plotVibRetn(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(90,33);
-  display.println(vibRetn);
-}
-
-static void drawSubVibSquelch(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(81,15);
-  display.println("LEVEL");
-  plotVibSquelch(WHITE);
-  display.display();
-}
-
-static void plotVibSquelch(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(83,33);
-  display.println(vibSquelch);
-}
-
-
-
-static void drawSubVibDirection(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("DIRECTION");
-  plotVibDirection(WHITE);
-  display.display();
-}
-
-static void plotVibDirection(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (DNWD == vibDirection){
-    display.println("NRM");
-  } else {
-    display.println("REV");
-  }
-}
-
-
-
-
-
-
-static void drawSubDeglitch(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(71,15);
-  display.println("DEGLITCH");
-  plotDeglitch(WHITE);
-  display.display();
-}
-
-static void plotDeglitch(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (deglitch){
-    display.println(deglitch);
-    display.setCursor(105,40);
-    display.setTextSize(1);
-    display.println("ms");
-  } else {
-    display.println("OFF");
-  }
-}
-
-static void drawSubPinkyKey(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(68,15);
-  display.println("PINKY KEY");
-  plotPinkyKey(WHITE);
-  display.display();
-}
-
-static void plotPinkyKey(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (pinkySetting < 12){
-    display.println(pinkySetting - 12);
-  } else if (pinkySetting == PBD) {
-    display.println("PBD");
-  } else {
-    display.print("+");
-    display.println(pinkySetting - 12);
-  }
-}
-
-static void drawSubVelSmpDl(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(69,15);
-  display.println("VEL DELAY");
-  plotVelSmpDl(WHITE);
-  display.display();
-}
-
-static void plotVelSmpDl(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  display.setCursor(79,33);
-  if (velSmpDl){
-    display.println(velSmpDl);
-    display.setCursor(105,40);
-    display.setTextSize(1);
-    display.println("ms");
-  } else {
-    display.println("OFF");
-  }
-}
-
-static void drawSubVelBias(){
-  display.fillRect(63,11,64,52,BLACK);
-  display.drawRect(63,11,64,52,WHITE);
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(72,15);
-  display.println("VEL BIAS");
-  plotVelBias(WHITE);
-  display.display();
-}
-
-static void plotVelBias(int color){
-  display.setTextColor(color);
-  display.setTextSize(2);
-  if (velBias){
-    display.setCursor(90,33);
-    display.println(velBias);
-  } else {
-    display.setCursor(79,33);
-    display.println("OFF");
-  }
-}
-
-static void drawSetupBrMenuScreen(){
-  drawMenu("SETUP BREATH", -1, 6, "BREATH CC", "BREATH AT", "VELOCITY", "CURVE", "VEL DELAY", "VEL BIAS");
-}
-
-static void drawSetupCtMenuScreen(){
-  drawMenu("SETUP CTRLS", -1, 6, "PORT/GLD", "PITCHBEND", "EXTRA CTR", "VIBRATO", "DEGLITCH", "PINKY KEY");
-}
-
-static void drawVibratoMenuScreen(){
-  drawMenu("VIBRATO", -1, 5, "DEPTH","SENSE","RETURN", "SQUELCH", "DIRECTION");
-}
-
-void drawSensorPixels(){
-  int pos,oldpos;
-  int redraw=0;
-  if ((state == BREATH_ADJ_IDL) || (state == BREATH_ADJ_THR) || (state == BREATH_ADJ_MAX)){
-    pos = map(constrain(pressureSensor, breathLoLimit, breathHiLimit), breathLoLimit, breathHiLimit, 28, 118);
-    oldpos = map(constrain(lastPressure, breathLoLimit, breathHiLimit), breathLoLimit, breathHiLimit, 28, 118);
-    if (pos!=oldpos){
-      display.drawPixel(oldpos, 38, BLACK);
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    } else if (forcePix) {
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    }
-    lastPressure=pressureSensor;
-  }
-    if ((state == PORTAM_ADJ_IDL) || (state == PORTAM_ADJ_THR) || (state == PORTAM_ADJ_MAX)){
-    pos = map(constrain(biteSensor,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
-    oldpos = map(constrain(lastBite,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
-    if (pos!=oldpos){
-      display.drawPixel(oldpos, 38, BLACK);
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    } else if (forcePix) {
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    }
-    lastBite=biteSensor;
-    /*if (biteJumper){
-      pos = map(constrain(analogRead(bitePin),900,1400), 900, 1400, 28, 118);
-      display.drawPixel(pos, 40, WHITE);
-    }*/
-  }
-  if ((state == PITCHB_ADJ_IDL) || (state == PITCHB_ADJ_THR) || (state == PITCHB_ADJ_MAX)){
-    pos = map(constrain(pbUp, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
-    oldpos = map(constrain(lastPbUp, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
-    if (pos!=oldpos){
-      display.drawPixel(oldpos, 38, BLACK);
-      display.drawPixel(pos, 38, WHITE);
-      redraw=1;
-    } else if (forcePix) {
-      display.drawPixel(pos, 38, WHITE);
-      redraw=1;
-    }
-    pos = map(constrain(pbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
-    oldpos = map(constrain(lastPbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
-    if (pos!=oldpos){
-      display.drawPixel(oldpos, 38, BLACK);
-      display.drawPixel(pos, 38, WHITE);
-      redraw=1;
-    } else if (forcePix) {
-      display.drawPixel(pos, 38, WHITE);
-      redraw=1;
-    }
-    if (redraw){
-      display.display();
-      redraw=0;
-    }
-    lastPbUp=pbUp;
-    lastPbDn=pbDn;
-  }
-  if ((state == EXTRAC_ADJ_IDL) || (state == EXTRAC_ADJ_THR) || (state == EXTRAC_ADJ_MAX)){
-    pos = map(constrain(exSensor, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
-    oldpos = map(constrain(lastEx, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
-    if (pos!=oldpos){
-      display.drawPixel(oldpos, 38, BLACK);
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    } else if (forcePix) {
-      display.drawPixel(pos, 38, WHITE);
-      display.display();
-    }
-    lastEx=exSensor;
-  }
-  if ((state == CTOUCH_ADJ_IDL) || (state == CTOUCH_ADJ_THR)){
-    display.drawLine(28,38,118,38,BLACK);
-    for (byte i=0; i<12; i++){
-      pos = map(constrain(touchSensor.filteredData(i), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
-      display.drawPixel(pos, 38, WHITE);
-    }
-    int posRead = map(touchRead(halfPitchBendKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
-    pos = map(constrain(posRead, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
-    display.drawPixel(pos, 38, WHITE);
-    posRead = map(touchRead(specialKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
-    pos = map(constrain(posRead, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
-    display.drawPixel(pos, 38, WHITE);
-    display.display();
-  }
-  forcePix = 0;
-}
-
+// TODO: Move these to a settings.cpp maybe?
 void writeSetting(byte address, unsigned short value){
   union {
     byte v[2];
     unsigned short val;
   } data;
   data.val = value;
-  EEPROM.write(address, data.v[0]);
-  EEPROM.write(address+1, data.v[1]);
+  EEPROM.update(address, data.v[0]);
+  EEPROM.update(address+1, data.v[1]);
 }
 
 unsigned short readSetting(byte address){
@@ -1293,7 +384,6 @@ unsigned short readSetting(byte address){
   return data.val;
 }
 
-
 //***********************************************************
 
 static int readTrills() {
@@ -1303,9 +393,9 @@ static int readTrills() {
 
 //***********************************************************
 
-static void setFPS(int trills) {
-  fastPatch[trills-1] = patch;
-  writeSetting(FP1_ADDR+2*(trills-1),patch);
+static void setFPS(int trills, uint16_t patchNum) {
+  fastPatch[trills-1] = patchNum;
+  writeSetting(FP1_ADDR+2*(trills-1), patchNum);
   FPD = 2;
 }
 
@@ -1317,230 +407,827 @@ static void clearFPS(int trills) {
   FPD = 3;
 }
 
-static void selectMainMenu(){
-  switch (mainMenuCursor){
-    case 1:
-      subTranspose = 1;
-      drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubTranspose();
-      break;
-    case 2:
-      subOctave = 1;
-      drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubOctave();
-      break;
-    case 3:
-      subMIDI = 1;
-      drawMenuCursor(mainMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubMIDI();
-      break;
-    case 4:
-      state = BREATH_ADJ_IDL;
+//***********************************************************
+// Main menu
+const MenuEntrySub transposeMenu = {
+  MenuType::ESub, "TRANSPOSE", "TRANSPOSE", &transpose, 0, 24, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(transpose - 12, out, true);
+  },
+  [](const MenuEntrySub &sub) { writeSetting(TRANSP_ADDR,*sub.valuePtr); }
+  , nullptr
+};
+
+const MenuEntrySub octaveMenu = {
+  MenuType::ESub, "OCTAVE", "OCTAVE", &octave, 0, 6, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(octave-3, out, true);
+  },
+  [](SubMenuRef __unused) { writeSetting(OCTAVE_ADDR,octave); }
+  , nullptr
+};
+
+static void midiSaveFunc(const MenuEntrySub & __unused sub) { writeSetting(MIDI_ADDR, MIDIchannel); }
+static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char** __unused) {
+  char buff[7];
+  numToString(MIDIchannel, buff);
+  plotSubOption(buff);
+  if (slowMidi) {
+    display.setTextSize(1);
+    display.setCursor(116,51);
+    display.print("S");
+  }
+}
+
+static bool midiEnterHandlerFunc() {
+  readSwitches();
+  if (pinkyKey){
+    slowMidi = !slowMidi;
+    dipSwBits = dipSwBits ^ (1<<3);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    return false;
+  } else {
+    writeSetting(MIDI_ADDR, MIDIchannel);
+    return true;
+  }
+}
+
+const MenuEntrySub midiMenu = {
+  MenuType::ESub, "MIDI CH", "MIDI CHNL", &MIDIchannel, 1, 16, EMenuEntryCustom | EMenuEntryEnterHandler, 
+  midiCustomDrawFunc, midiSaveFunc, midiEnterHandlerFunc
+};
+
+const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
+const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
+const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
+
+const MenuEntry* mainMenuEntries[] = {
+  (MenuEntry*)&transposeMenu,
+  (MenuEntry*)&octaveMenu,
+  (MenuEntry*)&midiMenu,
+  (MenuEntry*)&adjustMenu,
+  (MenuEntry*)&breathMenu,
+  (MenuEntry*)&controlMenu
+};
+
+const MenuPage mainMenuPage = {
+  (const char*)mainTitleGetStr,
+  EMenuPageRoot | EMenuCustomTitle,
+  CursorIdx::EMain,
+  DISPLAYOFF_IDL,
+  ARR_LEN(mainMenuEntries), mainMenuEntries
+};
+
+
+//***********************************************************
+// Rotator menu
+
+static void rotatorSave(const MenuEntrySub& __unused sub) {
+  int16_t stored;
+  for(int i = 0; i < 4; ++i) {
+    stored = readSetting(ROTN1_ADDR+2*i);
+    if(stored != rotations[i])
+      writeSetting(ROTN1_ADDR+2*i,(rotations[i]));
+  }
+}
+
+static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
+  numToString((*sub.valuePtr) - 24, out, true);
+}
+
+static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
+  numToString(parallel-24, out, true);
+}
+
+static void parallelSave(SubMenuRef __unused) {
+  writeSetting(PARAL_ADDR, parallel);
+}
+
+const MenuEntrySub rotatorParaMenu  = {
+  MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
+  parallelOptionGet, parallelSave, nullptr
+};
+
+const MenuEntrySub rotator1Menu  = {
+  MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator2Menu  = {
+  MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator3Menu  = {
+  MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator4Menu  = {
+  MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (priority) strncpy(out, "ROT", 4);
+    else strncpy(out, "MEL", 4);
+}
+
+static void rotatorPrioSave(SubMenuRef __unused) {
+  writeSetting(PRIO_ADDR,priority);
+}
+
+const MenuEntrySub rotatorPrioMenu = {
+  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  rotatorPrioOptionGet, rotatorPrioSave, nullptr,
+};
+
+const MenuEntry* rotatorMenuEntries[] = {
+  (MenuEntry*)&rotatorParaMenu,
+  (MenuEntry*)&rotator1Menu,
+  (MenuEntry*)&rotator2Menu,
+  (MenuEntry*)&rotator3Menu,
+  (MenuEntry*)&rotator4Menu,
+  (MenuEntry*)&rotatorPrioMenu
+};
+
+const MenuPage rotatorMenuPage = {
+  "ROTATOR SETUP",
+  EMenuPageRoot,
+  CursorIdx::ERotator,
+  DISPLAYOFF_IDL,
+  ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
+};
+
+//***********************************************************
+// Breath menu
+const MenuEntrySub breathCCMenu = {
+  MenuType::ESub, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
+                                            "BR+", "VL+", "EX+", "CF", "20" };
+    strncpy(out, breathCCMenuLabels[breathCC], 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(BREATH_CC_ADDR) != breathCC) {
+      writeSetting(BREATH_CC_ADDR,breathCC);
+      midiReset();
+    }
+  }
+  , nullptr
+};
+
+const MenuEntrySub breathATMenu = {
+  MenuType::ESub, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
+    strncpy(out, breathAT?"ON":"OFF", 4);
+  }, [](const MenuEntrySub & __unused sub) {
+    if (readSetting(BREATH_AT_ADDR) != breathAT) {
+      writeSetting(BREATH_AT_ADDR, breathAT);
+      midiReset();
+    }
+  }
+  , nullptr
+};
+
+const MenuEntrySub velocityMenu = {
+  MenuType::ESub, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(velocity) numToString(velocity, out);
+    else strncpy(out, "DYN", 4);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VELOCITY_ADDR,velocity); }
+  , nullptr
+};
+
+const MenuEntrySub curveMenu = {
+  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
+                                         "+3", "+4", "S1", "S2", "Z1", "Z2" };
+    strncpy(out, curveMenuLabels[curve], 4);
+  },
+  [](const MenuEntrySub & __unused sub){ writeSetting(BREATHCURVE_ADDR,curve); }
+  , nullptr
+};
+
+const MenuEntrySub velSmpDlMenu = {
+  MenuType::ESub, "VEL DELAY", "VEL DELAY", &velSmpDl, 0, 30, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char *out, const char** label) {
+    if (velSmpDl) {
+      numToString(velSmpDl, out);
+      *label = "ms";
+    } else strncpy(out, "OFF", 4);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
+  , nullptr
+};
+
+const MenuEntrySub velBiasMenu = {
+  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if (velBias) numToString(velBias, out);
+    else strncpy(out, "OFF", 4);
+  },
+  [](SubMenuRef __unused){ writeSetting(VEL_BIAS_ADDR,velBias); }
+  , nullptr
+};
+
+const MenuEntry* breathMenuEntries[] = {
+  (MenuEntry*)&breathCCMenu,
+  (MenuEntry*)&breathATMenu,
+  (MenuEntry*)&velocityMenu,
+  (MenuEntry*)&curveMenu,
+  (MenuEntry*)&velSmpDlMenu,
+  (MenuEntry*)&velBiasMenu
+};
+
+const MenuPage breathMenuPage = {
+  "SETUP BREATH",
+  0,
+  CursorIdx::EBreath,
+  MAIN_MENU,
+  ARR_LEN(breathMenuEntries), breathMenuEntries
+};
+
+//***********************************************************
+// Control menu
+const MenuEntrySub portMenu = {
+  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "OFF", "ON", "SW" };
+    strncpy(out, labs[portamento], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(PORTAM_ADDR,portamento); }
+  , nullptr
+};
+
+const MenuEntrySub pitchBendMenu = {
+  MenuType::ESub, "PITCHBEND", "PITCHBEND", &PBdepth, 0, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(PBdepth) {
+      memcpy(out, "1/", 2);
+      numToString(PBdepth, &out[2]);
+    }
+    else strncpy(out, "OFF", 4);
+  },
+  [](SubMenuRef __unused){ writeSetting(PB_ADDR,PBdepth); }
+  , nullptr
+};
+
+const MenuEntrySub extraMenu = {
+  MenuType::ESub, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char** __unused unit) {
+    const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
+    strncpy(out, extraMenuLabels[extraCT], 12);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_ADDR,extraCT); }
+  , nullptr
+};
+
+const MenuEntryStateCh vibratoSubMenu = { MenuType::EStateChange, "VIBRATO", VIBRATO_MENU };
+
+const MenuEntrySub deglitchMenu = {
+  MenuType::ESub, "DEGLITCH", "DEGLITCH", &deglitch, 0, 70, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** label) {
+    if(deglitch) {
+      numToString(deglitch, textBuffer);
+      *label = "ms";
+    } else
+      strncpy(textBuffer, "OFF", 4);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(DEGLITCH_ADDR,deglitch); }
+  , nullptr
+};
+
+const MenuEntrySub pinkyMenu = {
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
+    if (pinkySetting == PBD)
+      strncpy(textBuffer, "PBD", 4);
+    else
+      numToString(pinkySetting-12, textBuffer, true);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(PINKY_KEY_ADDR,pinkySetting); }
+  , nullptr
+};
+
+const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&portMenu,
+  (MenuEntry*)&pitchBendMenu,
+  (MenuEntry*)&extraMenu,
+  (MenuEntry*)&vibratoSubMenu,
+  (MenuEntry*)&deglitchMenu,
+  (MenuEntry*)&pinkyMenu
+};
+
+const MenuPage controlMenuPage = {
+  "SETUP CTRLS",
+  0,
+  CursorIdx::EControl,
+  MAIN_MENU,
+  ARR_LEN(controlMenuEntries), controlMenuEntries
+};
+
+
+//***********************************************************
+// Vibrato menu
+
+static void vibGetStr(SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
+  if(vibrato)
+    numToString(vibrato, textBuffer);
+  else
+    strncpy(textBuffer, "OFF", 4);
+}
+
+static void vibStore(const MenuEntrySub & __unused sub) {
+  writeSetting(VIBRATO_ADDR,vibrato);
+}
+
+const MenuEntrySub vibDepthMenu = {
+  MenuType::ESub, "DEPTH", "LEVEL", &vibrato, 0, 9, MenuEntryFlags::ENone,
+  vibGetStr, 
+  vibStore,
+  nullptr
+};
+
+const MenuEntrySub vibSenseMenu = {
+  MenuType::ESub, "SENSE", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
+    numToString(vibSens, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SENS_ADDR,vibSens); }
+  , nullptr
+};
+
+const MenuEntrySub vibRetnMenu = {
+  MenuType::ESub, "RETURN", "LEVEL", &vibRetn, 0, 4, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
+    numToString(vibRetn, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_RETN_ADDR,vibRetn); }
+  , nullptr
+};
+
+const MenuEntrySub vibSquelchMenu = {
+  MenuType::ESub, "SQUELCH", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
+    numToString(vibSquelch, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SQUELCH_ADDR,vibSquelch); }
+  , nullptr
+};
+
+const MenuEntrySub vibDirMenu = {
+  MenuType::ESub, "DIRECTION", "DIRECTION", &vibDirection , 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if (DNWD == vibDirection)
+      strncpy(out, "NRM", 4);
+    else
+      strncpy(out, "REV", 4);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_DIRECTION_ADDR,vibDirection); }
+  , nullptr
+};
+
+const MenuEntry* vibratorMenuEntries[] = {
+    (MenuEntry*)&vibDepthMenu,
+    (MenuEntry*)&vibSenseMenu,
+    (MenuEntry*)&vibRetnMenu,
+    (MenuEntry*)&vibSquelchMenu,
+    (MenuEntry*)&vibDirMenu
+};
+
+const MenuPage vibratoMenuPage = {
+  "VIBRATO", 0, CursorIdx::EVibrato, SETUP_CT_MENU, ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
+};
+
+//***********************************************************
+
+static bool patchPageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
+static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
+
+const MenuPageCustom adjustMenuPage = {
+  nullptr, EMenuPageCustom, adjustPageUpdate, 
+};
+
+const MenuPageCustom patchMenuPage = {
+  nullptr, EMenuPageCustom, patchPageUpdate, 
+};
+
+const MenuPageCustom idleMenuPage = {
+  nullptr, EMenuPageCustom, idlePageUpdate, 
+};
+
+
+//***********************************************************
+
+static bool selectMenuOption(const MenuPage *page) {
+  int cursorPosition = cursors[page->cursor];
+  const MenuEntry* menuEntry = page->entries[cursorPosition];
+  cursorBlinkTime = millis();
+
+  switch(menuEntry->type) {
+    case MenuType::ESub:
+      activeSub[page->cursor] = cursorPosition+1;
+      drawMenuCursor(cursorPosition, WHITE);
+      drawSubBox( ((const MenuEntrySub*)menuEntry)->subTitle);
+      drawSubMenu(page);
+      return true;
+
+    case MenuType::EStateChange:
+      menuState= ((const MenuEntryStateCh*)menuEntry)->state;
       stateFirstRun = 1;
       break;
-    case 5:
-      state = SETUP_BR_MENU;
-      stateFirstRun = 1;
-      break;
-    case 6:
-      state = SETUP_CT_MENU;
-      stateFirstRun = 1;
-      break;
   }
+
+  return false;
 }
 
-static void selectRotatorMenu(){
-  switch (rotatorMenuCursor){
-    case 1:
-      subParallel = 1;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubRotator();
-      break;
-    case 2:
-      subRotator = 1;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubRotator();
-      break;
-    case 3:
-      subRotator = 2;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubRotator();
-      break;
-    case 4:
-      subRotator = 3;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubRotator();
-      break;
-    case 5:
-      subRotator = 4;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubRotator();
-      break;
-    case 6:
-      subPriority = 1;
-      drawMenuCursor(rotatorMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubPriority();
-      break;
+//***********************************************************
+
+static bool updateSubMenu(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+
+  bool redraw = false;
+  bool redrawSubValue = false;
+  if (input.changed) {
+    int current_sub = activeSub[page->cursor] -1;
+
+    if( current_sub < 0)
+      return false;
+
+    auto sub = (const MenuEntrySub*)page->entries[current_sub];
+    uint16_t currentVal = *sub->valuePtr;
+
+    switch (input.current){
+      case BTN_DOWN:
+        if(currentVal > sub->min) {
+          currentVal -= 1;
+        } else if(sub->flags & MenuEntryFlags::EMenuEntryWrap) {
+          currentVal = sub->max;
+        }
+        break;
+
+      case BTN_UP:
+        if(currentVal < sub->max) {
+          currentVal += 1;
+        } else if(sub->flags & MenuEntryFlags::EMenuEntryWrap) {
+          currentVal = sub->min;
+        }
+        break;
+
+      case BTN_ENTER:
+        if(sub->flags & EMenuEntryEnterHandler) {
+          bool result = sub->onEnterFunc();
+          if(result) {
+            activeSub[page->cursor] = 0;
+          }
+        } else {
+          activeSub[page->cursor] = 0;
+          sub->applyFunc(*sub);
+        }
+        break;
+
+      case BTN_MENU:
+        activeSub[page->cursor] = 0;
+        sub->applyFunc(*sub);
+        break;
+    }
+    *sub->valuePtr = currentVal;
+    redrawSubValue = true;
+  } else {
+    redraw = updateSubMenuCursor( page, timeNow );
   }
+
+  if(redrawSubValue) {
+    clearSubValue();
+    redraw |= drawSubMenu(page);
+    cursorNow = BLACK;
+    cursorBlinkTime = timeNow;
+  }
+
+  return redraw;
 }
 
-static void selectSetupBrMenu(){
-  switch (setupBrMenuCursor){
-    case 1:
-      subBreathCC = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubBreathCC();
-      break;
-    case 2:
-      subBreathAT = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubBreathAT();
-      break;
-    case 3:
-      subVelocity = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVelocity();
-      break;
-    case 4:
-      subCurve = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubCurve();
-      break;
-    case 5:
-      subVelSmpDl = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVelSmpDl();
-      break;
-    case 6:
-      subVelBias = 1;
-      drawMenuCursor(setupBrMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVelBias();
-      break;
+static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+  byte cursorPos = cursors[page->cursor];
+  byte newPos = cursorPos;
+  bool redraw = false;
+
+  if (input.changed) {
+    int lastEntry = page->numEntries-1;
+    switch (input.current) {
+      case BTN_DOWN:
+        if (cursorPos < lastEntry)
+          newPos = cursorPos+1;
+        break;
+
+      case BTN_ENTER:
+        redraw |= selectMenuOption(page);
+        break;
+
+      case BTN_UP:
+        if (cursorPos > 0)
+          newPos = cursorPos-1;
+        break;
+
+      case BTN_MENU:
+        menuState= page->parentPage;
+        stateFirstRun = 1;
+        break;
+    }
+
+    if(newPos != cursorPos) {
+      drawMenuCursor(cursorPos, BLACK);
+      drawMenuCursor(newPos, WHITE);
+      cursorNow = BLACK;
+      clearSub();
+      redraw = true;
+      cursors[page->cursor] = newPos;
+    }
+  } else if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
+    // Only need to update cursor blink if no buttons were pressed
+    if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
+    drawMenuCursor(cursorPos, cursorNow);
+    redraw = true;
+    cursorBlinkTime = timeNow;
   }
+
+  return redraw;
 }
 
-static void selectSetupCtMenu(){
-  switch (setupCtMenuCursor){
-    case 1:
-      subPort = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubPort();
-      break;
-    case 2:
-      subPB = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubPB();
-      break;
-    case 3:
-      subExtra = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubExtra();
-      break;
-    case 4:
-      //subVibrato = 1;
-      //drawMenuCursor(setupCtMenuCursor, WHITE);
-      //display.display();
-      //cursorBlinkTime = millis();
-      //drawSubVibrato();
-      state = VIBRATO_MENU;
-      stateFirstRun = 1;
-      break;
-    case 5:
-      subDeglitch = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubDeglitch();
-      break;
-    case 6:
-      subPinky = 1;
-      drawMenuCursor(setupCtMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubPinkyKey();
+static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) {
+
+  display.setTextColor(WHITE);
+
+  if(page->flags & EMenuPageCustom) {
+    const MenuPageCustom* custom = (const MenuPageCustom*)page;
+    return custom->menuUpdateFunc(input, timeNow);
   }
+
+  bool redraw = stateFirstRun;
+
+  if (stateFirstRun) {
+    drawMenu(page);
+    stateFirstRun = 0;
+  }
+  if (activeSub[page->cursor]) {
+    redraw = updateSubMenu(page, input, timeNow);
+  } else {
+    redraw = updateMenuPage(page, input, timeNow);
+
+    if((page->flags & EMenuPageRoot) && input.changed) {
+        int trills = readTrills();
+        switch (input.current) {
+          case BTN_MENU+BTN_ENTER:
+            if (trills) {
+              menuState = PATCH_VIEW;
+              stateFirstRun = 1;
+              setFPS(trills, patch);
+            }
+            break;
+
+          case BTN_MENU+BTN_UP:
+            if (trills) {
+              menuState = PATCH_VIEW;
+              stateFirstRun = 1;
+              clearFPS(trills);
+            }
+            break;
+          default: break;
+        }
+    }
+  }
+
+  return redraw;
 }
 
-static void selectVibratoMenu(){
-  switch (vibratoMenuCursor){
-    case 1:
-      subVibrato = 1;
-      drawMenuCursor(vibratoMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibrato();
-      break;
-    case 2:
-      subVibSens = 1;
-      drawMenuCursor(vibratoMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibSens();
-      break;
-    case 3:
-      subVibRetn = 1;
-      drawMenuCursor(vibratoMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibRetn();
-      break;
-    case 4:
-      subVibSquelch = 1;
-      drawMenuCursor(vibratoMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibSquelch();
-      break;
-    case 5:
-      subVibDirection = 1;
-      drawMenuCursor(vibratoMenuCursor, WHITE);
-      display.display();
-      cursorBlinkTime = millis();
-      drawSubVibDirection();
-      break;
-  }
+//***********************************************************
+// This should be moved to a separate file/process that handles only led
+static void statusBlink() {
+  digitalWrite(statusLedPin,LOW);
+  delay(150);
+  digitalWrite(statusLedPin,HIGH);
+  delay(150);
+  digitalWrite(statusLedPin,LOW);
+  delay(150);
+  digitalWrite(statusLedPin,HIGH);
 }
 
-void menu() {
+//***********************************************************
 
-  // read the state of the switches
-  deumButtons = !digitalRead(dPin)+2*!digitalRead(ePin)+4*!digitalRead(uPin)+8*!digitalRead(mPin);
+
+static bool updateSensorPixelsFlag = false;
+void drawSensorPixels() {
+  updateSensorPixelsFlag = true;
+}
+
+//***********************************************************
+
+
+bool adjustPageUpdate(KeyState &input, uint32_t timeNow) {
+  // This is a hack to update touch_Thr is it was changed..
+  int old_thr = ctouchThrVal;
+  int result = updateAdjustMenu(timeNow, input, stateFirstRun, updateSensorPixelsFlag);
+  bool redraw = false;
+
+  updateSensorPixelsFlag = false;
+  stateFirstRun = 0;
+
+  if(result < 0) {
+    // Go back to main menu
+    menuState= MAIN_MENU;
+    stateFirstRun = true;
+  } else {
+    redraw = result;
+  }
+
+  if( old_thr != ctouchThrVal) {
+    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+  }
+  return redraw;
+}
+
+
+static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
+  bool redraw = stateFirstRun;
+
+  if (stateFirstRun) {
+    display.ssd1306_command(SSD1306_DISPLAYON);
+    drawPatchView();
+    patchViewTime = timeNow;
+    stateFirstRun = 0;
+  }
+  if ((timeNow - patchViewTime) > patchViewTimeUp) {
+    menuState= DISPLAYOFF_IDL;
+    stateFirstRun = 1;
+    doPatchUpdate = 1;
+    FPD = 0;
+    writeSetting(PATCH_ADDR,patch);
+  }
+  if (input.changed) {
+    patchViewTime = timeNow;
+    int trills = readTrills();
+    switch (input.current){
+      case BTN_DOWN:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          writeSetting(PATCH_ADDR,patch);
+        } else if (!trills){
+          if (patch > 1){
+            patch--;
+          } else patch = 128;
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 0;
+        }
+        drawPatchView();
+        redraw = true;
+        break;
+
+      case BTN_ENTER:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          drawPatchView();
+          redraw = true;
+        }
+        break;
+
+      case BTN_UP:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+          writeSetting(PATCH_ADDR,patch);
+        } else if (!trills){
+          if (patch < 128){
+            patch++;
+          } else patch = 1;
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 0;
+        }
+        drawPatchView();
+        redraw = true;
+        break;
+
+      case BTN_MENU:
+        if (FPD < 2){
+          menuState= DISPLAYOFF_IDL;
+          stateFirstRun = 1;
+          doPatchUpdate = 1;
+        }
+        writeSetting(PATCH_ADDR,patch);
+        FPD = 0;
+        break;
+
+      case BTN_MENU+BTN_ENTER:
+          display.clearDisplay();
+          display.setTextSize(2);
+          display.setCursor(35,15);
+          display.println("DON'T");
+          display.setCursor(35,30);
+          display.println("PANIC");
+          display.display(); // call display explicitly _before_ we call midiPanic
+          midiPanic();
+          break;
+
+        case BTN_MENU+BTN_ENTER+BTN_UP+BTN_DOWN:
+        //all keys depressed, reboot to programming mode
+        _reboot_Teensyduino_();
+    }
+  }
+
+  return redraw;
+}
+
+
+static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) {
+  bool redraw = false;
+  if (stateFirstRun) {
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+    display.clearDisplay();
+    redraw = true;
+    stateFirstRun = 0;
+  }
+  if (input.changed) {
+    int trills = readTrills();
+    switch (input.current){
+      case BTN_UP: // fallthrough
+      case BTN_DOWN:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+        } // else if (!trills) buttonPressedAndNotUsed = 1; // <- TODO: this is now broken, all input is consumed... solve in another way.
+        menuState= PATCH_VIEW;
+        stateFirstRun = 1;
+        break;
+
+      case BTN_ENTER:
+        if (trills && (fastPatch[trills-1] > 0)){
+          patch = fastPatch[trills-1];
+          activePatch = 0;
+          doPatchUpdate = 1;
+          FPD = 1;
+        }
+        menuState= PATCH_VIEW;
+        stateFirstRun = 1;
+        break;
+
+      case BTN_MENU:
+        if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch breath activated legacy settings on/off
+          legacyBrAct = !legacyBrAct;
+          dipSwBits = dipSwBits ^ (1<<2);
+          writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+          statusBlink();
+        } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
+          legacy = !legacy;
+          dipSwBits = dipSwBits ^ (1<<1);
+          writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+          statusBlink();
+        } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
+          display.ssd1306_command(SSD1306_DISPLAYON);
+          menuState= ROTATOR_MENU;
+          stateFirstRun = 1;
+        } else {
+          display.ssd1306_command(SSD1306_DISPLAYON);
+          menuState = MAIN_MENU;
+          stateFirstRun = 1;
+        }
+        break;
+
+      case BTN_UP | BTN_DOWN | BTN_ENTER | BTN_MENU:
+        //all keys depressed, reboot to programming mode
+        _reboot_Teensyduino_();
+    }
+  }
+  return redraw;
+}
+
+
+//***********************************************************
+
+static KeyState readInput(uint32_t timeNow) {
+
+  static uint32_t lastDebounceTime = 0;         // the last time the output pin was toggled
+  static uint32_t buttonRepeatTime = 0;
+  static uint32_t buttonPressedTime = 0;
+  static uint8_t lastDeumButtons = 0;
+  static uint8_t deumButtonState = 0;
+
+  KeyState keys = { deumButtonState, 0 };
+
+  // read the state of the switches (note that they are active low, so we invert the values)
+  uint8_t deumButtons = 0x0f ^(digitalRead(dPin) | (digitalRead(ePin) << 1) | (digitalRead(uPin) << 2) | (digitalRead(mPin)<<3));
 
   // check to see if you just pressed the button
   // (i.e. the input went from LOW to HIGH), and you've waited long enough
@@ -1549,2317 +1236,70 @@ void menu() {
   // If the switch changed, due to noise or pressing:
   if (deumButtons != lastDeumButtons) {
     // reset the debouncing timer
-    lastDebounceTime = millis();
+    lastDebounceTime = timeNow;
   }
 
-  if ((millis() - lastDebounceTime) > debounceDelay) {
+
+  if ((timeNow - lastDebounceTime) > debounceDelay) {
     // whatever the reading is at, it's been there for longer than the debounce
     // delay, so take it as the actual current state:
 
     // if the button state has changed:
     if (deumButtons != deumButtonState) {
+      keys.current = deumButtons;
+      keys.changed = deumButtonState ^ deumButtons;
+
       deumButtonState = deumButtons;
-      menuTime = millis();
-      Serial.println(deumButtonState);
-      buttonPressedAndNotUsed = 1;
-      buttonPressedTime = millis();
+      menuTime = timeNow;
+      buttonPressedTime = timeNow;
     }
 
-    if (((deumButtons == 1) || (deumButtons == 4)) && (millis() - buttonPressedTime > buttonRepeatDelay) && (millis() - buttonRepeatTime > buttonRepeatInterval)){
-      buttonPressedAndNotUsed = 1;
-      buttonRepeatTime = millis();
+    if (((deumButtons == BTN_DOWN) || (deumButtons == BTN_UP)) && (timeNow - buttonPressedTime > buttonRepeatDelay) && (timeNow - buttonRepeatTime > buttonRepeatInterval)){
+      buttonRepeatTime = timeNow;
+      keys.changed = deumButtons; // Key repeat
     }
-
   }
-
 
   // save the reading. Next time through the loop, it'll be the lastButtonState:
   lastDeumButtons = deumButtons;
 
-  if (state && ((millis() - menuTime) > menuTimeUp)) { // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
-    state = DISPLAYOFF_IDL;
+  return keys;
+}
+
+void menu() {
+  unsigned long timeNow = millis();
+
+  bool redraw = stateFirstRun;
+
+  KeyState input = readInput(timeNow);
+
+  // shut off menu system if not used for a while (changes not stored by exiting a setting manually will not be stored in EEPROM)
+  if (menuState&& ((timeNow - menuTime) > menuTimeUp)) {
+    menuState= DISPLAYOFF_IDL;
     stateFirstRun = 1;
-    subTranspose = 0;
-    subMIDI = 0;
-    subBreathCC = 0;
-    subBreathAT = 0;
-    subVelocity = 0;
-    subPort = 0;
-    subPB = 0;
-    subExtra = 0;
-    subVibrato = 0;
-    subDeglitch = 0;
-    subPinky = 0;
-    subVelSmpDl = 0;
-    subVelBias = 0;
-    subParallel = 0;
-    subRotator = 0;
-    subPriority = 0;
-    subVibSens = 0;
-    subVibRetn = 0;
     subVibSquelch = 0;
-    subVibDirection = 0;
+    memset(activeSub, 0, sizeof(activeSub));
   }
 
+  if (menuState== DISPLAYOFF_IDL) {
+    redraw |= updatePage((const MenuPage*)&idleMenuPage, input, timeNow);
+  } else if (menuState== PATCH_VIEW) {
+    redraw |= updatePage((const MenuPage*)&patchMenuPage, input, timeNow);
+  } else if (menuState== MAIN_MENU) {
+    redraw |= updatePage(&mainMenuPage, input, timeNow);
+  } else if (menuState== ROTATOR_MENU) {
+    redraw |= updatePage(&rotatorMenuPage, input, timeNow);
+  } else if (menuState== ADJUST_MENU) {
+    redraw |= updatePage((const MenuPage*)&adjustMenuPage, input, timeNow);
+  } else if (menuState== SETUP_BR_MENU) {
+    redraw |= updatePage(&breathMenuPage, input, timeNow);
+  } else if (menuState== SETUP_CT_MENU) {
+    redraw |= updatePage(&controlMenuPage, input, timeNow);
+  } else if (menuState== VIBRATO_MENU) {
+    redraw |= updatePage(&vibratoMenuPage, input, timeNow);
+  }
 
-
-  if        (state == DISPLAYOFF_IDL){
-    if (stateFirstRun) {
-      display.ssd1306_command(SSD1306_DISPLAYOFF);
-      stateFirstRun = 0;
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      int trills = readTrills();
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-          } else if (!trills) buttonPressedAndNotUsed = 1;
-          display.ssd1306_command(SSD1306_DISPLAYON);
-          state = PATCH_VIEW;
-          stateFirstRun = 1;
-          break;
-        case 2:
-          // enter
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-          }
-          display.ssd1306_command(SSD1306_DISPLAYON);
-          state = PATCH_VIEW;
-          stateFirstRun = 1;
-          break;
-        case 4:
-          // up
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-          } else if (!trills) buttonPressedAndNotUsed = 1;
-          display.ssd1306_command(SSD1306_DISPLAYON);
-          state = PATCH_VIEW;
-          buttonPressedAndNotUsed = 1;
-          stateFirstRun = 1;
-          break;
-        case 8:
-          // menu
-          if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch breath activated legacy settings on/off
-            legacyBrAct = !legacyBrAct;
-            dipSwBits = dipSwBits ^ (1<<2);
-            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-            delay(150);
-            digitalWrite(statusLedPin, LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-          } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))){ // switch pb pad activated legacy settings control on/off
-            legacy = !legacy;
-            dipSwBits = dipSwBits ^ (1<<1);
-            writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-            delay(150);
-            digitalWrite(statusLedPin,LOW);
-            delay(150);
-            digitalWrite(statusLedPin,HIGH);
-          } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
-            display.ssd1306_command(SSD1306_DISPLAYON);
-            state = ROTATOR_MENU;
-            stateFirstRun = 1;
-          } else {
-            display.ssd1306_command(SSD1306_DISPLAYON);
-            state = MAIN_MENU;
-            stateFirstRun = 1;
-          }
-          break;
-        case 15:
-          //all keys depressed, reboot to programming mode
-          _reboot_Teensyduino_();
-      }
-    }
-  } else if (state == PATCH_VIEW){
-    if (stateFirstRun) {
-      drawPatchView();
-      patchViewTime = millis();
-      stateFirstRun = 0;
-    }
-    if ((millis() - patchViewTime) > patchViewTimeUp) {
-      state = DISPLAYOFF_IDL;
-      stateFirstRun = 1;
-      doPatchUpdate = 1;
-      FPD = 0;
-      if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      int trills = readTrills();
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
-          } else if (!trills){
-            if (patch > 1){
-              patch--;
-            } else patch = 128;
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 0;
-          }
-          drawPatchView();
-          patchViewTime = millis();
-          break;
-        case 2:
-          // enter
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            drawPatchView();
-          }
-          patchViewTime = millis();
-          break;
-        case 4:
-          // up
-          if (trills && (fastPatch[trills-1] > 0)){
-            patch = fastPatch[trills-1];
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 1;
-            if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
-          } else if (!trills){
-            if (patch < 128){
-              patch++;
-            } else patch = 1;
-            activePatch = 0;
-            doPatchUpdate = 1;
-            FPD = 0;
-          }
-          drawPatchView();
-          patchViewTime = millis();
-          break;
-        case 8:
-          // menu
-          if (FPD < 2){
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            doPatchUpdate = 1;
-          }
-          if (readSetting(PATCH_ADDR) != patch) writeSetting(PATCH_ADDR,patch);
-          FPD = 0;
-          break;
-        case 10:
-          // enter + menu
-            midiPanic();
-            display.clearDisplay();
-            display.setTextColor(WHITE);
-            display.setTextSize(2);
-            display.setCursor(35,15);
-            display.println("DON'T");
-            display.setCursor(35,30);
-            display.println("PANIC");
-            display.display();
-            patchViewTime = millis();
-            break;
-          case 15:
-          //all keys depressed, reboot to programming mode
-          _reboot_Teensyduino_();
-      }
-    }
-  } else if (state == MAIN_MENU){    // MAIN MENU HERE <<<<<<<<<<<<<<<
-    if (stateFirstRun) {
-      drawMenuScreen();
-      stateFirstRun = 0;
-    }
-    if (subTranspose){
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotTranspose(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (transpose > 0){
-              plotTranspose(BLACK);
-              transpose--;
-              plotTranspose(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotTranspose(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subTranspose = 0;
-            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
-            break;
-          case 4:
-            // up
-            if (transpose < 24){
-              plotTranspose(BLACK);
-              transpose++;
-              plotTranspose(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotTranspose(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subTranspose = 0;
-            if (readSetting(TRANSP_ADDR) != transpose) writeSetting(TRANSP_ADDR,transpose);
-            break;
-        }
-      }
-    } else if (subOctave){
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotOctave(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (octave > 0){
-              plotOctave(BLACK);
-              octave--;
-              plotOctave(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotOctave(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subOctave = 0;
-            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
-            break;
-          case 4:
-            // up
-            if (octave < 6){
-              plotOctave(BLACK);
-              octave++;
-              plotOctave(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotOctave(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subOctave = 0;
-            if (readSetting(OCTAVE_ADDR) != octave) writeSetting(OCTAVE_ADDR,octave);
-            break;
-        }
-      }
-    } else if (subMIDI) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotMIDI(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (MIDIchannel > 1){
-              plotMIDI(BLACK);
-              MIDIchannel--;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            readSwitches();
-            if (pinkyKey){
-              slowMidi = !slowMidi;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              dipSwBits = dipSwBits ^ (1<<3);
-              writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-            } else {
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              subMIDI = 0;
-              if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
-            }
-            break;
-          case 4:
-            // up
-            if (MIDIchannel < 16){
-              plotMIDI(BLACK);
-              MIDIchannel++;
-              plotMIDI(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotMIDI(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subMIDI = 0;
-            if (readSetting(MIDI_ADDR) != MIDIchannel) writeSetting(MIDI_ADDR,MIDIchannel);
-            break;
-        }
-      }
-    } else {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(mainMenuCursor, cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        int trills = readTrills();
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (mainMenuCursor < 6){
-              drawMenuCursor(mainMenuCursor, BLACK);
-              mainMenuCursor++;
-              drawMenuCursor(mainMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 2:
-            // enter
-            selectMainMenu();
-            break;
-          case 4:
-            // up
-            if (mainMenuCursor > 1){
-              drawMenuCursor(mainMenuCursor, BLACK);
-              mainMenuCursor--;
-              drawMenuCursor(mainMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 8:
-            // menu
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            break;
-          case 9:
-            //menu+down
-
-            break;
-          case 10:
-            //menu+enter
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              setFPS(trills);
-            }
-            break;
-          case 12:
-            //menu+up
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              clearFPS(trills);
-
-            }
-            break;
-        }
-      }
-    }
-  } else if (state == ROTATOR_MENU){    // ROTATOR MENU HERE <<<<<<<<<<<<<<<
-    if (stateFirstRun) {
-      drawRotatorMenuScreen();
-      stateFirstRun = 0;
-    }
-    if (subParallel){
-      if (((millis() - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        if (forceRedraw){
-          forceRedraw = 0;
-          cursorNow = WHITE;
-        }
-        plotRotator(cursorNow,parallel);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (parallel > -24){
-              plotRotator(BLACK,parallel);
-              parallel--;
-              plotRotator(WHITE,parallel);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotRotator(WHITE,parallel);
-            cursorNow = BLACK;
-            display.display();
-            subParallel = 0;
-            if (readSetting(PARAL_ADDR) != (parallel + 24)) writeSetting(PARAL_ADDR,(parallel + 24));
-            break;
-          case 4:
-            // up
-            if (parallel < 24){
-              plotRotator(BLACK,parallel);
-              parallel++;
-              plotRotator(WHITE,parallel);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotRotator(WHITE,parallel);
-            cursorNow = BLACK;
-            display.display();
-            subParallel = 0;
-            if (readSetting(PARAL_ADDR) != (parallel + 24)) writeSetting(PARAL_ADDR,(parallel + 24));
-            break;
-        }
-      }
-    } else if (subRotator){
-      if (((millis() - cursorBlinkTime) > cursorBlinkInterval) || forceRedraw) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        if (forceRedraw){
-          forceRedraw = 0;
-          cursorNow = WHITE;
-        }
-        plotRotator(cursorNow,rotations[subRotator-1]);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (rotations[subRotator-1] > -24){
-              plotRotator(BLACK,rotations[subRotator-1]);
-              rotations[subRotator-1]--;
-              plotRotator(WHITE,rotations[subRotator-1]);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotRotator(WHITE,rotations[subRotator-1]);
-            cursorNow = BLACK;
-            display.display();
-            if (readSetting(ROTN1_ADDR+2*(subRotator-1)) != rotations[subRotator-1]) writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
-            subRotator = 0;
-            break;
-          case 4:
-            // up
-            if (rotations[subRotator-1] < 24){
-              plotRotator(BLACK,rotations[subRotator-1]);
-              rotations[subRotator-1]++;
-              plotRotator(WHITE,rotations[subRotator-1]);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotRotator(WHITE,rotations[subRotator-1]);
-            cursorNow = BLACK;
-            display.display();
-            if (readSetting(ROTN1_ADDR+2*(subRotator-1)) != (rotations[subRotator-1]+24)) writeSetting(ROTN1_ADDR+2*(subRotator-1),(rotations[subRotator-1]+24));
-            subRotator = 0;
-            break;
-        }
-      }
-    } else if (subPriority){
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotPriority(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotPriority(BLACK);
-            priority = !priority;
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPriority = 0;
-            if (readSetting(PRIO_ADDR) != priority) writeSetting(PRIO_ADDR,priority);
-            break;
-          case 4:
-            // up
-            plotPriority(BLACK);
-            priority = !priority;
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotPriority(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPriority = 0;
-            if (readSetting(PRIO_ADDR) != priority) writeSetting(PRIO_ADDR,priority);
-            break;
-        }
-      }
-    } else {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(rotatorMenuCursor, cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        int trills = readTrills();
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (rotatorMenuCursor < 6){
-              drawMenuCursor(rotatorMenuCursor, BLACK);
-              rotatorMenuCursor++;
-              drawMenuCursor(rotatorMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 2:
-            // enter
-            selectRotatorMenu();
-            break;
-          case 4:
-            // up
-            if (rotatorMenuCursor > 1){
-              drawMenuCursor(rotatorMenuCursor, BLACK);
-              rotatorMenuCursor--;
-              drawMenuCursor(rotatorMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 8:
-            // menu
-            state = DISPLAYOFF_IDL;
-            stateFirstRun = 1;
-            break;
-          case 9:
-            //menu+down
-
-            break;
-          case 10:
-            //menu+enter
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              setFPS(trills);
-            }
-            break;
-          case 12:
-            //menu+up
-            if (trills){
-              state = PATCH_VIEW;
-              stateFirstRun = 1;
-              clearFPS(trills);
-
-            }
-            break;
-        }
-      }
-    }
-  // end rotator menu
-  } else if (state == BREATH_ADJ_IDL){
-    if (stateFirstRun) {
-      drawBreathScreen();
-      forcePix = 1;
-      stateFirstRun = 0;
-    }
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          state = PORTAM_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
-          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
-          break;
-        case 2:
-          // enter
-          state = BREATH_ADJ_THR;
-          break;
-        case 4:
-          // up
-          state = CTOUCH_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
-          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
-          break;
-        case 8:
-          // menu
-          state = MAIN_MENU;
-          stateFirstRun = 1;
-          if (readSetting(BREATH_THR_ADDR) != breathThrVal) writeSetting(BREATH_THR_ADDR,breathThrVal);
-          if (readSetting(BREATH_MAX_ADDR) != breathMaxVal) writeSetting(BREATH_MAX_ADDR,breathMaxVal);
-          break;
-      }
-    }
-  } else if (state == BREATH_ADJ_THR){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos1,20,pos1,26,cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (breathThrVal - breathStep > breathLoLimit){
-            breathThrVal -= breathStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(breathThrVal, breathLoLimit, breathHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = BREATH_ADJ_MAX;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (breathThrVal + breathStep < breathHiLimit){
-            breathThrVal += breathStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(breathThrVal, breathLoLimit, breathHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = BREATH_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == BREATH_ADJ_MAX){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos2,50,pos2,57,cursorNow);;
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-            if ((breathMaxVal - breathStep) > (breathThrVal + minOffset)){
-            breathMaxVal -= breathStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(breathMaxVal, breathLoLimit, breathHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = BREATH_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (breathMaxVal + breathStep < breathHiLimit){
-            breathMaxVal += breathStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(breathMaxVal, breathLoLimit, breathHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = BREATH_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == PORTAM_ADJ_IDL){
-    if (stateFirstRun) {
-      drawPortamScreen();
-      forcePix = 1;
-      stateFirstRun = 0;
-    }
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          state = PITCHB_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
-          break;
-        case 2:
-          // enter
-          state = PORTAM_ADJ_THR;
-          break;
-        case 4:
-          // up
-          state = BREATH_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
-          break;
-        case 8:
-          // menu
-          state = MAIN_MENU;
-          stateFirstRun = 1;
-          if (readSetting(PORTAM_THR_ADDR) != portamThrVal) writeSetting(PORTAM_THR_ADDR,portamThrVal);
-          if (readSetting(PORTAM_MAX_ADDR) != portamMaxVal) writeSetting(PORTAM_MAX_ADDR,portamMaxVal);
-          break;
-      }
-    }
-  } else if (state == PORTAM_ADJ_THR){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos1,20,pos1,26,cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (portamThrVal - portamStep > portamLoLimit){
-            portamThrVal -= portamStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(portamThrVal, portamLoLimit, portamHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = PORTAM_ADJ_MAX;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (portamThrVal + portamStep < portamHiLimit){
-            portamThrVal += portamStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(portamThrVal, portamLoLimit, portamHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = PORTAM_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == PORTAM_ADJ_MAX){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos2,50,pos2,57,cursorNow);;
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-            if ((portamMaxVal - portamStep) > (portamThrVal + minOffset)){
-            portamMaxVal -= portamStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(portamMaxVal, portamLoLimit, portamHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = PORTAM_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (portamMaxVal + portamStep < portamHiLimit){
-            portamMaxVal += portamStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(portamMaxVal, portamLoLimit, portamHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = PORTAM_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == PITCHB_ADJ_IDL){
-    if (stateFirstRun) {
-      drawPitchbScreen();
-      forcePix = 1;
-      stateFirstRun = 0;
-    }
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          state = EXTRAC_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
-          break;
-        case 2:
-          // enter
-          state = PITCHB_ADJ_THR;
-          break;
-        case 4:
-          // up
-          state = PORTAM_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
-          break;
-        case 8:
-          // menu
-          state = MAIN_MENU;
-          stateFirstRun = 1;
-          if (readSetting(PITCHB_THR_ADDR) != pitchbThrVal) writeSetting(PITCHB_THR_ADDR,pitchbThrVal);
-          if (readSetting(PITCHB_MAX_ADDR) != pitchbMaxVal) writeSetting(PITCHB_MAX_ADDR,pitchbMaxVal);
-          break;
-      }
-    }
-  } else if (state == PITCHB_ADJ_THR){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos1,20,pos1,26,cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (pitchbThrVal - pitchbStep > pitchbLoLimit){
-            pitchbThrVal -= pitchbStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(pitchbThrVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = PITCHB_ADJ_MAX;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (pitchbThrVal + pitchbStep < pitchbHiLimit){
-            pitchbThrVal += pitchbStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(pitchbThrVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = PITCHB_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == PITCHB_ADJ_MAX){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos2,50,pos2,57,cursorNow);;
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-            if ((pitchbMaxVal - pitchbStep) > (pitchbThrVal + minOffset)){
-            pitchbMaxVal -= pitchbStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(pitchbMaxVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = PITCHB_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (pitchbMaxVal + pitchbStep < pitchbHiLimit){
-            pitchbMaxVal += pitchbStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(pitchbMaxVal, pitchbLoLimit, pitchbHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = PITCHB_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-      }
-    }
-
-  } else if (state == EXTRAC_ADJ_IDL){
-    if (stateFirstRun) {
-      drawExtracScreen();
-      forcePix = 1;
-      stateFirstRun = 0;
-    }
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          state = CTOUCH_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
-          break;
-        case 2:
-          // enter
-          state = EXTRAC_ADJ_THR;
-          break;
-        case 4:
-          // up
-          state = PITCHB_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
-          break;
-        case 8:
-          // menu
-          state = MAIN_MENU;
-          stateFirstRun = 1;
-          if (readSetting(EXTRAC_THR_ADDR) != extracThrVal) writeSetting(EXTRAC_THR_ADDR,extracThrVal);
-          if (readSetting(EXTRAC_MAX_ADDR) != extracMaxVal) writeSetting(EXTRAC_MAX_ADDR,extracMaxVal);
-          break;
-      }
-    }
-  } else if (state == EXTRAC_ADJ_THR){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos1,20,pos1,26,cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (extracThrVal - extracStep > extracLoLimit){
-            extracThrVal -= extracStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(extracThrVal, extracLoLimit, extracHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = EXTRAC_ADJ_MAX;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (extracThrVal + extracStep < extracHiLimit){
-            extracThrVal += extracStep;
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(extracThrVal, extracLoLimit, extracHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = EXTRAC_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-      }
-    }
-  } else if (state == EXTRAC_ADJ_MAX){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos2,50,pos2,57,cursorNow);;
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-            if ((extracMaxVal - extracStep) > (extracThrVal + minOffset)){
-            extracMaxVal -= extracStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(extracMaxVal, extracLoLimit, extracHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = EXTRAC_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (extracMaxVal + extracStep < extracHiLimit){
-            extracMaxVal += extracStep;
-            display.drawLine(pos2,50,pos2,57,BLACK);
-            pos2 = map(extracMaxVal, extracLoLimit, extracHiLimit, 27, 119);
-            display.drawLine(pos2,50,pos2,57,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = EXTRAC_ADJ_IDL;
-          display.drawLine(pos2,50,pos2,57,WHITE);
-          display.display();
-          break;
-      }
-    }
-
-  } else if (state == CTOUCH_ADJ_IDL){
-    if (stateFirstRun) {
-      drawCtouchScreen();
-      forcePix = 1;
-      stateFirstRun = 0;
-    }
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      drawAdjCursor(cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          state = BREATH_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
-          break;
-        case 2:
-          // enter
-          state = CTOUCH_ADJ_THR;
-          break;
-        case 4:
-          // up
-          state = EXTRAC_ADJ_IDL;
-          stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
-          break;
-        case 8:
-          // menu
-          state = MAIN_MENU;
-          stateFirstRun = 1;
-          if (readSetting(CTOUCH_THR_ADDR) != ctouchThrVal) writeSetting(CTOUCH_THR_ADDR,ctouchThrVal);
-          break;
-      }
-    }
-  } else if (state == CTOUCH_ADJ_THR){
-    if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-      if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-      display.drawLine(pos1,20,pos1,26,cursorNow);
-      display.display();
-      cursorBlinkTime = millis();
-    }
-    if (buttonPressedAndNotUsed){
-      buttonPressedAndNotUsed = 0;
-      switch (deumButtonState){
-        case 1:
-          // down
-          if (ctouchThrVal - ctouchStep > ctouchLoLimit){
-            ctouchThrVal -= ctouchStep;
-            touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 2:
-          // enter
-          state = CTOUCH_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-        case 4:
-          // up
-          if (ctouchThrVal + ctouchStep < ctouchHiLimit){
-            ctouchThrVal += ctouchStep;
-            touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-            display.drawLine(pos1,20,pos1,26,BLACK);
-            pos1 = map(ctouchThrVal, ctouchLoLimit, ctouchHiLimit, 27, 119);
-            display.drawLine(pos1,20,pos1,26,WHITE);
-            display.display();
-            cursorBlinkTime = millis();
-            cursorNow = BLACK;
-          }
-          break;
-        case 8:
-          // menu
-          state = CTOUCH_ADJ_IDL;
-          display.drawLine(pos1,20,pos1,26,WHITE);
-          display.display();
-          break;
-      }
-    }
-
-
-  } else if (state == SETUP_BR_MENU) {  // SETUP BREATH MENU HERE <<<<<<<<<<<<<<
-    if (stateFirstRun) {
-      drawSetupBrMenuScreen();
-      stateFirstRun = 0;
-    }
-    if (subBreathCC){
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotBreathCC(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (breathCC > 0){
-              plotBreathCC(BLACK);
-              breathCC--;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            } else {
-              plotBreathCC(BLACK);
-              breathCC = 10;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotBreathCC(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subBreathCC = 0;
-            if (readSetting(BREATH_CC_ADDR) != breathCC) {
-              writeSetting(BREATH_CC_ADDR,breathCC);
-              midiReset();
-            }
-            break;
-          case 4:
-            // up
-            if (breathCC < 10){
-              plotBreathCC(BLACK);
-              breathCC++;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            } else {
-              plotBreathCC(BLACK);
-              breathCC = 0;
-              plotBreathCC(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotBreathCC(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subBreathCC = 0;
-            if (readSetting(BREATH_CC_ADDR) != breathCC) {
-              writeSetting(BREATH_CC_ADDR,breathCC);
-              midiReset();
-            }
-            break;
-        }
-      }
-    } else if (subBreathAT) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotBreathAT(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotBreathAT(BLACK);
-            breathAT=!breathAT;
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subBreathAT = 0;
-            if (readSetting(BREATH_AT_ADDR) != breathAT){
-              writeSetting(BREATH_AT_ADDR,breathAT);
-              midiReset();
-            }
-            break;
-          case 4:
-            // up
-            plotBreathAT(BLACK);
-            breathAT=!breathAT;
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotBreathAT(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subBreathAT = 0;
-            if (readSetting(BREATH_AT_ADDR) != breathAT){
-              writeSetting(BREATH_AT_ADDR,breathAT);
-              midiReset();
-            }
-            break;
-        }
-      }
-    } else if (subVelocity) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVelocity(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotVelocity(BLACK);
-            if (velocity > 0){
-              velocity--;
-            } else velocity = 127;
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelocity = 0;
-            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
-            break;
-          case 4:
-            // up
-            plotVelocity(BLACK);
-            if (velocity < 127){
-              velocity++;
-            } else velocity = 0;
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotVelocity(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelocity = 0;
-            if (readSetting(VELOCITY_ADDR) != velocity) writeSetting(VELOCITY_ADDR,velocity);
-            break;
-        }
-      }
-
-
-    } else if (subCurve) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotCurve(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotCurve(BLACK);
-            if (curve > 0){
-              curve--;
-            } else curve = 12;
-            plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subCurve = 0;
-            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
-            break;
-          case 4:
-            // up
-            plotCurve(BLACK);
-            if (curve < 12){
-              curve++;
-            } else curve = 0;
-            plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotCurve(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subCurve = 0;
-            if (readSetting(BREATHCURVE_ADDR) != curve) writeSetting(BREATHCURVE_ADDR,curve);
-            break;
-        }
-      }
-
-    } else if (subVelSmpDl) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVelSmpDl(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotVelSmpDl(BLACK);
-            if (velSmpDl > 0){
-              velSmpDl-=1;
-            } else velSmpDl = 30;
-            plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelSmpDl = 0;
-            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
-            break;
-          case 4:
-            // up
-            plotVelSmpDl(BLACK);
-            if (velSmpDl < 30){
-              velSmpDl+=1;
-            } else velSmpDl = 0;
-            plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotVelSmpDl(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelSmpDl = 0;
-            if (readSetting(VEL_SMP_DL_ADDR) != velSmpDl) writeSetting(VEL_SMP_DL_ADDR,velSmpDl);
-            break;
-        }
-      }
-
-     } else if (subVelBias) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVelBias(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotVelBias(BLACK);
-            if (velBias > 0){
-              velBias--;
-            } else velBias = 9;
-            plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelBias = 0;
-            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
-            break;
-          case 4:
-            // up
-            plotVelBias(BLACK);
-            if (velBias < 9){
-              velBias++;
-            } else velBias = 0;
-            plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotVelBias(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVelBias = 0;
-            if (readSetting(VEL_BIAS_ADDR) != velBias) writeSetting(VEL_BIAS_ADDR,velBias);
-            break;
-        }
-      }
-
-    } else {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(setupBrMenuCursor, cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (setupBrMenuCursor < 6){
-              drawMenuCursor(setupBrMenuCursor, BLACK);
-              setupBrMenuCursor++;
-              drawMenuCursor(setupBrMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 2:
-            // enter
-            selectSetupBrMenu();
-            break;
-          case 4:
-            // up
-            if (setupBrMenuCursor > 1){
-              drawMenuCursor(setupBrMenuCursor, BLACK);
-              setupBrMenuCursor--;
-              drawMenuCursor(setupBrMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 8:
-            // menu
-            state = MAIN_MENU;
-            stateFirstRun = 1;
-            break;
-        }
-      }
-    }
-
-
-  } else if (state == SETUP_CT_MENU) {  // SETUP CONTROLLERS MENU HERE <<<<<<<<<<<<<
-   if (stateFirstRun) {
-      drawSetupCtMenuScreen();
-      stateFirstRun = 0;
-    }
-    if (subPort){
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotPort(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotPort(BLACK);
-            if (portamento > 0){
-              portamento--;
-            } else portamento = 2;
-            plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPort = 0;
-            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
-            break;
-          case 4:
-            // up
-            plotPort(BLACK);
-            if (portamento < 2){
-              portamento++;
-            } else portamento = 0;
-            plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotPort(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPort = 0;
-            if (readSetting(PORTAM_ADDR) != portamento) writeSetting(PORTAM_ADDR,portamento);
-            break;
-        }
-      }
-    } else if (subPB) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotPB(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (PBdepth > 0){
-              plotPB(BLACK);
-              PBdepth--;
-              plotPB(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotPB(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPB = 0;
-            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
-            break;
-          case 4:
-            // up
-            if (PBdepth < 12){
-              plotPB(BLACK);
-              PBdepth++;
-              plotPB(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotPB(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPB = 0;
-            if (readSetting(PB_ADDR) != PBdepth) writeSetting(PB_ADDR,PBdepth);
-            break;
-        }
-      }
-    } else if (subExtra) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotExtra(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotExtra(BLACK);
-            if (extraCT > 0){
-              extraCT--;
-            } else extraCT = 4;
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subExtra = 0;
-            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
-            break;
-          case 4:
-            // up
-            plotExtra(BLACK);
-            if (extraCT < 4){
-              extraCT++;
-            } else extraCT = 0;
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotExtra(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subExtra = 0;
-            if (readSetting(EXTRA_ADDR) != extraCT) writeSetting(EXTRA_ADDR,extraCT);
-            break;
-        }
-      }
-    } else if (subDeglitch) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotDeglitch(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (deglitch > 0){
-              plotDeglitch(BLACK);
-              deglitch-=1;
-              plotDeglitch(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotDeglitch(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subDeglitch = 0;
-            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
-            break;
-          case 4:
-            // up
-            if (deglitch < 70){
-              plotDeglitch(BLACK);
-              deglitch+=1;
-              plotDeglitch(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotDeglitch(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subDeglitch = 0;
-            if (readSetting(DEGLITCH_ADDR) != deglitch) writeSetting(DEGLITCH_ADDR,deglitch);
-            break;
-        }
-      }
-    } else if (subPinky) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotPinkyKey(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (pinkySetting > 0){
-              plotPinkyKey(BLACK);
-              pinkySetting-=1;
-              plotPinkyKey(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotPinkyKey(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPinky = 0;
-            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
-            break;
-          case 4:
-            // up
-            if (pinkySetting < 24){
-              plotPinkyKey(BLACK);
-              pinkySetting+=1;
-              plotPinkyKey(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotPinkyKey(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subPinky = 0;
-            if (readSetting(PINKY_KEY_ADDR) != pinkySetting) writeSetting(PINKY_KEY_ADDR,pinkySetting);
-            break;
-        }
-      }
-    } else {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(setupCtMenuCursor, cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (setupCtMenuCursor < 6){
-              drawMenuCursor(setupCtMenuCursor, BLACK);
-              setupCtMenuCursor++;
-              drawMenuCursor(setupCtMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 2:
-            // enter
-            selectSetupCtMenu();
-            break;
-          case 4:
-            // up
-            if (setupCtMenuCursor > 1){
-              drawMenuCursor(setupCtMenuCursor, BLACK);
-              setupCtMenuCursor--;
-              drawMenuCursor(setupCtMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 8:
-            // menu
-            state = MAIN_MENU;
-            stateFirstRun = 1;
-            break;
-        }
-      }
-    }
-
-
-
-
-
-  } else if (state == VIBRATO_MENU) {  // VIBRATO MENU HERE <<<<<<<<<<<<<
-   if (stateFirstRun) {
-      drawVibratoMenuScreen();
-      stateFirstRun = 0;
-    }
-    if (subVibrato) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVibrato(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (vibrato > 0){
-              plotVibrato(BLACK);
-              vibrato--;
-              plotVibrato(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotVibrato(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
-            break;
-          case 4:
-            // up
-            if (vibrato < 9){
-              plotVibrato(BLACK);
-              vibrato++;
-              plotVibrato(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotVibrato(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibrato = 0;
-            if (readSetting(VIBRATO_ADDR) != vibrato) writeSetting(VIBRATO_ADDR,vibrato);
-            break;
-        }
-      }
-    } else if (subVibSens) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVibSens(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (vibSens > 1){
-              plotVibSens(BLACK);
-              vibSens--;
-              plotVibSens(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotVibSens(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibSens = 0;
-            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
-            break;
-          case 4:
-            // up
-            if (vibSens < 12){
-              plotVibSens(BLACK);
-              vibSens++;
-              plotVibSens(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotVibSens(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibSens = 0;
-            if (readSetting(VIB_SENS_ADDR) != vibSens) writeSetting(VIB_SENS_ADDR,vibSens);
-            break;
-        }
-      }
-    } else if (subVibRetn) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVibRetn(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotVibRetn(BLACK);
-            if (vibRetn > 0){
-              vibRetn--;
-            }
-            plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibRetn = 0;
-            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
-            break;
-          case 4:
-            // up
-            plotVibRetn(BLACK);
-            if (vibRetn < 4){
-              vibRetn++;
-            }
-            plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotVibRetn(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibRetn = 0;
-            if (readSetting(VIB_RETN_ADDR) != vibRetn) writeSetting(VIB_RETN_ADDR,vibRetn);
-            break;
-        }
-      }
-    } else if (subVibSquelch) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVibSquelch(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (vibSquelch > 1){
-              plotVibSquelch(BLACK);
-              vibSquelch--;
-              plotVibSquelch(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 2:
-            // enter
-            plotVibSquelch(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibSquelch = 0;
-            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
-            break;
-          case 4:
-            // up
-            if (vibSquelch < 30){
-              plotVibSquelch(BLACK);
-              vibSquelch++;
-              plotVibSquelch(WHITE);
-              cursorNow = BLACK;
-              display.display();
-              cursorBlinkTime = millis();
-            }
-            break;
-          case 8:
-            // menu
-            plotVibSquelch(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibSquelch = 0;
-            if (readSetting(VIB_SQUELCH_ADDR) != vibSquelch) writeSetting(VIB_SQUELCH_ADDR,vibSquelch);
-            break;
-        }
-      }
-    } else if (subVibDirection) {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        plotVibDirection(cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            plotVibDirection(BLACK);
-            vibDirection = !vibDirection;
-            plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 2:
-            // enter
-            plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibDirection = 0;
-            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
-            break;
-          case 4:
-            // up
-            plotVibDirection(BLACK);
-            vibDirection = !vibDirection;
-            plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            cursorBlinkTime = millis();
-            break;
-          case 8:
-            // menu
-            plotVibDirection(WHITE);
-            cursorNow = BLACK;
-            display.display();
-            subVibDirection = 0;
-            if (readSetting(VIB_DIRECTION_ADDR) != vibDirection) writeSetting(VIB_DIRECTION_ADDR,vibDirection);
-            break;
-        }
-      }
-    } else {
-      if ((millis() - cursorBlinkTime) > cursorBlinkInterval) {
-        if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-        drawMenuCursor(vibratoMenuCursor, cursorNow);
-        display.display();
-        cursorBlinkTime = millis();
-      }
-      if (buttonPressedAndNotUsed){
-        buttonPressedAndNotUsed = 0;
-        switch (deumButtonState){
-          case 1:
-            // down
-            if (vibratoMenuCursor < 5){
-              drawMenuCursor(vibratoMenuCursor, BLACK);
-              vibratoMenuCursor++;
-              drawMenuCursor(vibratoMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 2:
-            // enter
-            selectVibratoMenu();
-            break;
-          case 4:
-            // up
-            if (vibratoMenuCursor > 1){
-              drawMenuCursor(vibratoMenuCursor, BLACK);
-              vibratoMenuCursor--;
-              drawMenuCursor(vibratoMenuCursor, WHITE);
-              cursorNow = BLACK;
-              clearSub();
-              display.display();
-            }
-            break;
-          case 8:
-            // menu
-            state = SETUP_CT_MENU;
-            stateFirstRun = 1;
-            break;
-        }
-      }
-    }
+  if(redraw) {
+    display.display();
   }
 }

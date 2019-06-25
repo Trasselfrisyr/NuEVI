@@ -21,4 +21,19 @@
 #define CC_INTERVAL 2
 
 
+// MAybe move these to config.h (as defines?)
+#define breathLoLimit   0
+#define breathHiLimit   4095
+#define portamLoLimit   700
+#define portamHiLimit   4700
+#define pitchbLoLimit   500
+#define pitchbHiLimit   4000
+#define extracLoLimit   500
+#define extracHiLimit   4000
+#define ctouchLoLimit   50
+#define ctouchHiLimit   350
+#define ttouchLoLimit   50
+#define ttouchHiLimit   1900
+
+
 #endif

@@ -27,6 +27,7 @@ INCDIRS += $(addprefix -I,$(INCS))
 TARGET=nuevisim
 
 CXXFILES=		../NuEVI/menu.cpp \
+				../NuEVI/adjustmenu.cpp \
 				src/nuevisim.cpp \
 				src/simeeprom.cpp \
 				src/Print.cpp \
