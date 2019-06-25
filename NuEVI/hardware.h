@@ -10,36 +10,39 @@
 #define specialKeyPin 0       // SK or S2
 #define halfPitchBendKeyPin 1 // PD or S1
 
+
+//Capacitive sensor pins (on-board teensy)
 #define bitePin 17
 #define extraPin 16
 #define pbUpPin 23
 #define pbDnPin 22
 #define vibratoPin 15
 
+//Pins jumpered to enable bite pressure sensor
+#define biteJumperPin 11
+#define biteJumperGndPin 12
 
-#define biteJumperPin 11  //PBITE
-#define biteJumperGndPin 12 //PBITE
-
+//Analog pressure sensors. Breath and optional bite
 #define breathSensorPin A0
 #define bitePressurePin A7
 
+//Digital pins for menu buttons
 #define dPin 3
 #define ePin 4
 #define uPin 5
 #define mPin 6
 
+//Output pins for LEDs (breath, power, status)
 #define bLedPin 10
 #define pLedPin 9
 #define statusLedPin 13
 
+//Analog input for measuring voltage
 #define vMeterPin A11
 
+//DAC outputs for analog and pwm
 #define dacPin A14
 #define pwmDacPin 20
-
-#define PBD 12
-#define UPWD 1
-#define DNWD 0
 
 //Which serial port to use for MIDI
 #define MIDI_SERIAL Serial3

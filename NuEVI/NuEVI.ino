@@ -25,6 +25,18 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 */
 
 
+//Make sure compiler is set to the appropriate platform
+#ifndef __MK20DX256__
+  #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
+#endif
+
+#if !defined(USB_MIDI) && !defined(USB_MIDI_SERIAL)
+  #error "USB MIDI not enabled. Please set USB type to 'MIDI' or 'Serial + MIDI'."
+#endif
+
+
+
+
 // The three states of our main state machine
 
 // No note is sounding
@@ -38,14 +50,15 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 // A note is sounding
 #define NOTE_ON 3
 
-//Make sure compiler is set to the appropriate platform
-#ifndef __MK20DX256__
-  #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
-#endif
 
-#if !defined(USB_MIDI) && !defined(USB_MIDI_SERIAL)
-  #error "USB MIDI not enabled. Please set USB type to 'MIDI' or 'Serial + MIDI'."
-#endif
+//Magic value where pinky button means "pitch bend"
+#define PBD 12
+
+//Vibrato direction
+#define UPWD 1
+#define DNWD 0
+
+
 
 
 //_______________________________________________________________________________________________ DECLARATIONS
