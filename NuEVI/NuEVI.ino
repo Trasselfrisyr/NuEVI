@@ -170,6 +170,11 @@ static const unsigned short curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,110
 static const unsigned short curveZ1[] = {0,1400,2100,2900,3200,3900,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 static const unsigned short curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 
+const unsigned short* const curves[] = {
+   curveM4, curveM3, curveM2, curveM1, curveIn, curveP1, curveP2,
+   curveP3, curveP4 , curveS1, curveS2, curveZ1, curveZ2 };
+
+
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
 int vibZero;
@@ -852,64 +857,8 @@ unsigned int multiMap(unsigned short val, const unsigned short * _in, const unsi
 
 // map breath values to selected curve
 unsigned int breathCurve(unsigned int inputVal) {
-  // 0 to 16383, moving mid value up or down
-  switch (curve) {
-  case 0:
-    // -4
-    return multiMap(inputVal, curveIn, curveM4, 17);
-    break;
-  case 1:
-    // -3
-    return multiMap(inputVal, curveIn, curveM3, 17);
-    break;
-  case 2:
-    // -2
-    return multiMap(inputVal, curveIn, curveM2, 17);
-    break;
-  case 3:
-    // -1
-    return multiMap(inputVal, curveIn, curveM1, 17);
-    break;
-  case 4:
-    // 0, linear
-    return inputVal;
-    break;
-  case 5:
-    // +1
-    return multiMap(inputVal, curveIn, curveP1, 17);
-    break;
-  case 6:
-    // +2
-    return multiMap(inputVal, curveIn, curveP2, 17);
-    break;
-  case 7:
-    // +3
-    return multiMap(inputVal, curveIn, curveP3, 17);
-    break;
-  case 8:
-    // +4
-    return multiMap(inputVal, curveIn, curveP4, 17);
-    break;
-  case 9:
-    // S1
-    return multiMap(inputVal, curveIn, curveS1, 17);
-    break;
-  case 10:
-    // S2
-    return multiMap(inputVal, curveIn, curveS2, 17);
-    break;
-  case 11:
-    // Z1
-    return multiMap(inputVal, curveIn, curveZ1, 17);
-    break;
-  case 12:
-    // Z2
-    return multiMap(inputVal, curveIn, curveZ2, 17);
-    break;
-  default: //Fallback option that should never be reached, use linear
-    return inputVal;
-    break;
-  }
+  if(curve > ARR_LEN(curves)) return inputVal;
+  return multiMap(inputVal, curveIn, curves[curve], 17);
 }
 
 // MIDI note value check with out of range octave repeat
