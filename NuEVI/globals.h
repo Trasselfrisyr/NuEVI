@@ -3,6 +3,29 @@
 
 #include "Wiring.h"
 
+
+// The three states of our main state machine
+
+// No note is sounding
+#define NOTE_OFF 1
+
+// We've observed a transition from below to above the
+// threshold value. We wait a while to see how fast the
+// breath velocity is increasing
+#define RISE_WAIT 2
+
+// A note is sounding
+#define NOTE_ON 3
+
+
+//Magic value where pinky button means "pitch bend"
+#define PBD 12
+
+//Vibrato direction
+#define UPWD 1
+#define DNWD 0
+
+
 extern unsigned short breathThrVal;
 extern unsigned short breathMaxVal;
 extern unsigned short portamThrVal;
