@@ -924,26 +924,6 @@ unsigned int breathCurve(unsigned int inputVal) {
   }
 }
 
-//**************************************************************
-/*
-int smooth(int data, float filterVal, float smoothedVal){
-
-
-  if (filterVal > 1){      // check to make sure param's are within range
-    filterVal = .99;
-  }
-  else if (filterVal <= 0){
-    filterVal = 0;
-  }
-
-  smoothedVal = (data * (1 - filterVal)) + (smoothedVal  *  filterVal);
-
-  return (int)smoothedVal;
-}
-
-*/
-//**************************************************************
-
 // MIDI note value check with out of range octave repeat
 int noteValueCheck(int note) {
   if (note > 127) {
@@ -1064,16 +1044,7 @@ void pitch_bend() {
   int pbNeg = map(constrain(pbDn, pitchbThrVal, pitchbMaxVal), pitchbThrVal, pitchbMaxVal, 0, calculatedPBdepth);
   int pbSum = 8193 + pbPos - pbNeg;
   int pbDif = abs(pbPos - pbNeg);
-  /*
-  if ((pbUp > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
-    pbTouched++;
-  }
-  if ((pbDn > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
-    pbTouched++;
-  }
-  */
+
   if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)) {
     if (pbDif < 10) {
       pitchBend = 8192;
