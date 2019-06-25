@@ -1296,12 +1296,24 @@ void readSwitches() {
 
   // Calculate midi note number from pressed keys  
   #if defined(CASSIDY)
-  fingeredNote = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 3*K7 + octaveR*12 + (octave - 3)*12 + transpose - 12 + qTransp;
-  fingeredNoteUntransposed = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 3*K7 + octaveR*12;
+
+  fingeredNoteUntransposed = startNote
+    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+    - 5*K4              //Fifth key
+    + 2*K5 + K6 + 3*K7  //Trill keys (different from standard)
+    + octaveR*12;       //Octave rollers
+
   #else
-  fingeredNote = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 4*K7 + octaveR*12 + (octave - 3)*12 + transpose - 12 + qTransp;
-  fingeredNoteUntransposed = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 4*K7 + octaveR*12;
+
+  fingeredNoteUntransposed = startNote
+    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+    - 5*K4              //Fifth key
+    + 2*K5 + K6 + 4*K7  //Trill keys
+    + octaveR*12;       //Octave rollers
+
   #endif
+
+  fingeredNote = fingeredNoteUntransposed + transpose - 12 + qTransp;
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
 }
