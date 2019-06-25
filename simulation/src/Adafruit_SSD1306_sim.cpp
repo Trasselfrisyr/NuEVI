@@ -611,8 +611,7 @@ uint8_t *Adafruit_SSD1306::getBuffer(void) {
             of graphics commands, as best needed by one's own application.
 */
 void Adafruit_SSD1306::display(void) {
-
-  // TODO: Update SDL surface with content of `buffer`
+  dirty_ = true;
 
 }
 
@@ -723,6 +722,7 @@ void Adafruit_SSD1306::ssd1306_command(uint8_t cmd)
       break;
     case SSD1306_DISPLAYON:
       enabled_ = true;
+      dirty_ = true;
       break;
 
     default: break;
