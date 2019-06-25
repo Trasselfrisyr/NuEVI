@@ -25,19 +25,6 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 */
 
 
-// The three states of our main state machine
-
-// No note is sounding
-#define NOTE_OFF 1
-
-// We've observed a transition from below to above the
-// threshold value. We wait a while to see how fast the
-// breath velocity is increasing
-#define RISE_WAIT 2
-
-// A note is sounding
-#define NOTE_ON 3
-
 //Make sure compiler is set to the appropriate platform
 #ifndef __MK20DX256__
   #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
@@ -46,6 +33,7 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 #if !defined(USB_MIDI) && !defined(USB_MIDI_SERIAL)
   #error "USB MIDI not enabled. Please set USB type to 'MIDI' or 'Serial + MIDI'."
 #endif
+
 
 
 //_______________________________________________________________________________________________ DECLARATIONS
@@ -257,7 +245,7 @@ void setup() {
     writeSetting(VERSION_ADDR,VERSION);
     writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
     writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor on A7 instead of capacitive bite sensing)
+      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
         writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
         writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
       } else {
@@ -443,10 +431,10 @@ void loop() {
     if (legacy || legacyBrAct) {
       #if defined(CASSIDY)
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(0) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
+          ((analogRead(breathSensorPin) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
       #else
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(0) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
+          ((analogRead(breathSensorPin) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
       #endif  
         readSwitches();
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
@@ -495,7 +483,7 @@ void loop() {
           }
         }
       } else {
-        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(0) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
+        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
           programonce = true;
           readSwitches();
 
@@ -564,7 +552,7 @@ void loop() {
       }
     }
 
-    if (analogRead(0) > (breathCalZero - 800)) programonce = false;
+    if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
 
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     if (lastSpecialKey != specialKey) {
@@ -924,26 +912,6 @@ unsigned int breathCurve(unsigned int inputVal) {
   }
 }
 
-//**************************************************************
-/*
-int smooth(int data, float filterVal, float smoothedVal){
-
-
-  if (filterVal > 1){      // check to make sure param's are within range
-    filterVal = .99;
-  }
-  else if (filterVal <= 0){
-    filterVal = 0;
-  }
-
-  smoothedVal = (data * (1 - filterVal)) + (smoothedVal  *  filterVal);
-
-  return (int)smoothedVal;
-}
-
-*/
-//**************************************************************
-
 // MIDI note value check with out of range octave repeat
 int noteValueCheck(int note) {
   if (note > 127) {
@@ -1064,16 +1032,7 @@ void pitch_bend() {
   int pbNeg = map(constrain(pbDn, pitchbThrVal, pitchbMaxVal), pitchbThrVal, pitchbMaxVal, 0, calculatedPBdepth);
   int pbSum = 8193 + pbPos - pbNeg;
   int pbDif = abs(pbPos - pbNeg);
-  /*
-  if ((pbUp > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.6+0.4*map(constrain(pbUp,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8193 + calculatedPBdepth));
-    pbTouched++;
-  }
-  if ((pbDn > pitchbThrVal) && PBdepth){
-    pitchBend=pitchBend*0.6+0.4*map(constrain(pbDn,pitchbThrVal,pitchbMaxVal),pitchbThrVal,pitchbMaxVal,8192,(8192 - calculatedPBdepth));
-    pbTouched++;
-  }
-  */
+
   if (((pbUp > pitchbThrVal) && PBdepth) || ((pbDn > pitchbThrVal) && PBdepth)) {
     if (pbDif < 10) {
       pitchBend = 8192;
@@ -1206,8 +1165,8 @@ void extraController() {
 
 void portamento_() {
   // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor on A7)
-    biteSensor = analogRead(A7); // alternative kind bite sensor (air pressure tube and sensor)  PBITE 
+  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+    biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
    } else { 
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
@@ -1296,12 +1255,24 @@ void readSwitches() {
 
   // Calculate midi note number from pressed keys  
   #if defined(CASSIDY)
-  fingeredNote = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 3*K7 + octaveR*12 + (octave - 3)*12 + transpose - 12 + qTransp;
-  fingeredNoteUntransposed = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 3*K7 + octaveR*12;
+
+  fingeredNoteUntransposed = startNote
+    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+    - 5*K4              //Fifth key
+    + 2*K5 + K6 + 3*K7  //Trill keys (different from standard)
+    + octaveR*12;       //Octave rollers
+
   #else
-  fingeredNote = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 4*K7 + octaveR*12 + (octave - 3)*12 + transpose - 12 + qTransp;
-  fingeredNoteUntransposed = startNote - 2*K1 - K2 - 3*K3 - 5*K4 + 2*K5 + K6 + 4*K7 + octaveR*12;
+
+  fingeredNoteUntransposed = startNote
+    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+    - 5*K4              //Fifth key
+    + 2*K5 + K6 + 4*K7  //Trill keys
+    + octaveR*12;       //Octave rollers
+
   #endif
+
+  fingeredNote = fingeredNoteUntransposed + transpose - 12 + qTransp;
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
 }
