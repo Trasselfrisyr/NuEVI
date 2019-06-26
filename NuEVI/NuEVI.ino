@@ -857,7 +857,7 @@ unsigned int multiMap(unsigned short val, const unsigned short * _in, const unsi
 
 // map breath values to selected curve
 unsigned int breathCurve(unsigned int inputVal) {
-  if(curve > ARR_LEN(curves)) return inputVal;
+  if(curve >= ARR_LEN(curves)) return inputVal;
   return multiMap(inputVal, curveIn, curves[curve], 17);
 }
 
