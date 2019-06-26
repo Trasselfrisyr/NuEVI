@@ -157,7 +157,7 @@ static const unsigned short curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600
 static const unsigned short curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
 static const unsigned short curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
 static const unsigned short curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16383};
-static const unsigned short curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
+const unsigned short curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
 static const unsigned short curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 static const unsigned short curveP2[] = {0,400,800,1300,2000,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
 static const unsigned short curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4600,5550,6550,8000,9500,11250,13400,16383};
@@ -172,8 +172,8 @@ static const unsigned short curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,66
 
 const unsigned short* const curves[] = {
    curveM4, curveM3, curveM2, curveM1, curveIn, curveP1, curveP2,
-   curveP3, curveP4 , curveS1, curveS2, curveZ1, curveZ2 };
-
+   curveP3, curveP4 , curveS1, curveS2, curveZ1, curveZ2
+};
 
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;

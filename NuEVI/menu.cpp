@@ -1,14 +1,16 @@
-#include "menu.h"
-#include "hardware.h"
-#include "config.h"
-#include "globals.h"
-#include "midi.h"
 
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPR121.h>
+#include <Arduino.h>
+
+#include "menu.h"
 #include "settings.h"
+#include "hardware.h"
+#include "config.h"
+#include "globals.h"
+#include "midi.h"
 #include "numenu.h"
 
 enum CursorIdx {
@@ -600,15 +602,27 @@ const MenuEntrySub velocityMenu = {
   , nullptr
 };
 
+static void curveCustomDraw(SubMenuRef __unused, char* __unused out, const char** __unused unit) {
+  const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
+                                        "+3", "+4", "S1", "S2", "Z1", "Z2" };
+  int y0 = 0, x0 = 0;
+  int scale = ((1<<14)-1)/60;
+  for(int x = x0; x < 60; x+=1) {
+    int y = multiMap(x*scale, curveIn, curves[curve], 17);
+    y = (y*37) / ((1<<14)-1);
+    display.drawLine(x0 + 65, 60 - y0, x + 65, 60 - y, WHITE);
+    x0 = x; y0 = y;
+  }
+  display.setCursor(125 - 3*6, 60-8 );
+  display.setTextSize(0);
+  display.print(curveMenuLabels[curve]);
+}
+
+static void curveWriteSettings(const MenuEntrySub & __unused sub){ writeSetting(BREATHCURVE_ADDR,curve); }
+
 const MenuEntrySub curveMenu = {
-  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EMenuEntryWrap,
-  [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* curveMenuLabels[] = {"-4", "-3", "-2", "-1", "LIN", "+1", "+2",
-                                         "+3", "+4", "S1", "S2", "Z1", "Z2" };
-    strncpy(out, curveMenuLabels[curve], 4);
-  },
-  [](const MenuEntrySub & __unused sub){ writeSetting(BREATHCURVE_ADDR,curve); }
-  , nullptr
+  MenuType::ESub, "CURVE", "CURVE", &curve, 0, 12, MenuEntryFlags::EMenuEntryWrap | MenuEntryFlags::EMenuEntryCustom,
+  curveCustomDraw, curveWriteSettings, nullptr
 };
 
 const MenuEntrySub velSmpDlMenu = {
