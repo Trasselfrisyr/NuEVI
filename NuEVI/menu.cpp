@@ -1070,6 +1070,8 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
     int trills = readTrills();
     switch (input.current){
       case BTN_DOWN:
+      // fallthrough
+      case BTN_UP:
         if (trills && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
@@ -1077,9 +1079,7 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
           FPD = 1;
           writeSetting(PATCH_ADDR,patch);
         } else if (!trills){
-          if (patch > 1){
-            patch--;
-          } else patch = 128;
+          patch = (((patch-1u) + ((input.current == BTN_UP)?1u:-1u))&127u) + 1u;
           activePatch = 0;
           doPatchUpdate = 1;
           FPD = 0;
@@ -1099,24 +1099,6 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
         }
         break;
 
-      case BTN_UP:
-        if (trills && (fastPatch[trills-1] > 0)){
-          patch = fastPatch[trills-1];
-          activePatch = 0;
-          doPatchUpdate = 1;
-          FPD = 1;
-          writeSetting(PATCH_ADDR,patch);
-        } else if (!trills){
-          if (patch < 128){
-            patch++;
-          } else patch = 1;
-          activePatch = 0;
-          doPatchUpdate = 1;
-          FPD = 0;
-        }
-        drawPatchView();
-        redraw = true;
-        break;
 
       case BTN_MENU:
         if (FPD < 2){
@@ -1160,18 +1142,13 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
   if (input.changed) {
     int trills = readTrills();
     switch (input.current){
-      case BTN_UP: // fallthrough
+      case BTN_UP:
+        // fallthrough
       case BTN_DOWN:
-        if (trills && (fastPatch[trills-1] > 0)){
-          patch = fastPatch[trills-1];
-          activePatch = 0;
-          doPatchUpdate = 1;
-          FPD = 1;
-        } // else if (!trills) buttonPressedAndNotUsed = 1; // <- TODO: this is now broken, all input is consumed... solve in another way.
-        menuState= PATCH_VIEW;
-        stateFirstRun = 1;
-        break;
-
+        if (!trills) {
+          patch = (((patch-1u) + ((input.current == BTN_UP)?1u:-1u))&127u) + 1u;
+        } 
+        // fallthrough
       case BTN_ENTER:
         if (trills && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
