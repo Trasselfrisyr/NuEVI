@@ -980,22 +980,24 @@ static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeN
     }
 
     if(newPos != cursorPos) {
-      int offset = offsets[page->cursor];
 
+      int offset = offsets[page->cursor];
       drawMenuCursor(cursorPos-offset, BLACK); // Clear old cursor
 
-      // Handle scrolling..
-      if((newPos - offset) > (MENU_NUM_ROWS-2) ) {
-        offset = newPos - (MENU_NUM_ROWS-2);
-      } else if( (newPos - offset) < 1) {
-        offset = newPos - 1;
-      }
+      if(page->numEntries >= MENU_NUM_ROWS) {
+        // Handle scrolling..
+        if((newPos - offset) > (MENU_NUM_ROWS-2) ) {
+          offset = newPos - (MENU_NUM_ROWS-2);
+        } else if( (newPos - offset) < 1) {
+          offset = newPos - 1;
+        }
 
-      offset = constrain(offset, 0, page->numEntries - MENU_NUM_ROWS);
+        offset = constrain(offset, 0, page->numEntries - MENU_NUM_ROWS);
 
-      if( offset != offsets[page->cursor]) {
-        offsets[page->cursor] = offset;
-        plotMenuEntries(page, true);
+        if( offset != offsets[page->cursor]) {
+          offsets[page->cursor] = offset;
+          plotMenuEntries(page, true);
+        }
       }
 
       drawMenuCursor(newPos-offset, WHITE);
