@@ -157,7 +157,7 @@ static const unsigned short curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600
 static const unsigned short curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
 static const unsigned short curveM2[] = {0,2000,3600,5000,6450,7850,9000,10100,11100,12100,12900,13700,14400,14950,15500,16000,16383};
 static const unsigned short curveM1[] = {0,1400,2850,4100,5300,6450,7600,8700,9800,10750,11650,12600,13350,14150,14950,15650,16383};
-static const unsigned short curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
+const unsigned short curveIn[] = {0,1023,2047,3071,4095,5119,6143,7167,8191,9215,10239,11263,12287,13311,14335,15359,16383};
 static const unsigned short curveP1[] = {0,600,1350,2150,2900,3800,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 static const unsigned short curveP2[] = {0,400,800,1300,2000,2650,3500,4300,5300,6250,7400,8500,9600,11050,12400,14100,16383};
 static const unsigned short curveP3[] = {0,200,500,900,1300,1800,2350,3100,3800,4600,5550,6550,8000,9500,11250,13400,16383};
@@ -169,6 +169,11 @@ static const unsigned short curveS2[] = {0,600,1350,2150,2900,4000,6100,9000,110
 
 static const unsigned short curveZ1[] = {0,1400,2100,2900,3200,3900,4700,5600,6650,7700,8800,9900,11100,12300,13500,14850,16383};
 static const unsigned short curveZ2[] = {0,2000,3200,3800,4096,4800,5100,5900,6650,7700,8800,9900,11100,12300,13500,14850,16383};
+
+const unsigned short* const curves[] = {
+   curveM4, curveM3, curveM2, curveM1, curveIn, curveP1, curveP2,
+   curveP3, curveP4 , curveS1, curveS2, curveZ1, curveZ2
+};
 
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
@@ -852,64 +857,8 @@ unsigned int multiMap(unsigned short val, const unsigned short * _in, const unsi
 
 // map breath values to selected curve
 unsigned int breathCurve(unsigned int inputVal) {
-  // 0 to 16383, moving mid value up or down
-  switch (curve) {
-  case 0:
-    // -4
-    return multiMap(inputVal, curveIn, curveM4, 17);
-    break;
-  case 1:
-    // -3
-    return multiMap(inputVal, curveIn, curveM3, 17);
-    break;
-  case 2:
-    // -2
-    return multiMap(inputVal, curveIn, curveM2, 17);
-    break;
-  case 3:
-    // -1
-    return multiMap(inputVal, curveIn, curveM1, 17);
-    break;
-  case 4:
-    // 0, linear
-    return inputVal;
-    break;
-  case 5:
-    // +1
-    return multiMap(inputVal, curveIn, curveP1, 17);
-    break;
-  case 6:
-    // +2
-    return multiMap(inputVal, curveIn, curveP2, 17);
-    break;
-  case 7:
-    // +3
-    return multiMap(inputVal, curveIn, curveP3, 17);
-    break;
-  case 8:
-    // +4
-    return multiMap(inputVal, curveIn, curveP4, 17);
-    break;
-  case 9:
-    // S1
-    return multiMap(inputVal, curveIn, curveS1, 17);
-    break;
-  case 10:
-    // S2
-    return multiMap(inputVal, curveIn, curveS2, 17);
-    break;
-  case 11:
-    // Z1
-    return multiMap(inputVal, curveIn, curveZ1, 17);
-    break;
-  case 12:
-    // Z2
-    return multiMap(inputVal, curveIn, curveZ2, 17);
-    break;
-  default: //Fallback option that should never be reached, use linear
-    return inputVal;
-    break;
-  }
+  if(curve >= ARR_LEN(curves)) return inputVal;
+  return multiMap(inputVal, curveIn, curves[curve], 17);
 }
 
 // MIDI note value check with out of range octave repeat

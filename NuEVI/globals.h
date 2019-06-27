@@ -26,6 +26,9 @@
 #define DNWD 0
 
 
+extern const unsigned short* const curves[];
+extern const unsigned short curveIn[];
+
 extern unsigned short breathThrVal;
 extern unsigned short breathMaxVal;
 extern unsigned short portamThrVal;
@@ -109,5 +112,7 @@ extern byte K7;   // Trill key 3 (pitch change +4)
 extern byte halfPitchBendKey;
 extern byte specialKey;
 extern byte pinkyKey;
+
+extern unsigned int multiMap(unsigned short val, const unsigned short * _in, const unsigned short * _out, uint8_t size);
 
 #endif
