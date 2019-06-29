@@ -17,6 +17,7 @@
 #define SETUP_CT_MENU 5
 #define ROTATOR_MENU 6
 #define VIBRATO_MENU 7
+#define ABOUT_MENU 8
 
 #define ARR_LEN(a)  (sizeof (a) / sizeof (a[0]))
 

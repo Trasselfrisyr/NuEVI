@@ -265,14 +265,22 @@ static bool updateSubMenuCursor(const MenuPage *page, uint32_t timeNow)
 static void plotMenuEntries(const MenuPage *page, bool clear = false) {
   int row = 0;
   if(clear) {
-    display.fillRect( 0, MENU_HEADER_OFFSET, 56, 64-MENU_HEADER_OFFSET, BLACK );
+    display.fillRect( 0, MENU_HEADER_OFFSET, 63, 64-MENU_HEADER_OFFSET, BLACK);
   }
-  for(int item = offsets[page->cursor]; (item < page->numEntries) && (row < MENU_NUM_ROWS); item++, row++) {
+  display.setTextSize(1);
+  int offset = offsets[page->cursor];
+  for(int item = offset; (item < page->numEntries) && (row < MENU_NUM_ROWS); item++, row++) {
     int rowPixel = (row)*MENU_ROW_HEIGHT + MENU_HEADER_OFFSET;
     const char* lineText = page->entries[item]->title;
     display.setCursor(0,rowPixel);
     display.println(lineText);
   }
+  
+  if(offset)
+    display.drawTriangle(58, MENU_HEADER_OFFSET, 57, MENU_HEADER_OFFSET+3, 59, MENU_HEADER_OFFSET+3, WHITE);
+
+  if((offset+MENU_NUM_ROWS) < page->numEntries)
+    display.drawTriangle(58, 63, 57, 60, 59, 60, WHITE);
 }
 
 typedef void (*MenuTitleGetFunc)(char*out);
@@ -462,6 +470,7 @@ const MenuEntrySub midiMenu = {
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
 const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
 const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
+const MenuEntryStateCh aboutMenu      = { MenuType::EStateChange, "ABOUT", ABOUT_MENU };
 
 const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&transposeMenu,
@@ -469,7 +478,8 @@ const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&midiMenu,
   (MenuEntry*)&adjustMenu,
   (MenuEntry*)&breathMenu,
-  (MenuEntry*)&controlMenu
+  (MenuEntry*)&controlMenu,
+  (MenuEntry*)&aboutMenu,
 };
 
 const MenuPage mainMenuPage = {
@@ -479,7 +489,6 @@ const MenuPage mainMenuPage = {
   DISPLAYOFF_IDL,
   ARR_LEN(mainMenuEntries), mainMenuEntries
 };
-
 
 //***********************************************************
 // Rotator menu
@@ -821,16 +830,35 @@ const MenuPage vibratoMenuPage = {
 static bool patchPageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
 static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow);
 
-const MenuPageCustom adjustMenuPage = {
-  nullptr, EMenuPageCustom, adjustPageUpdate, 
-};
+const MenuPageCustom adjustMenuPage = { nullptr, EMenuPageCustom, adjustPageUpdate };
+const MenuPageCustom patchMenuPage =  { nullptr, EMenuPageCustom, patchPageUpdate };
+const MenuPageCustom idleMenuPage =   { nullptr, EMenuPageCustom, idlePageUpdate };
 
-const MenuPageCustom patchMenuPage = {
-  nullptr, EMenuPageCustom, patchPageUpdate, 
-};
+const MenuPageCustom aboutMenuPage =  { nullptr, EMenuPageCustom,
+  [](KeyState& __unused input, uint32_t __unused timeNow) -> bool {
+    static uint32_t timer = 0;
+    if(stateFirstRun) {
+      display.clearDisplay();
+      timer = timeNow + 3000;
+      stateFirstRun = 0;
+      display.setCursor(49,0);
+      display.setTextColor(WHITE);
+      display.setTextSize(0);
+      display.println("NuEVI");
 
-const MenuPageCustom idleMenuPage = {
-  nullptr, EMenuPageCustom, idlePageUpdate, 
+      display.setCursor(16,12);
+      display.print("firmware v.");
+      display.println(FIRMWARE_VERSION);
+
+      return true;
+    } else {
+      if(timeNow >= timer) {
+        menuState = MAIN_MENU;
+        stateFirstRun = 1;
+      }
+      return false;
+    }
+  }
 };
 
 
@@ -844,7 +872,7 @@ static bool selectMenuOption(const MenuPage *page) {
   switch(menuEntry->type) {
     case MenuType::ESub:
       activeSub[page->cursor] = cursorPosition+1;
-      drawMenuCursor(cursorPosition, WHITE);
+      drawMenuCursor(cursorPosition-offsets[page->cursor], WHITE);
       drawSubBox( ((const MenuEntrySub*)menuEntry)->subTitle);
       drawSubMenu(page);
       return true;
@@ -952,17 +980,36 @@ static bool updateMenuPage(const MenuPage *page, KeyState &input, uint32_t timeN
     }
 
     if(newPos != cursorPos) {
-      drawMenuCursor(cursorPos, BLACK);
-      drawMenuCursor(newPos, WHITE);
+
+      int offset = offsets[page->cursor];
+      drawMenuCursor(cursorPos-offset, BLACK); // Clear old cursor
+
+      if(page->numEntries >= MENU_NUM_ROWS) {
+        // Handle scrolling..
+        if((newPos - offset) > (MENU_NUM_ROWS-2) ) {
+          offset = newPos - (MENU_NUM_ROWS-2);
+        } else if( (newPos - offset) < 1) {
+          offset = newPos - 1;
+        }
+
+        offset = constrain(offset, 0, page->numEntries - MENU_NUM_ROWS);
+
+        if( offset != offsets[page->cursor]) {
+          offsets[page->cursor] = offset;
+          plotMenuEntries(page, true);
+        }
+      }
+
+      drawMenuCursor(newPos-offset, WHITE);
       cursorNow = BLACK;
       clearSub();
       redraw = true;
-      cursors[page->cursor] = newPos;
     }
+    cursors[page->cursor] = newPos;
   } else if ((timeNow - cursorBlinkTime) > cursorBlinkInterval) {
     // Only need to update cursor blink if no buttons were pressed
     if (cursorNow == WHITE) cursorNow = BLACK; else cursorNow = WHITE;
-    drawMenuCursor(cursorPos, cursorNow);
+    drawMenuCursor(cursorPos-offsets[page->cursor], cursorNow);
     redraw = true;
     cursorBlinkTime = timeNow;
   }
@@ -1288,6 +1335,8 @@ void menu() {
     redraw |= updatePage(&controlMenuPage, input, timeNow);
   } else if (menuState== VIBRATO_MENU) {
     redraw |= updatePage(&vibratoMenuPage, input, timeNow);
+  } else if (menuState == ABOUT_MENU) {
+    redraw |= updatePage((const MenuPage*)&aboutMenuPage, input, timeNow);
   }
 
   if(redraw) {
