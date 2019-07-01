@@ -16,6 +16,7 @@ public: // Exposed simulation variables...
   bool dimmed_;
   bool enabled_;
   bool inverted_;
+  bool dirty_;
 
  public:
 

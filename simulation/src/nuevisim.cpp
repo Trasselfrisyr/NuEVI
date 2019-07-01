@@ -47,8 +47,6 @@ void _reboot_Teensyduino_()
     setup();
 }
 
-extern void menu(void);
-extern void initDisplay(void);
 extern void breath();
 extern int noteValueCheck(int);
 extern unsigned int breathCurve(unsigned int);
@@ -188,7 +186,6 @@ static void touchWrite(uint8_t pin, uint16_t value)
 static void doGlobalsWindow()
 {
     if( ImGui::Begin("Globals" ) ) {
-
 
         if(ImGui::TreeNode("Sensor limits") )
         {
@@ -376,13 +373,15 @@ static uint8_t displayBuffer[128*128];
 
 static void GetDisplay()
 {
-    SDL_memset( displayBuffer, 0, (128*128));
-
-    if(display.enabled_) {
+    if(!display.enabled_) {
+        SDL_memset( displayBuffer, 0, (128*128));
+    } else if(display.dirty_) {
         uint8_t fg = 255;
         uint8_t bg = 0;
 
-        if( display.dimmed_) fg = 127;
+        display.dirty_ = false;
+
+        if( display.dimmed_ ) fg = 0b01001001;
         if( display.inverted_ ) { uint8_t tmp = fg; fg = bg; bg = tmp; }
 
         for(int y = 0 ; y < 64; ++y) {
