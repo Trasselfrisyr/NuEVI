@@ -5,11 +5,11 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.3.5"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.3.6"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 
 //#define CASSIDY
-//#define CVSCALEBOARD
+#define CVSCALEBOARD
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 //#define touch_Thr 1200  // sensitivity for Teensy touch sensors

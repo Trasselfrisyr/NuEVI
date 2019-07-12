@@ -413,6 +413,7 @@ void setup() {
 void loop() {
   breathFilter.input(analogRead(breathSensorPin));
   pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP 
+  readSwitches();
   if (mainState == NOTE_OFF) {
     if (activeMIDIchannel != MIDIchannel) {
       activeMIDIchannel = MIDIchannel; // only switch channel if no active note
@@ -441,7 +442,6 @@ void loop() {
       if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
           ((analogRead(breathSensorPin) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
       #endif  
-        readSwitches();
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
           if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
@@ -490,7 +490,6 @@ void loop() {
       } else {
         if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
           programonce = true;
-          readSwitches();
 
           if (octaveR == 0) { //lowest octave position
 
@@ -563,7 +562,6 @@ void loop() {
     if (lastSpecialKey != specialKey) {
       if (specialKey) {
         // special key just pressed, check other keys
-        readSwitches();
         if (K4) {
           if (!slurSustain) {
             slurSustain = 1;
@@ -607,7 +605,6 @@ void loop() {
       // sample?
       if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl)) {
         // Yes, so calculate MIDI note and velocity, then send a note on event
-        readSwitches();
         // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set
         breathLevel = constrain(max(pressureSensor, initial_breath_value), breathThrVal, breathMaxVal);
         if (!velocity) {
@@ -689,90 +686,81 @@ void loop() {
       breathLevel = 0;
       mainState = NOTE_OFF;
     } else {
-      readSwitches();
-      if (fingeredNote != lastFingering) { //
-        // reset the debouncing timer
-        lastDeglitchTime = millis();
-      }
-      if ((millis() - lastDeglitchTime) > deglitch) {
-        // whatever the reading is at, it's been there for longer
-        // than the debounce delay, so take it as the actual current state
-        if (noteValueCheck(fingeredNote) != activeNote) {
-          // Player has moved to a new fingering while still blowing.
-          // Send a note off for the current note and a note on for
-          // the new note.
-          if (!velocity) {
-            unsigned int breathValHires = breathCurve(map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, 16383));
-            velocitySend = (breathValHires >> 7) & 0x007F;
-            velocitySend = constrain(velocitySend + velocitySend * .1 * velBias, 1, 127);
-            //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
-          }
-          activeNote = noteValueCheck(activeNote);
-          if ((parallelChord || subOctaveDouble || rotatorOn) && priority) { // poly playing, send old note off before new note on
-            midiSendNoteOff(activeNote); // send Note Off message for old note
-          }
-
-          if (parallelChord) {
-            for (int i = 0; i < addedIntervals; i++) {
-              midiSendNoteOff(noteValueCheck(activeNote + slurInterval[i])); // send Note Off message for old note
-            }
-          }
-          if (subOctaveDouble) {
-            midiSendNoteOff(noteValueCheck(activeNote - 12)); // send Note Off message for old note
-            if (parallelChord) {
-              for (int i = 0; i < addedIntervals; i++) {
-                midiSendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12)); // send Note Off message for old note
-              }
-            }
-          }
-          if (rotatorOn) {
-            midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
-            midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
-          }
-          if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
-            midiSendNoteOff(activeNote); // send Note Off message for old note
-          }
-
-          fingeredNote = noteValueCheck(fingeredNote);
-          if (priority) {
-            midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
-          }
-          if (parallelChord) {
-            for (int i = 0; i < addedIntervals; i++) {
-              midiSendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend); // send Note On message for new note
-            }
-          }
-          if (subOctaveDouble) {
-            midiSendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend); // send Note On message for new note
-            if (parallelChord) {
-              for (int i = 0; i < addedIntervals; i++) {
-                midiSendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend); // send Note On message for new note
-              }
-            }
-          }
-          if (rotatorOn) {
-            midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
-            if (currentRotation < 3) currentRotation++;
-            else currentRotation = 0;
-            midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
-          }
-
-          if (!priority) {
-            midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
-          }
-
-          if (!parallelChord && !subOctaveDouble && !rotatorOn) { // mono playing, send old note off after new note on
-            midiSendNoteOff(activeNote); //  send Note Off message
-          }
-
-          if (slurSustain) {
-            if (addedIntervals < 9) {
-              addedIntervals++;
-              slurInterval[addedIntervals - 1] = fingeredNote - slurBase;
-            }
-          }
-          activeNote = fingeredNote;
+      if (noteValueCheck(fingeredNote) != activeNote) {
+        // Player has moved to a new fingering while still blowing.
+        // Send a note off for the current note and a note on for
+        // the new note.
+        if (!velocity) {
+          unsigned int breathValHires = breathCurve(map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, 16383));
+          velocitySend = (breathValHires >> 7) & 0x007F;
+          velocitySend = constrain(velocitySend + velocitySend * .1 * velBias, 1, 127);
+          //velocitySend = map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,7,127); // set new velocity value based on current pressure sensor level
         }
+        activeNote = noteValueCheck(activeNote);
+        if ((parallelChord || subOctaveDouble || rotatorOn) && priority) { // poly playing, send old note off before new note on
+          midiSendNoteOff(activeNote); // send Note Off message for old note
+        }
+
+        if (parallelChord) {
+          for (int i = 0; i < addedIntervals; i++) {
+            midiSendNoteOff(noteValueCheck(activeNote + slurInterval[i])); // send Note Off message for old note
+          }
+        }
+        if (subOctaveDouble) {
+          midiSendNoteOff(noteValueCheck(activeNote - 12)); // send Note Off message for old note
+          if (parallelChord) {
+            for (int i = 0; i < addedIntervals; i++) {
+              midiSendNoteOff(noteValueCheck(activeNote + slurInterval[i] - 12)); // send Note Off message for old note
+            }
+          }
+        }
+        if (rotatorOn) {
+          midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
+          midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
+        }
+        if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
+          midiSendNoteOff(activeNote); // send Note Off message for old note
+        }
+
+        fingeredNote = noteValueCheck(fingeredNote);
+        if (priority) {
+          midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
+        }
+        if (parallelChord) {
+          for (int i = 0; i < addedIntervals; i++) {
+            midiSendNoteOn(noteValueCheck(fingeredNote + slurInterval[i]), velocitySend); // send Note On message for new note
+          }
+        }
+        if (subOctaveDouble) {
+          midiSendNoteOn(noteValueCheck(fingeredNote - 12), velocitySend); // send Note On message for new note
+          if (parallelChord) {
+            for (int i = 0; i < addedIntervals; i++) {
+              midiSendNoteOn(noteValueCheck(fingeredNote + slurInterval[i] - 12), velocitySend); // send Note On message for new note
+            }
+          }
+        }
+        if (rotatorOn) {
+          midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
+          if (currentRotation < 3) currentRotation++;
+          else currentRotation = 0;
+          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
+        }
+
+        if (!priority) {
+          midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
+        }
+
+        if (!parallelChord && !subOctaveDouble && !rotatorOn) { // mono playing, send old note off after new note on
+          midiSendNoteOff(activeNote); //  send Note Off message
+        }
+
+        if (slurSustain) {
+          if (addedIntervals < 9) {
+            addedIntervals++;
+            slurInterval[addedIntervals - 1] = fingeredNote - slurBase;
+          }
+        }
+        activeNote = fingeredNote;
       }
     }
     if (pressureSensor > breathThrVal) cursorBlinkTime = millis(); // keep display from updating with cursor blinking if breath is over thr
@@ -804,7 +792,7 @@ void loop() {
     }
     pixelUpdateTime = millis();
   }
-  lastFingering = fingeredNote;
+
   #if defined(CVSCALEBOARD) // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
     if (portIsOn){
@@ -1165,6 +1153,7 @@ void portOff() {
 //***********************************************************
 
 void readSwitches() {
+  
   int qTransp;
   // Read touch pads (MPR121) and put value in variables
   int touchValue[12];
@@ -1221,7 +1210,18 @@ void readSwitches() {
 
   #endif
 
-  fingeredNote = fingeredNoteUntransposed + transpose - 12 + qTransp;
+  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
+
+  if (fingeredNoteRead != lastFingering) { //
+    // reset the debouncing timer
+    lastDeglitchTime = millis();
+  }
+  if ((millis() - lastDeglitchTime) > deglitch) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state
+    fingeredNote = fingeredNoteRead; 
+  }
+  lastFingering = fingeredNoteRead;
 }
