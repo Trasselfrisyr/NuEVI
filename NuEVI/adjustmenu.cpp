@@ -52,7 +52,7 @@ static void portamentoSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry portamentoAdjustMenu = {
-  "PORTAMENTO", 
+  "BITE", 
   {
     { &portamThrVal, portamLoLimit, portamHiLimit },
     { &portamMaxVal, portamLoLimit, portamHiLimit }
@@ -226,10 +226,10 @@ void plotSensorPixels(){
     redraw = updateSensorPixel(pos, -1);
   }
   else if(adjustOption == 4) {
-    display.drawLine(28,38,118,38,BLACK);
+    display.drawLine(28,39,118,39,BLACK);
     for (byte i=0; i<12; i++){
       int pos = map(constrain(touchSensor.filteredData(i), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
-      display.drawPixel(pos, 38, WHITE);
+      display.drawPixel(pos, 39, WHITE);
     }
 
     int posRead = map(touchRead(halfPitchBendKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
@@ -371,4 +371,3 @@ int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool draw
 
   return result;
 }
-

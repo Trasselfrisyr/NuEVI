@@ -40,7 +40,9 @@ extern unsigned short extracMaxVal;
 extern unsigned short ctouchThrVal;
 extern unsigned short transpose;
 extern unsigned short MIDIchannel;
-extern unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
+extern unsigned short breathCC;  // OFF:MW:BR:VL:EX:SR:MW+:BR+:VL+:EX+:SR+:CF:UNO
+extern unsigned short breathCC2;  // OFF:1-127
+extern unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 extern unsigned short breathAT;
 extern unsigned short velocity;
 extern unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF

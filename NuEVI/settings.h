@@ -49,9 +49,11 @@
 #define VIB_RETN_ADDR 82
 #define VIB_SQUELCH_ADDR 84
 #define VIB_DIRECTION_ADDR 86
+#define BREATH_CC2_ADDR 88
+#define BREATH_CC2_RISE_ADDR 90
 
 //"factory" values for settings
-#define VERSION 31
+#define VERSION 32
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -90,5 +92,7 @@
 #define VIB_RETN_FACTORY 2 // 0, no return, 1 slow return, higher faster return
 #define VIB_SQUELCH_FACTORY 15 // 0 to 30, vib signal squelch
 #define VIB_DIRECTION_FACTORY 0
+#define BREATH_CC2_FACTORY 0  //OFF,1-127
+#define BREATH_CC2_RISE_FACTORY 1
 
 #endif

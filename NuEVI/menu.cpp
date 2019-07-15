@@ -641,10 +641,10 @@ const MenuPage rotatorMenuPage = {
 //***********************************************************
 // Breath menu
 const MenuEntrySub breathCCMenu = {
-  MenuType::ESub, "BREATH CC", "BREATH CC", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BRTH CC1", "BRTH CC1", &breathCC, 0, 12, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
-                                            "BR+", "VL+", "EX+", "CF", "20" };
+    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX","SR", "MW+",
+                                            "BR+", "VL+", "EX+", "SR+", "CF", "UNO" };
     strncpy(out, breathCCMenuLabels[breathCC], 4);
   },
   [](const MenuEntrySub & __unused sub){
@@ -655,6 +655,32 @@ const MenuEntrySub breathCCMenu = {
   }
   , nullptr
 };
+
+const MenuEntrySub breathCC2Menu = {
+  MenuType::ESub, "BRTH CC2",  "BRTH CC2", &breathCC2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(breathCC2) numToString(breathCC2, out);
+    else strncpy(out, "OFF", 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(BREATH_CC2_ADDR) != breathCC2) {
+      writeSetting(BREATH_CC2_ADDR,breathCC2);
+      midiReset();
+    }
+  }
+  , nullptr
+};
+
+const MenuEntrySub breathCC2RiseMenu = {
+  MenuType::ESub, "CC2 RISE", "CC2 RISE", &breathCC2Rise, 1, 10, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char *out, const char** label) {
+    numToString(breathCC2Rise, out);
+    *label = "X";
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(BREATH_CC2_RISE_ADDR,breathCC2Rise); }
+  , nullptr
+};
+
 
 const MenuEntrySub breathATMenu = {
   MenuType::ESub, "BREATH AT", "BREATH AT", &breathAT, 0, 1, MenuEntryFlags::EMenuEntryWrap,
@@ -726,6 +752,8 @@ const MenuEntrySub velBiasMenu = {
 
 const MenuEntry* breathMenuEntries[] = {
   (MenuEntry*)&breathCCMenu,
+  (MenuEntry*)&breathCC2Menu,
+  (MenuEntry*)&breathCC2RiseMenu,
   (MenuEntry*)&breathATMenu,
   (MenuEntry*)&velocityMenu,
   (MenuEntry*)&curveMenu,

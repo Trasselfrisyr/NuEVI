@@ -52,6 +52,8 @@ unsigned short ctouchThrVal;// = 120;
 unsigned short transpose;
 unsigned short MIDIchannel;
 unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
+unsigned short breathCC2;  // OFF:1-127
+unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
@@ -87,7 +89,7 @@ uint16_t specialKeyEnable = 0;
 
 int touch_Thr = 1300;
 
-byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20
+byte ccList[13] = {0,1,2,7,11,19,1,2,7,11,19,74,20};  // OFF, Modulation, Breath, Volume, Expression, Sirin Cutoff (then same sent in hires), CC74 (cutoff/brightness), CC20 (UNO Cutoff)
 
 int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -120,6 +122,7 @@ byte slowMidi = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
+int oldbreathcc2=0;
 unsigned int oldbreathhires=0;
 float filterFreq = 30.0;
 
@@ -304,6 +307,8 @@ void setup() {
     writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
     writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
     writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
+    writeSetting(BREATH_CC2_ADDR,BREATH_CC2_FACTORY);
+    writeSetting(BREATH_CC2_RISE_ADDR,BREATH_CC2_RISE_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -349,6 +354,8 @@ void setup() {
   vibRetn      = readSetting(VIB_RETN_ADDR);
   vibSquelch   = readSetting(VIB_SQUELCH_ADDR);
   vibDirection = readSetting(VIB_DIRECTION_ADDR);
+  breathCC2    = readSetting(BREATH_CC2_ADDR);
+  breathCC2Rise = readSetting(BREATH_CC2_RISE_ADDR);
 
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
@@ -897,7 +904,7 @@ void statusLEDs() {
 //**************************************************************
 
 void breath() {
-  int breathCCval, breathCCvalFine;
+  int breathCCval, breathCCvalFine,breathCC2val;
   unsigned int breathCCvalHires;
   breathLevel = constrain(pressureSensor, breathThrVal, breathMaxVal);
   //breathLevel = breathLevel*0.6+pressureSensor*0.4; // smoothing of breathLevel value
@@ -905,6 +912,7 @@ void breath() {
   breathCCvalHires = breathCurve(map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, 16383));
   breathCCval = (breathCCvalHires >> 7) & 0x007F;
   breathCCvalFine = breathCCvalHires & 0x007F;
+  breathCC2val = constrain(breathCCval*breathCC2Rise,0,127);
 
   if (breathCCval != oldbreath) { // only send midi data if breath has changed from previous value
     if (breathCC) {
@@ -919,10 +927,16 @@ void breath() {
   }
 
   if (breathCCvalHires != oldbreathhires) {
-    if ((breathCC > 4) && (breathCC < 9)) { // send high resolution midi
+    if ((breathCC > 5) && (breathCC < 11)) { // send high resolution midi
       midiSendControlChange(ccList[breathCC] + 32, breathCCvalFine);
     }
     oldbreathhires = breathCCvalHires;
+  }
+  if (breathCC2val != oldbreathcc2){
+    if (breathCC2 && (breathCC2 != ccList[breathCC])){
+      midiSendControlChange(breathCC2, breathCC2val);
+    }
+    oldbreathcc2 = breathCC2val;
   }
 }
 
