@@ -81,6 +81,9 @@ uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
 uint16_t parallel; // = 7; // semitones
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
+uint16_t gateOpenEnable = 0;
+
+uint16_t specialKeyEnable = 0;
 
 int touch_Thr = 1300;
 
@@ -109,8 +112,8 @@ byte activeMIDIchannel;          // MIDI channel
 byte activePatch=0;
 byte doPatchUpdate=0;
 
-byte legacy = 0;
-byte legacyBrAct = 0;
+uint16_t legacy = 0;
+uint16_t legacyBrAct = 0;
 byte halfTime = 0;
 boolean programonce = false;
 byte slowMidi = 0;
@@ -350,6 +353,8 @@ void setup() {
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
   slowMidi = dipSwBits & (1<<3);
+  gateOpenEnable = dipSwBits & (1<<4);
+  specialKeyEnable = dipSwBits & (1<<5);
   activePatch = patch;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
@@ -558,47 +563,54 @@ void loop() {
 
     if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
 
-    specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
-    if (lastSpecialKey != specialKey) {
-      if (specialKey) {
-        // special key just pressed, check other keys
-        if (K4) {
-          if (!slurSustain) {
-            slurSustain = 1;
-            parallelChord = 0;
-            rotatorOn = 0;
-          } else slurSustain = 0;
-        }
-        if (K5) {
-          if (!parallelChord) {
-            parallelChord = 1;
-            slurSustain = 0;
-            rotatorOn = 0;
-          } else parallelChord = 0;
-        }
-        if (K1) {
-          if (!subOctaveDouble) {
-            subOctaveDouble = 1;
-            rotatorOn = 0;
-          } else subOctaveDouble = 0;
-        }
-        if (!K1 && !K4 && !K5) {
-          slurSustain = 0;
-          parallelChord = 0;
-          subOctaveDouble = 0;
-          rotatorOn = 0;
-        }
-        if (pinkyKey) {
-          if (!rotatorOn) {
-            rotatorOn = 1;
+    if (specialKeyEnable) {
+      specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
+      if (lastSpecialKey != specialKey) {
+        if (specialKey) {
+          // special key just pressed, check other keys
+          if (K4) {
+            if (!slurSustain) {
+              slurSustain = 1;
+              parallelChord = 0;
+              rotatorOn = 0;
+            } else slurSustain = 0;
+          }
+          if (K5) {
+            if (!parallelChord) {
+              parallelChord = 1;
+              slurSustain = 0;
+              rotatorOn = 0;
+            } else parallelChord = 0;
+          }
+          if (K1) {
+            if (!subOctaveDouble) {
+              subOctaveDouble = 1;
+              rotatorOn = 0;
+            } else subOctaveDouble = 0;
+          }
+          if (!K1 && !K4 && !K5) {
             slurSustain = 0;
             parallelChord = 0;
             subOctaveDouble = 0;
-          } else rotatorOn = 0;
+            rotatorOn = 0;
+          }
+          if (pinkyKey) {
+            if (!rotatorOn) {
+              rotatorOn = 1;
+              slurSustain = 0;
+              parallelChord = 0;
+              subOctaveDouble = 0;
+            } else rotatorOn = 0;
+          }
         }
       }
+      lastSpecialKey = specialKey;
+    } else {
+      rotatorOn = 0;
+      slurSustain = 0;
+      parallelChord = 0;
+      subOctaveDouble = 0;
     }
-    lastSpecialKey = specialKey;
   } else if (mainState == RISE_WAIT) {
     if ((pressureSensor > breathThrVal) || gateOpen) {
       // Has enough time passed for us to collect our second
@@ -1012,29 +1024,34 @@ void doorKnobCheck() {
   for (byte i = 0; i < 12; i++) {
     touchValue[i] = touchSensor.filteredData(i);
   }
-  if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) { // doorknob grip on canister
-    if (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) {
-      gateOpen = 1;
-      digitalWrite(statusLedPin, LOW);
-      delay(50);
-      digitalWrite(statusLedPin, HIGH);
-      delay(50);
-    } else if (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) {
-      gateOpen = 0;
-      midiPanic();
-      digitalWrite(statusLedPin, LOW);
-      delay(50);
-      digitalWrite(statusLedPin, HIGH);
-      delay(50);
-      digitalWrite(statusLedPin, LOW);
-      delay(50);
-      digitalWrite(statusLedPin, HIGH);
-      delay(50);
-      digitalWrite(statusLedPin, LOW);
-      delay(50);
-      digitalWrite(statusLedPin, HIGH);
-      delay(700);
+  if (gateOpenEnable){
+    if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) { // doorknob grip on canister
+      if (!gateOpen && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2))) {
+        gateOpen = 1;
+        digitalWrite(statusLedPin, LOW);
+        delay(50);
+        digitalWrite(statusLedPin, HIGH);
+        delay(50);
+      } else if (gateOpen && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2))) {
+        gateOpen = 0;
+        midiPanic();
+        digitalWrite(statusLedPin, LOW);
+        delay(50);
+        digitalWrite(statusLedPin, HIGH);
+        delay(50);
+        digitalWrite(statusLedPin, LOW);
+        delay(50);
+        digitalWrite(statusLedPin, HIGH);
+        delay(50);
+        digitalWrite(statusLedPin, LOW);
+        delay(50);
+        digitalWrite(statusLedPin, HIGH);
+        delay(700);
+      }
     }
+  } else if (gateOpen) {
+    gateOpen = 0;
+    midiPanic();
   }
 }
 

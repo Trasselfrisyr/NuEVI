@@ -19,7 +19,7 @@ enum CursorIdx {
   EControl,
   ERotator,
   EVibrato,
-
+  EExtras,
   // NEVER ADD ANYTHING AFTER THIS, ONLY ABOVE
   NUM_CURSORS
 };
@@ -449,6 +449,72 @@ static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char**
   }
 }
 
+
+//***********************************************************
+
+const MenuEntrySub legacyPBMenu = {
+  MenuType::ESub, "LEGACY PB", "LEGACY PB", &legacy, 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
+    strncpy(out, legacy?"ON":"OFF", 4);
+  }, [](const MenuEntrySub & __unused sub) {
+    dipSwBits = dipSwBits & ~(1<<1);
+    dipSwBits |= (legacy <<1);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub legacyBRMenu = {
+  MenuType::ESub, "LEGACY BR", "LEGACY BR", &legacyBrAct, 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
+    strncpy(out, legacyBrAct?"ON":"OFF", 4);
+  }, [](const MenuEntrySub & __unused sub) {
+    dipSwBits = dipSwBits & ~(1<<2);
+    dipSwBits |= (legacyBrAct <<2);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub gateOpenMenu = {
+  MenuType::ESub, "GATE HOLD", "GATE HOLD", &gateOpenEnable, 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
+    strncpy(out, gateOpenEnable?"ON":"OFF", 4);
+  }, [](const MenuEntrySub & __unused sub) {
+    dipSwBits = dipSwBits & ~(1<<4);
+    dipSwBits |= (gateOpenEnable <<4);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub specialKeyMenu = {
+  MenuType::ESub, "SPEC KEY", "SPEC KEY", &specialKeyEnable, 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char ** __unused unit) {
+    strncpy(out, specialKeyEnable?"ON":"OFF", 4);
+  }, [](const MenuEntrySub & __unused sub) {
+    dipSwBits = dipSwBits & ~(1<<5);
+    dipSwBits |= (specialKeyEnable <<5);
+    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntry* extrasMenuEntries[] = {
+  (MenuEntry*)&legacyPBMenu,
+  (MenuEntry*)&legacyBRMenu,
+  (MenuEntry*)&gateOpenMenu,
+  (MenuEntry*)&specialKeyMenu,
+};
+
+const MenuPage extrasMenuPage = {
+  "EXTRAS",
+  0,
+  CursorIdx::EExtras,
+  MAIN_MENU,
+  ARR_LEN(extrasMenuEntries), extrasMenuEntries
+}; 
+
 static bool midiEnterHandlerFunc() {
   readSwitches();
   if (pinkyKey){
@@ -470,6 +536,7 @@ const MenuEntrySub midiMenu = {
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
 const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
 const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
+const MenuEntryStateCh extrasMenu     = { MenuType::EStateChange, "EXTRAS", EXTRAS_MENU };
 const MenuEntryStateCh aboutMenu      = { MenuType::EStateChange, "ABOUT", ABOUT_MENU };
 
 const MenuEntry* mainMenuEntries[] = {
@@ -479,6 +546,7 @@ const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&adjustMenu,
   (MenuEntry*)&breathMenu,
   (MenuEntry*)&controlMenu,
+  (MenuEntry*)&extrasMenu,
   (MenuEntry*)&aboutMenu,
 };
 
@@ -824,6 +892,7 @@ const MenuEntry* vibratorMenuEntries[] = {
 const MenuPage vibratoMenuPage = {
   "VIBRATO", 0, CursorIdx::EVibrato, SETUP_CT_MENU, ARR_LEN(vibratorMenuEntries), vibratorMenuEntries
 };
+
 
 //***********************************************************
 
@@ -1337,6 +1406,8 @@ void menu() {
     redraw |= updatePage(&vibratoMenuPage, input, timeNow);
   } else if (menuState == ABOUT_MENU) {
     redraw |= updatePage((const MenuPage*)&aboutMenuPage, input, timeNow);
+  } else if (menuState == EXTRAS_MENU) {
+    redraw |= updatePage((const MenuPage*)&extrasMenuPage, input, timeNow);
   }
 
   if(redraw) {

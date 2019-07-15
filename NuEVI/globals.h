@@ -61,6 +61,8 @@ extern unsigned short vibRetn; // vibrato return speed
 extern unsigned short vibSquelch; //vibrato signal squelch
 extern unsigned short vibDirection; //direction of first vibrato wave UPWD or DNWD
 extern unsigned short fastPatch[7];
+extern uint16_t gateOpenEnable;
+extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
 extern byte currentRotation;
 extern uint16_t rotations[4];
@@ -73,8 +75,8 @@ extern unsigned long cursorBlinkTime;          // the last time the cursor was t
 extern byte activePatch;
 extern byte doPatchUpdate;
 
-extern byte legacy;
-extern byte legacyBrAct;
+extern uint16_t legacy;
+extern uint16_t legacyBrAct;
 
 extern byte slowMidi;
 
