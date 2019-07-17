@@ -254,6 +254,7 @@ static bool updateSubMenuCursor(const MenuPage *page, uint32_t timeNow)
     if (cursorNow == WHITE) {
       cursorNow = BLACK;
       clearSubValue();
+      return true;
     } else {
       cursorNow = WHITE;
       return drawSubMenu(page);
