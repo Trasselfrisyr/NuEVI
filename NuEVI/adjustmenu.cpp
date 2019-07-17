@@ -346,9 +346,9 @@ int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool draw
       currentMenu->saveFunc(*currentMenu);
 
   } else if( adjustCurrent == 1) {
-    handleInput(currentMenu, timeNow, buttons, &pos1, 20, 0);
+    redraw |= handleInput(currentMenu, timeNow, buttons, &pos1, 20, 0);
   } else {
-    handleInput(currentMenu, timeNow, buttons, &pos2, 50, 1);
+    redraw |= handleInput(currentMenu, timeNow, buttons, &pos2, 50, 1);
   }
 
   // Keep adjustCurrent in range
