@@ -92,7 +92,7 @@ uint16_t specialKeyEnable = 0;
 
 int touch_Thr = 1300;
 
-byte ccList[13] = {0,1,2,7,11,19,1,2,7,11,19,74,20};  // OFF, Modulation, Breath, Volume, Expression, Sirin Cutoff (then same sent in hires), CC74 (cutoff/brightness), CC20 (UNO Cutoff)
+byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20 (UNO Cutoff)
 
 int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
@@ -943,7 +943,7 @@ void breath() {
   }
 
   if (breathCCvalHires != oldbreathhires) {
-    if ((breathCC > 5) && (breathCC < 11)) { // send high resolution midi
+    if ((breathCC > 4) && (breathCC < 9)) { // send high resolution midi
       midiSendControlChange(ccList[breathCC] + 32, breathCCvalFine);
     }
     oldbreathhires = breathCCvalHires;

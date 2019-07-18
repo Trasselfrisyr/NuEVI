@@ -642,10 +642,10 @@ const MenuPage rotatorMenuPage = {
 //***********************************************************
 // Breath menu
 const MenuEntrySub breathCCMenu = {
-  MenuType::ESub, "BRTH CC1", "BRTH CC1", &breathCC, 0, 12, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BRTH CC1", "BRTH CC1", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX","SR", "MW+",
-                                            "BR+", "VL+", "EX+", "SR+", "CF", "UNO" };
+    const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
+                                            "BR+", "VL+", "EX+", "CF", "UNO" };
     strncpy(out, breathCCMenuLabels[breathCC], 4);
   },
   [](const MenuEntrySub & __unused sub){
