@@ -136,6 +136,10 @@ int lastPressure;
 byte velocitySend;   // remapped midi velocity from breath sensor (or set to static value if selected)
 int breathCalZero;
 
+int leverPortZero;
+int leverPortThr = 50;
+int leverPortRead;
+
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
@@ -404,7 +408,7 @@ void setup() {
   vibZero /= sampleCount;
   breathCalZero /= sampleCount;
   vibZeroBite /= sampleCount;
-
+  leverPortZero = vibZero;
   vibThr = vibZero - vibSquelch;
   vibThrLo = vibZero + vibSquelch;
   vibThrBite = vibZeroBite - vibSquelchBite;
@@ -909,9 +913,9 @@ void statusLEDs() {
   } else {
     analogWrite(bLedPin, 0);
   }
-  if (biteSensor > portamThrVal) { // portamento indicator LED, labeled "P" on PCB
+  if (portIsOn) { // portamento indicator LED, labeled "P" on PCB
     //analogWrite(pLedPin, map(biteSensor,0,4096,5,portamLedBrightness));
-    analogWrite(pLedPin, map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 5, portamLedBrightness));
+    analogWrite(pLedPin, map(constrain(oldport, 0, 127), 0, 127, 5, portamLedBrightness));
   } else {
     analogWrite(pLedPin, 0);
   }
@@ -1183,13 +1187,14 @@ void extraController() {
 //***********************************************************
 
 void portamento_() {
+
+  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+    biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+   } else { 
+    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+   }
   if (!vibControl){
     // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-    if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
-      biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-     } else { 
-      biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
-     }
     if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
       if (!portIsOn) {
         portOn();
@@ -1198,6 +1203,16 @@ void portamento_() {
     } else if (portIsOn) { // we have just gone below threshold, so send zero value
       portOff();
     }
+  } else {
+    leverPortRead = touchRead(vibratoPin);
+    if (portamento && (leverPortRead <= (leverPortZero-leverPortThr))) { // if we are enabled and over the threshold, send portamento
+      if (!portIsOn) {
+       portOn();
+      }
+      port();
+    } else if (portIsOn) { // we have just gone below threshold, so send zero value
+    portOff();
+  }
   }
 }
 
@@ -1214,7 +1229,10 @@ void portOn() {
 
 void port() {
   int portCC;
-  portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
+  if (!vibControl)
+    portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
+  else
+    portCC = constrain((leverPortZero-leverPortThr-leverPortRead),0,127);
   if (portCC != oldport) {
     midiSendControlChange(CCN_Port, portCC);
   }
