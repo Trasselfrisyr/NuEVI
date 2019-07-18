@@ -72,8 +72,11 @@ unsigned short priority; // mono priority for rotator chords
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
-unsigned short vibSquelch = 15; //vibrato signal squelch
+unsigned short vibSquelch = 12; //vibrato signal squelch
 unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DNWD
+unsigned short vibSensBite = 2; // vibrato sensitivity (bite)
+unsigned short vibSquelchBite = 12; //vibrato signal squelch (bite)
+unsigned short vibControl = 0;
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
@@ -184,6 +187,9 @@ const unsigned short* const curves[] = {
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
 int vibZero;
+int vibZeroBite;
+int vibThrBite;
+int vibThrBiteLo;
 
 
 int fingeredNote;    // note calculated from fingering (switches), transpose and octave settings
@@ -309,6 +315,9 @@ void setup() {
     writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
     writeSetting(BREATH_CC2_ADDR,BREATH_CC2_FACTORY);
     writeSetting(BREATH_CC2_RISE_ADDR,BREATH_CC2_RISE_FACTORY);
+    writeSetting(VIB_SENS_BITE_ADDR,VIB_SENS_BITE_FACTORY);
+    writeSetting(VIB_SQUELCH_BITE_ADDR,VIB_SQUELCH_BITE_FACTORY);
+    writeSetting(VIB_CONTROL_ADDR,VIB_CONTROL_FACTORY);
   }
   // read settings from EEPROM
   breathThrVal = readSetting(BREATH_THR_ADDR);
@@ -355,7 +364,10 @@ void setup() {
   vibSquelch   = readSetting(VIB_SQUELCH_ADDR);
   vibDirection = readSetting(VIB_DIRECTION_ADDR);
   breathCC2    = readSetting(BREATH_CC2_ADDR);
-  breathCC2Rise = readSetting(BREATH_CC2_RISE_ADDR);
+  breathCC2Rise   = readSetting(BREATH_CC2_RISE_ADDR);
+  vibSensBite     = readSetting(VIB_SENS_BITE_ADDR);
+  vibSquelchBite  = readSetting(VIB_SQUELCH_BITE_ADDR);
+  vibControl      = readSetting(VIB_CONTROL_ADDR);
 
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
@@ -380,19 +392,23 @@ void setup() {
   }
 
   //auto-calibrate the vibrato threshold while showing splash screen
-  vibZero = breathCalZero = 0;
+  vibZero = vibZeroBite = breathCalZero = 0;
   const int sampleCount = 4;
   for(int i = 1 ; i <= sampleCount; ++i) {
     vibZero += touchRead(vibratoPin);
     breathCalZero += analogRead(breathSensorPin);
+    if (biteJumper) vibZeroBite += analogRead(A7); else vibZeroBite += touchRead(bitePin);
     digitalWrite( statusLedPin, i&1 );
     delay(250);
   }
   vibZero /= sampleCount;
   breathCalZero /= sampleCount;
+  vibZeroBite /= sampleCount;
 
   vibThr = vibZero - vibSquelch;
   vibThrLo = vibZero + vibSquelch;
+  vibThrBite = vibZeroBite - vibSquelchBite;
+  vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
   digitalWrite(statusLedPin, LOW);
   delay(250);
@@ -948,30 +964,59 @@ void pitch_bend() {
   int vibMax;
   int calculatedPBdepth;
   byte pbTouched = 0;
+  int vibRead;
+  int vibReadBite;
   pbUp = touchRead(pbUpPin); // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin); // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
-  int vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
+
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth * 0.5;
 
+
   vibMax = vibMaxList[vibSens - 1];
 
-  if (vibRead < vibThr) {
-    if (UPWD == vibDirection) {
-      vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
-    } else {
-      vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+  if (vibControl){ //bite vibrato
+    if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+      vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+    } else { 
+      vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
     }
-  } else if (vibRead > vibThrLo) {
-    if (UPWD == vibDirection) {
-      vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        if (vibReadBite < vibThrBite) {
+      if (UPWD == vibDirection) {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+      } else {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+      }
+    } else if (vibReadBite > vibThrBiteLo) {
+      if (UPWD == vibDirection) {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+      } else {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+      }
     } else {
-      vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+      vibSignal = vibSignal * 0.5;
     }
-  } else {
-    vibSignal = vibSignal * 0.5;
+  } else { //lever vibrato
+    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap  
+    if (vibRead < vibThr) {
+      if (UPWD == vibDirection) {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+      } else {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+      }
+    } else if (vibRead > vibThrLo) {
+      if (UPWD == vibDirection) {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+      } else {
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+      }
+    } else {
+      vibSignal = vibSignal * 0.5;
+    }
   }
+
+
 
   switch (vibRetn) { // moving baseline
   case 0:
@@ -979,18 +1024,24 @@ void pitch_bend() {
     break;
   case 1:
     vibZero = vibZero * 0.95 + vibRead * 0.05;
+    vibZeroBite = vibZeroBite * 0.95 + vibReadBite * 0.05;
     break;
   case 2:
     vibZero = vibZero * 0.9 + vibRead * 0.1;
+    vibZeroBite = vibZeroBite * 0.9 + vibReadBite * 0.1;
     break;
   case 3:
     vibZero = vibZero * 0.8 + vibRead * 0.2;
+    vibZeroBite = vibZeroBite * 0.8 + vibReadBite * 0.2;
     break;
   case 4:
     vibZero = vibZero * 0.6 + vibRead * 0.4;
+    vibZeroBite = vibZeroBite * 0.6 + vibReadBite * 0.4;
   }
   vibThr = vibZero - vibSquelch;
   vibThrLo = vibZero + vibSquelch;
+  vibThrBite = vibZeroBite - vibSquelchBite;
+  vibThrBiteLo = vibZeroBite + vibSquelchBite;
   int pbPos = map(constrain(pbUp, pitchbThrVal, pitchbMaxVal), pitchbThrVal, pitchbMaxVal, 0, calculatedPBdepth);
   int pbNeg = map(constrain(pbDn, pitchbThrVal, pitchbMaxVal), pitchbThrVal, pitchbMaxVal, 0, calculatedPBdepth);
   int pbSum = 8193 + pbPos - pbNeg;
@@ -1132,19 +1183,21 @@ void extraController() {
 //***********************************************************
 
 void portamento_() {
-  // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
-    biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-   } else { 
-    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
-   }
-  if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
-    if (!portIsOn) {
-      portOn();
+  if (!vibControl){
+    // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
+    if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+      biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+     } else { 
+      biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+     }
+    if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
+      if (!portIsOn) {
+        portOn();
+      }
+      port();
+    } else if (portIsOn) { // we have just gone below threshold, so send zero value
+      portOff();
     }
-    port();
-  } else if (portIsOn) { // we have just gone below threshold, so send zero value
-    portOff();
   }
 }
 

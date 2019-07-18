@@ -51,6 +51,9 @@
 #define VIB_DIRECTION_ADDR 86
 #define BREATH_CC2_ADDR 88
 #define BREATH_CC2_RISE_ADDR 90
+#define VIB_SENS_BITE_ADDR 92
+#define VIB_SQUELCH_BITE_ADDR 94
+#define VIB_CONTROL_ADDR 96
 
 //"factory" values for settings
 #define VERSION 32
@@ -90,9 +93,12 @@
 #define PRIO_FACTORY 0 // Mono priority 0 - BAS(e note), 1 - ROT(ating note)
 #define VIB_SENS_FACTORY 6 // 1 least sensitive, higher more sensitive
 #define VIB_RETN_FACTORY 2 // 0, no return, 1 slow return, higher faster return
-#define VIB_SQUELCH_FACTORY 15 // 0 to 30, vib signal squelch
+#define VIB_SQUELCH_FACTORY 12 // 0 to 30, vib signal squelch
 #define VIB_DIRECTION_FACTORY 0
 #define BREATH_CC2_FACTORY 0  //OFF,1-127
 #define BREATH_CC2_RISE_FACTORY 1
+#define VIB_SENS_BITE_FACTORY 6
+#define VIB_SQUELCH_BITE_FACTORY 12
+#define VIB_CONTROL_FACTORY 0
 
 #endif

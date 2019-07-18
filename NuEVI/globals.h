@@ -62,6 +62,9 @@ extern unsigned short vibSens; // vibrato sensitivity
 extern unsigned short vibRetn; // vibrato return speed
 extern unsigned short vibSquelch; //vibrato signal squelch
 extern unsigned short vibDirection; //direction of first vibrato wave UPWD or DNWD
+extern unsigned short vibSensBite; // vibrato sensitivity (bite)
+extern unsigned short vibSquelchBite; //vibrato signal squelch (bite)
+extern unsigned short vibControl;
 extern unsigned short fastPatch[7];
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
@@ -103,6 +106,9 @@ extern byte oldpkey;
 extern int vibThr;          // this gets auto calibrated in setup
 extern int vibThrLo;
 extern int vibZero;
+extern int vibZeroBite;
+extern int vibThrBite;
+extern int vibThrBiteLo;
 
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
 extern byte K1;   // Valve 1 (pitch change -2)

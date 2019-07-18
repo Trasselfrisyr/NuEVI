@@ -871,15 +871,6 @@ const MenuEntrySub vibDepthMenu = {
   nullptr
 };
 
-const MenuEntrySub vibSenseMenu = {
-  MenuType::ESub, "SENSE", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
-  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
-    numToString(vibSens, textBuffer);
-  },
-  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SENS_ADDR,vibSens); }
-  , nullptr
-};
-
 const MenuEntrySub vibRetnMenu = {
   MenuType::ESub, "RETURN", "LEVEL", &vibRetn, 0, 4, MenuEntryFlags::ENone,
   [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
@@ -889,12 +880,51 @@ const MenuEntrySub vibRetnMenu = {
   , nullptr
 };
 
+const MenuEntrySub vibSenseMenu = {
+  MenuType::ESub, "SENSE LVR", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
+    numToString(vibSens, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SENS_ADDR,vibSens); }
+  , nullptr
+};
+
 const MenuEntrySub vibSquelchMenu = {
-  MenuType::ESub, "SQUELCH", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+  MenuType::ESub, "SQUELCH L", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
   [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
     numToString(vibSquelch, textBuffer);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SQUELCH_ADDR,vibSquelch); }
+  , nullptr
+};
+
+const MenuEntrySub vibSenseBiteMenu = {
+  MenuType::ESub, "SENSE BTE", "LEVEL", &vibSensBite, 1, 12, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
+    numToString(vibSensBite, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SENS_BITE_ADDR,vibSensBite); }
+  , nullptr
+};
+
+const MenuEntrySub vibSquelchBiteMenu = {
+  MenuType::ESub, "SQUELCH B", "LEVEL", &vibSquelchBite, 1, 30, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
+    numToString(vibSquelchBite, textBuffer);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_SQUELCH_BITE_ADDR,vibSquelchBite); }
+  , nullptr
+};
+
+const MenuEntrySub vibControlMenu = {
+  MenuType::ESub, "CONTROL", "CONTROL", &vibControl , 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if (vibControl)
+      strncpy(out, "BIT", 4);
+    else
+      strncpy(out, "LVR", 4);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(VIB_CONTROL_ADDR,vibControl); }
   , nullptr
 };
 
@@ -911,11 +941,14 @@ const MenuEntrySub vibDirMenu = {
 };
 
 const MenuEntry* vibratorMenuEntries[] = {
+    (MenuEntry*)&vibControlMenu,
     (MenuEntry*)&vibDepthMenu,
-    (MenuEntry*)&vibSenseMenu,
     (MenuEntry*)&vibRetnMenu,
+    (MenuEntry*)&vibDirMenu,
+    (MenuEntry*)&vibSenseMenu,
     (MenuEntry*)&vibSquelchMenu,
-    (MenuEntry*)&vibDirMenu
+    (MenuEntry*)&vibSenseBiteMenu,
+    (MenuEntry*)&vibSquelchBiteMenu,
 };
 
 const MenuPage vibratoMenuPage = {
