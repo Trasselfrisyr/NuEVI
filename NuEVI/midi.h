@@ -28,5 +28,10 @@ void dinMIDIsendNoteOff(uint8_t note, uint8_t vel, uint8_t ch);
 void dinMIDIsendAfterTouch(uint8_t value, uint8_t ch);
 void dinMIDIsendProgramChange(uint8_t value, uint8_t ch);
 void dinMIDIsendPitchBend(uint16_t pb, uint8_t ch);
+void dinMIDIsendSysex(const uint8_t data[], const uint8_t length);
+
+
+
+void sendWLPower(const uint8_t level);
 
 #endif

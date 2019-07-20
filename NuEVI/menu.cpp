@@ -501,11 +501,22 @@ const MenuEntrySub specialKeyMenu = {
   , nullptr
 };
 
+
+const MenuEntrySub wlPowerMenu = {
+  MenuType::ESub, "WL POWER", "WL POWER", &wlPower, 0, 3, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(-6*wlPower, out, true);
+  },
+  [](SubMenuRef __unused) { sendWLPower(wlPower); }
+  , nullptr
+};
+
 const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
   (MenuEntry*)&legacyBRMenu,
   (MenuEntry*)&gateOpenMenu,
   (MenuEntry*)&specialKeyMenu,
+  (MenuEntry*)&wlPowerMenu,
 };
 
 const MenuPage extrasMenuPage = {

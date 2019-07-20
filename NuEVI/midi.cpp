@@ -140,3 +140,27 @@ void dinMIDIsendAfterTouch(uint8_t value, uint8_t ch) {
 void dinMIDIsendProgramChange(uint8_t value, uint8_t ch) {
     midiSend2B((0xC0 | ch), value);
 }
+
+void dinMIDIsendSysex(const uint8_t data[], const uint8_t length) {
+  MIDI_SERIAL.write(0xF0); //Sysex command
+  for(int i=0; i<length; ++i) {
+    MIDI_SERIAL.write(data[i]);
+  }
+  MIDI_SERIAL.write(0xF7); //Sysex end
+}
+
+
+void sendWLPower(const uint8_t level) {
+  uint8_t buf[6] = {
+    0x00, 0x21, 0x11,  //Manufacturer id
+    0x02,             //TX02
+    0x02,             //Set power level
+    0x00              //Power level value (0-3)
+  };
+
+  if(level>3) return; //Don't send invalid values
+
+  buf[5] = level;
+  dinMIDIsendSysex(buf, 6);
+
+}
