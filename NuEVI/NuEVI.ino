@@ -90,6 +90,8 @@ uint16_t gateOpenEnable = 0;
 
 uint16_t specialKeyEnable = 0;
 
+uint16_t wlPower = 0;
+
 int touch_Thr = 1300;
 
 byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20 (UNO Cutoff)
