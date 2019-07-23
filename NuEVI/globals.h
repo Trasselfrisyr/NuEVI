@@ -73,8 +73,6 @@ extern byte currentRotation;
 extern uint16_t rotations[4];
 extern uint16_t parallel; // semitones
 
-extern uint16_t wlPower;
-
 extern int touch_Thr;
 
 extern unsigned long cursorBlinkTime;          // the last time the cursor was toggled

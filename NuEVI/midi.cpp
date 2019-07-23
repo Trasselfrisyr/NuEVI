@@ -164,3 +164,19 @@ void sendWLPower(const uint8_t level) {
   dinMIDIsendSysex(buf, 6);
 
 }
+
+
+void sendWLChannel(const uint8_t channel) {
+  uint8_t buf[6] = {
+    0x00, 0x21, 0x11,  //Manufacturer id
+    0x02,             //TX02
+    0x05,             //Set channel
+    0x04              //Channel value (4-80)
+  };
+
+  if(channel<4 || channel>80) return; //Don't send invalid values
+
+  buf[5] = channel;
+  dinMIDIsendSysex(buf, 6);
+
+}

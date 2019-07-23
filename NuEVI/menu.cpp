@@ -501,15 +501,27 @@ const MenuEntrySub specialKeyMenu = {
   , nullptr
 };
 
+uint16_t wireless_power=0;
+uint16_t wireless_channel=4;
 
 const MenuEntrySub wlPowerMenu = {
-  MenuType::ESub, "WL POWER", "WL POWER", &wlPower, 0, 3, MenuEntryFlags::ENone,
+  MenuType::ESub, "WL POWER", "WL POWER", &wireless_power, 0, 3, MenuEntryFlags::ENone,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    numToString(-6*wlPower, out, true);
+    numToString(-6*wireless_power, out, true);
   },
-  [](SubMenuRef __unused) { sendWLPower(wlPower); }
+  [](SubMenuRef __unused) { sendWLPower(wireless_power); }
   , nullptr
 };
+
+const MenuEntrySub wlChannelMenu = {
+  MenuType::ESub, "WL CHAN", "WL CHAN", &wireless_channel, 4, 80, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(wireless_channel, out, false);
+  },
+  [](SubMenuRef __unused) { sendWLChannel(wireless_channel); }
+  , nullptr
+};
+
 
 const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
@@ -517,6 +529,7 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&gateOpenMenu,
   (MenuEntry*)&specialKeyMenu,
   (MenuEntry*)&wlPowerMenu,
+  (MenuEntry*)&wlChannelMenu,
 };
 
 const MenuPage extrasMenuPage = {
