@@ -78,7 +78,6 @@ extern uint16_t trill3_interval;
 extern uint16_t fastBoot;
 extern uint16_t dacMode;
 
-extern uint16_t wlPower;
 
 extern int touch_Thr;
 
