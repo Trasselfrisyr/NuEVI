@@ -156,10 +156,6 @@ void initDisplay() {
 void showVersion() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  #if defined(CASSIDY)
-  display.setCursor(0,0);
-  display.print("BC");
-  #endif
   #if defined(CVSCALEBOARD)
   display.setCursor(15,0);
   display.print("CV");
@@ -450,6 +446,10 @@ static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char**
   }
 }
 
+//Poke at a certain bit in a bit field
+void setBit(uint16_t &bitfield, const uint8_t pos, const uint8_t value) {
+  bitfield = (bitfield & ~(1<<pos)) | ((value?1:0)<<pos);
+}
 
 //***********************************************************
 
@@ -458,8 +458,7 @@ const MenuEntrySub legacyPBMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacy?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<1);
-    dipSwBits |= (legacy <<1);
+    setBit(dipSwBits, 1, legacy);
     writeSetting(DIPSW_BITS_ADDR,dipSwBits);
   }
   , nullptr
@@ -470,9 +469,8 @@ const MenuEntrySub legacyBRMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacyBrAct?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<2);
-    dipSwBits |= (legacyBrAct <<2);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, 2, legacyBrAct);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
@@ -482,9 +480,8 @@ const MenuEntrySub gateOpenMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, gateOpenEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<4);
-    dipSwBits |= (gateOpenEnable <<4);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, 4, gateOpenEnable);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
@@ -494,9 +491,51 @@ const MenuEntrySub specialKeyMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, specialKeyEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<5);
-    dipSwBits |= (specialKeyEnable <<5);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, 5, specialKeyEnable);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub trill3Menu = {
+  MenuType::ESub, "3RD TRILL", "3RD TRILL", &trill3_interval, 3, 4, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(trill3_interval, out, true);
+  },
+  [](SubMenuRef __unused) { writeSetting(TRILL3_INTERVAL_ADDR, trill3_interval); }
+  , nullptr
+};
+
+const MenuEntrySub bcasModeMenu = {
+  MenuType::ESub, "BCAS MODE", "BCAS MODE", &bcasMode, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    strncpy(out, bcasMode?"ON":"OFF", 4);
+  },
+  [](SubMenuRef __unused) {
+    setBit(dipSwBits, 6, bcasMode);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub dacModeMenu = {
+  MenuType::ESub, "DAC OUT", "DAC OUT", &dacMode, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* dacModeLabels[] = { "BRTH", "PTCH"};
+    strncpy(out, dacModeLabels[dacMode], 5);
+  },
+  [](SubMenuRef __unused) { writeSetting(DAC_MODE_ADDR, dacMode); }
+  , nullptr
+};
+
+const MenuEntrySub fastBootMenu = {
+  MenuType::ESub, "FAST BOOT", "FAST BOOT", &fastBoot, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    strncpy(out, fastBoot?"ON":"OFF", 4);
+  },
+  [](SubMenuRef __unused) {
+    setBit(dipSwBits, 0, fastBoot);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
@@ -516,6 +555,10 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyBRMenu,
   (MenuEntry*)&gateOpenMenu,
   (MenuEntry*)&specialKeyMenu,
+  (MenuEntry*)&trill3Menu,
+  (MenuEntry*)&bcasModeMenu,
+  (MenuEntry*)&dacModeMenu,
+  (MenuEntry*)&fastBootMenu,
   (MenuEntry*)&wlPowerMenu,
 };
 

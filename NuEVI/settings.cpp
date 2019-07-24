@@ -1,6 +1,9 @@
 #include "settings.h"
 #include "globals.h"
 #include "menu.h"
+#include "hardware.h"
+#include <Arduino.h>
+
 
 //Read settings from eeprom. Returns wether or not anything was written (due to factory reset or upgrade)
 bool readEEPROM() {
@@ -88,11 +91,8 @@ bool readEEPROM() {
             writeSetting(VIB_SENS_BITE_ADDR, VIB_SENS_BITE_FACTORY);
             writeSetting(VIB_SQUELCH_BITE_ADDR, VIB_SQUELCH_BITE_FACTORY);
             writeSetting(VIB_CONTROL_ADDR, VIB_CONTROL_FACTORY);
-
             writeSetting(TRILL3_INTERVAL_ADDR, TRILL3_INTERVAL_FACTORY);
-            writeSetting(BCAS_MODE_ADDR, BCAS_MODE_FACTORY);
             writeSetting(DAC_MODE_ADDR, DAC_MODE_FACTORY);
-            writeSetting(FASTBOOT_ADDR, FASTBOOT_FACTORY);
         }
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
@@ -149,13 +149,9 @@ bool readEEPROM() {
     vibSensBite     = readSetting(VIB_SENS_BITE_ADDR);
     vibSquelchBite  = readSetting(VIB_SQUELCH_BITE_ADDR);
     vibControl      = readSetting(VIB_CONTROL_ADDR);
-
-    bcasMode = readSetting(BCAS_MODE_ADDR);
     
     trill3_interval = readSetting(TRILL3_INTERVAL_ADDR);
     if(trill3_interval<3 || trill3_interval > 4) trill3_interval = TRILL3_INTERVAL_FACTORY; //Deal with possible bad values
-    
-    fastBoot = readSetting(FASTBOOT_ADDR);
     dacMode = readSetting(DAC_MODE_ADDR);
 
     return hasWritten;

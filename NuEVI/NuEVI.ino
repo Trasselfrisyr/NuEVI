@@ -80,6 +80,11 @@ unsigned short vibControl = 0;
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
+uint16_t bcasMode; //Legacy CASSIDY compile flag
+uint16_t trill3_interval;
+uint16_t fastBoot;
+uint16_t dacMode;
+
 byte rotatorOn = 0;
 byte currentRotation = 0;
 uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
@@ -262,14 +267,16 @@ void setup() {
 
 
   //Read eeprom data into global vars
-  readEEPROM(factoryReset);
+  readEEPROM();
 
-
+  //Parse out flags from bit field
+  fastBoot = dipSwBits & (1<<0);
   legacy = dipSwBits & (1<<1);
   legacyBrAct = dipSwBits & (1<<2);
   slowMidi = dipSwBits & (1<<3);
   gateOpenEnable = dipSwBits & (1<<4);
   specialKeyEnable = dipSwBits & (1<<5);
+  bcasMode = dipSwBits & (1<<6);
   activePatch = patch;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
@@ -295,8 +302,9 @@ void setup() {
     breathCalZero += analogRead(breathSensorPin);
     if (biteJumper) vibZeroBite += analogRead(A7); else vibZeroBite += touchRead(bitePin);
     digitalWrite( statusLedPin, i&1 );
-    delay(250);
+    delay(fastBoot?75:250); //Shorter delay for fastboot
   }
+
   vibZero /= sampleCount;
   breathCalZero /= sampleCount;
   vibZeroBite /= sampleCount;
@@ -306,15 +314,17 @@ void setup() {
   vibThrBite = vibZeroBite - vibSquelchBite;
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
-  digitalWrite(statusLedPin, LOW);
-  delay(250);
-  digitalWrite(statusLedPin,HIGH);
-  delay(250);
-  digitalWrite(statusLedPin,LOW);
+  if(!fastBoot) {
+    digitalWrite(statusLedPin, LOW);
+    delay(250);
+    digitalWrite(statusLedPin,HIGH);
+    delay(250);
+    digitalWrite(statusLedPin,LOW);
 
-  showVersion();
+    showVersion();
 
-  delay(1500);
+    delay(1500);
+  }
 
   mainState = NOTE_OFF;       // initialize main state machine
 
@@ -359,54 +369,37 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
-      #if defined(CASSIDY)
-      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(breathSensorPin) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
-      #else
-      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(breathSensorPin) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
-      #endif  
+
+      bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
+      bool brSuck = analogRead(breathSensorPin) < (breathCalZero - (bcasMode?900:800));
+      
+      if (
+          (bothPB && legacy) ||
+          (brSuck && legacyBrAct && (bothPB || bcasMode))
+          ) { // both pb pads touched or br suck
+
+
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
           if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
             MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up 
-            #if !defined(CASSIDY)
-            digitalWrite(statusLedPin, LOW);
-            delay(150);
-            digitalWrite(statusLedPin, HIGH);
-            #endif
           }
         } else {
           if (!pinkyKey) { // note number to patch number
             if (patch != fingeredNoteUntransposed) {
               patch = fingeredNoteUntransposed;
               doPatchUpdate = 1;
-              #if !defined(CASSIDY)
-              digitalWrite(statusLedPin, LOW);
-              delay(150);
-              digitalWrite(statusLedPin, HIGH);
-              #endif
             }
           } else { // hi and lo patch numbers
             if (fingeredNoteUntransposed > 75) {
               if (patch != patchLimit(fingeredNoteUntransposed + 24)) {
                 patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
                 doPatchUpdate = 1;
-                #if !defined(CASSIDY)
-                digitalWrite(statusLedPin, LOW);
-                delay(150);
-                digitalWrite(statusLedPin, HIGH);
-                #endif
               }
             } else {
               if (patch != patchLimit(fingeredNoteUntransposed - 36)) {
                 patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
                 doPatchUpdate = 1;
-                #if !defined(CASSIDY)
-                digitalWrite(statusLedPin, LOW);
-                delay(150);
-                digitalWrite(statusLedPin, HIGH);
-                #endif
               }
             }
           }
@@ -1186,23 +1179,12 @@ void readSwitches() {
   }
 
   // Calculate midi note number from pressed keys  
-  #if defined(CASSIDY)
 
   fingeredNoteUntransposed = startNote
     - 2*K1 - K2 - 3*K3  //"Trumpet valves"
     - 5*K4              //Fifth key
-    + 2*K5 + K6 + 3*K7  //Trill keys (different from standard)
+    + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
     + octaveR*12;       //Octave rollers
-
-  #else
-
-  fingeredNoteUntransposed = startNote
-    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
-    - 5*K4              //Fifth key
-    + 2*K5 + K6 + 4*K7  //Trill keys
-    + octaveR*12;       //Octave rollers
-
-  #endif
 
   int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
 

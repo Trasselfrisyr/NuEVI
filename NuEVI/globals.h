@@ -73,6 +73,11 @@ extern byte currentRotation;
 extern uint16_t rotations[4];
 extern uint16_t parallel; // semitones
 
+extern uint16_t bcasMode; //Legacy CASSIDY compile flag
+extern uint16_t trill3_interval;
+extern uint16_t fastBoot;
+extern uint16_t dacMode;
+
 extern uint16_t wlPower;
 
 extern int touch_Thr;
