@@ -267,7 +267,6 @@ void setup() {
   //Read eeprom data into global vars
   readEEPROM();
 
-
   activePatch = patch;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
