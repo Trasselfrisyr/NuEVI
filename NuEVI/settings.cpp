@@ -5,11 +5,11 @@
 #include "globals.h"
 #include "menu.h"
 #include "hardware.h"
+#include "config.h"
 
 //Read settings from eeprom. Returns wether or not anything was written (due to factory reset or upgrade)
-bool readEEPROM() {
+void readEEPROM() {
     bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
-    bool hasWritten = false;
 
     // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
     uint16_t settingsVersion = readSetting(VERSION_ADDR);
@@ -97,63 +97,59 @@ bool readEEPROM() {
         }
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
-        hasWritten = true;
     }
  
-
     // read all settings from EEPROM
-    breathThrVal    = readSetting(BREATH_THR_ADDR);
-    breathMaxVal    = readSetting(BREATH_MAX_ADDR);
-    portamThrVal    = readSetting(PORTAM_THR_ADDR);
-    portamMaxVal    = readSetting(PORTAM_MAX_ADDR);
-    pitchbThrVal    = readSetting(PITCHB_THR_ADDR);
-    pitchbMaxVal    = readSetting(PITCHB_MAX_ADDR);
-    transpose       = readSetting(TRANSP_ADDR);
-    MIDIchannel     = readSetting(MIDI_ADDR);
-    breathCC        = readSetting(BREATH_CC_ADDR);
-    breathAT        = readSetting(BREATH_AT_ADDR);
-    velocity        = readSetting(VELOCITY_ADDR);
-    portamento      = readSetting(PORTAM_ADDR);
-    PBdepth         = readSetting(PB_ADDR);
-    extraCT         = readSetting(EXTRA_ADDR);
-    vibrato         = readSetting(VIBRATO_ADDR);
-    deglitch        = readSetting(DEGLITCH_ADDR);
-    extracThrVal    = readSetting(EXTRAC_THR_ADDR);
-    extracMaxVal    = readSetting(EXTRAC_MAX_ADDR);
-    patch           = readSetting(PATCH_ADDR);
-    octave          = readSetting(OCTAVE_ADDR);
-    ctouchThrVal    = readSetting(CTOUCH_THR_ADDR);
-    curve           = readSetting(BREATHCURVE_ADDR);
-    velSmpDl        = readSetting(VEL_SMP_DL_ADDR);
-    velBias         = readSetting(VEL_BIAS_ADDR);
-    pinkySetting    = readSetting(PINKY_KEY_ADDR);
-    fastPatch[0]    = readSetting(FP1_ADDR);
-    fastPatch[1]    = readSetting(FP2_ADDR);
-    fastPatch[2]    = readSetting(FP3_ADDR);
-    fastPatch[3]    = readSetting(FP4_ADDR);
-    fastPatch[4]    = readSetting(FP5_ADDR);
-    fastPatch[5]    = readSetting(FP6_ADDR);
-    fastPatch[6]    = readSetting(FP7_ADDR);
+    breathThrVal    = readSettingBounded(BREATH_THR_ADDR, breathLoLimit, breathHiLimit, BREATH_THR_FACTORY);
+    breathMaxVal    = readSettingBounded(BREATH_MAX_ADDR, breathLoLimit, breathHiLimit, BREATH_MAX_FACTORY);
+    portamThrVal    = readSettingBounded(PORTAM_THR_ADDR, portamLoLimit, portamHiLimit, PORTAM_THR_FACTORY);
+    portamMaxVal    = readSettingBounded(PORTAM_MAX_ADDR, portamLoLimit, portamHiLimit, PORTAM_MAX_FACTORY);
+    pitchbThrVal    = readSettingBounded(PITCHB_THR_ADDR, pitchbLoLimit, pitchbHiLimit, PITCHB_THR_FACTORY);
+    pitchbMaxVal    = readSettingBounded(PITCHB_MAX_ADDR, pitchbLoLimit, pitchbHiLimit, PITCHB_MAX_FACTORY);
+    transpose       = readSettingBounded(TRANSP_ADDR, 0, 24, TRANSP_FACTORY);
+    MIDIchannel     = readSettingBounded(MIDI_ADDR, 1, 16, MIDI_FACTORY);
+    breathCC        = readSettingBounded(BREATH_CC_ADDR, 0, 127, BREATH_CC_FACTORY);
+    breathAT        = readSettingBounded(BREATH_AT_ADDR, 0, 1, BREATH_AT_FACTORY);
+    velocity        = readSettingBounded(VELOCITY_ADDR, 0, 127, VELOCITY_FACTORY);
+    portamento      = readSettingBounded(PORTAM_ADDR, 0, 2, PORTAM_FACTORY);
+    PBdepth         = readSettingBounded(PB_ADDR, 0, 12, PB_FACTORY);
+    extraCT         = readSettingBounded(EXTRA_ADDR, 0, 4, EXTRA_FACTORY);
+    vibrato         = readSettingBounded(VIBRATO_ADDR, 0, 9, VIBRATO_FACTORY);
+    deglitch        = readSettingBounded(DEGLITCH_ADDR, 0, 70, DEGLITCH_FACTORY);
+    extracThrVal    = readSettingBounded(EXTRAC_THR_ADDR, extracLoLimit, extracHiLimit, EXTRAC_THR_FACTORY);
+    extracMaxVal    = readSettingBounded(EXTRAC_MAX_ADDR, extracLoLimit, extracHiLimit, EXTRAC_MAX_FACTORY);
+    patch           = readSettingBounded(PATCH_ADDR, 0, 127, PATCH_FACTORY);
+    octave          = readSettingBounded(OCTAVE_ADDR, 0, 6, OCTAVE_FACTORY);
+    ctouchThrVal    = readSettingBounded(CTOUCH_THR_ADDR, ctouchLoLimit, ctouchHiLimit, CTOUCH_THR_FACTORY);
+    curve           = readSettingBounded(BREATHCURVE_ADDR, 0, 12, BREATHCURVE_FACTORY);
+    velSmpDl        = readSettingBounded(VEL_SMP_DL_ADDR, 0, 30, VEL_SMP_DL_FACTORY);
+    velBias         = readSettingBounded(VEL_BIAS_ADDR, 0, 9, VEL_BIAS_FACTORY);
+    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 24, PINKY_KEY_FACTORY);
+    fastPatch[0]    = readSettingBounded(FP1_ADDR, 0, 127, 0);
+    fastPatch[1]    = readSettingBounded(FP2_ADDR, 0, 127, 0);
+    fastPatch[2]    = readSettingBounded(FP3_ADDR, 0, 127, 0);
+    fastPatch[3]    = readSettingBounded(FP4_ADDR, 0, 127, 0);
+    fastPatch[4]    = readSettingBounded(FP5_ADDR, 0, 127, 0);
+    fastPatch[5]    = readSettingBounded(FP6_ADDR, 0, 127, 0);
+    fastPatch[6]    = readSettingBounded(FP7_ADDR, 0, 127, 0);
     dipSwBits       = readSetting(DIPSW_BITS_ADDR);
-    parallel        = readSetting(PARAL_ADDR);
-    rotations[0]    = readSetting(ROTN1_ADDR);
-    rotations[1]    = readSetting(ROTN2_ADDR);
-    rotations[2]    = readSetting(ROTN3_ADDR);
-    rotations[3]    = readSetting(ROTN4_ADDR);
-    priority        = readSetting(PRIO_ADDR);
-    vibSens         = readSetting(VIB_SENS_ADDR);
-    vibRetn         = readSetting(VIB_RETN_ADDR);
-    vibSquelch      = readSetting(VIB_SQUELCH_ADDR);
-    vibDirection    = readSetting(VIB_DIRECTION_ADDR);
-    breathCC2       = readSetting(BREATH_CC2_ADDR);
-    breathCC2Rise   = readSetting(BREATH_CC2_RISE_ADDR);
-    vibSensBite     = readSetting(VIB_SENS_BITE_ADDR);
-    vibSquelchBite  = readSetting(VIB_SQUELCH_BITE_ADDR);
-    vibControl      = readSetting(VIB_CONTROL_ADDR);
-    dacMode         = readSetting(DAC_MODE_ADDR);
-    trill3_interval = readSetting(TRILL3_INTERVAL_ADDR);
-
-    if(trill3_interval<3 || trill3_interval > 4) trill3_interval = TRILL3_INTERVAL_FACTORY; //Deal with possible zero/bad values
+    parallel        = readSettingBounded(PARAL_ADDR, 0, 48, PARAL_FACTORY);
+    rotations[0]    = readSettingBounded(ROTN1_ADDR, 0, 48, ROTN1_FACTORY);
+    rotations[1]    = readSettingBounded(ROTN2_ADDR, 0, 48, ROTN2_FACTORY);
+    rotations[2]    = readSettingBounded(ROTN3_ADDR, 0, 48, ROTN3_FACTORY);
+    rotations[3]    = readSettingBounded(ROTN4_ADDR, 0, 48, ROTN4_FACTORY);
+    priority        = readSettingBounded(PRIO_ADDR, 0, 1, PRIO_FACTORY);
+    vibSens         = readSettingBounded(VIB_SENS_ADDR, 1, 12, VIB_SENS_FACTORY);
+    vibRetn         = readSettingBounded(VIB_RETN_ADDR, 0, 4, VIB_RETN_FACTORY);
+    vibSquelch      = readSettingBounded(VIB_SQUELCH_ADDR, 1, 30, VIB_SQUELCH_FACTORY);
+    vibDirection    = readSettingBounded(VIB_DIRECTION_ADDR, 0, 1, VIB_DIRECTION_FACTORY);
+    breathCC2       = readSettingBounded(BREATH_CC2_ADDR, 0, 127, BREATH_CC2_FACTORY);
+    breathCC2Rise   = readSettingBounded(BREATH_CC2_RISE_ADDR, 1, 10, BREATH_CC2_RISE_FACTORY);
+    vibSensBite     = readSettingBounded(VIB_SENS_BITE_ADDR, 1, 12, VIB_SENS_BITE_FACTORY);
+    vibSquelchBite  = readSettingBounded(VIB_SQUELCH_BITE_ADDR, 1, 30, VIB_SQUELCH_BITE_FACTORY);
+    vibControl      = readSettingBounded(VIB_CONTROL_ADDR, 0, 1, VIB_CONTROL_FACTORY);
+    dacMode         = readSettingBounded(DAC_MODE_ADDR, DAC_MODE_BREATH, DAC_MODE_PITCH, DAC_MODE_FACTORY);
+    trill3_interval = readSettingBounded(TRILL3_INTERVAL_ADDR, 3, 4, TRILL3_INTERVAL_FACTORY);
 
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
@@ -164,7 +160,6 @@ bool readEEPROM() {
     specialKeyEnable = (dipSwBits & (1<<DIPSW_SPKEYENABLE))?1:0;
     bcasMode         = (dipSwBits & (1<<DIPSW_BCASMODE))?1:0;
 
-    return hasWritten;
 }
 
 
@@ -176,22 +171,31 @@ void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value) {
 
 
 //Read and write EEPROM data
-void writeSetting(uint16_t address, uint16_t value){
-  union {
-    uint8_t v[2];
-    uint16_t val;
-  } data;
-  data.val = value;
-  EEPROM.update(address, data.v[0]);
-  EEPROM.update(address+1, data.v[1]);
+void writeSetting(uint16_t address, uint16_t value) {
+    union {
+        uint8_t v[2];
+        uint16_t val;
+    } data;
+    data.val = value;
+    EEPROM.update(address, data.v[0]);
+    EEPROM.update(address+1, data.v[1]);
 }
 
-uint16_t readSetting(uint16_t address){
-  union {
-    uint8_t v[2];
-    uint16_t val;
-  } data;
-  data.v[0] = EEPROM.read(address);
-  data.v[1] = EEPROM.read(address+1);
-  return data.val;
+uint16_t readSetting(uint16_t address) {
+    union {
+        uint8_t v[2];
+        uint16_t val;
+    } data;
+    data.v[0] = EEPROM.read(address);
+    data.v[1] = EEPROM.read(address+1);
+    return data.val;
+}
+
+uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue) {
+    uint16_t val = readSetting(address);
+    if(val < min || val > max) {
+        val = defaultValue;
+        writeSetting(address, val);
+    }
+    return val;
 }
