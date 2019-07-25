@@ -155,13 +155,13 @@ bool readEEPROM() {
     if(trill3_interval<3 || trill3_interval > 4) trill3_interval = TRILL3_INTERVAL_FACTORY; //Deal with possible zero/bad values
 
     //Flags stored in bit field
-    fastBoot = dipSwBits & (1<<DIPSW_FASTBOOT);
-    legacy = dipSwBits & (1<<DIPSW_LEGACY);
-    legacyBrAct = dipSwBits & (1<<DIPSW_LEGACYBRACT);
-    slowMidi = dipSwBits & (1<<DIPSW_SLOWMIDI);
-    gateOpenEnable = dipSwBits & (1<<DIPSW_GATEOPEN);
-    specialKeyEnable = dipSwBits & (1<<DIPSW_SPKEYENABLE);
-    bcasMode = dipSwBits & (1<<DIPSW_BCASMODE);
+    fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
+    legacy           = (dipSwBits & (1<<DIPSW_LEGACY))?1:0;
+    legacyBrAct      = (dipSwBits & (1<<DIPSW_LEGACYBRACT))?1:0;
+    slowMidi         = (dipSwBits & (1<<DIPSW_SLOWMIDI))?1:0;
+    gateOpenEnable   = (dipSwBits & (1<<DIPSW_GATEOPEN))?1:0;
+    specialKeyEnable = (dipSwBits & (1<<DIPSW_SPKEYENABLE))?1:0;
+    bcasMode         = (dipSwBits & (1<<DIPSW_BCASMODE))?1:0;
 
     return hasWritten;
 }
