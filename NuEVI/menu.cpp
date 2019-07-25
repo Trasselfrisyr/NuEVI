@@ -1,4 +1,3 @@
-
 #include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -156,10 +155,6 @@ void initDisplay() {
 void showVersion() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  #if defined(CVSCALEBOARD)
-  display.setCursor(15,0);
-  display.print("CV");
-  #endif
   display.setCursor(85,52);
   display.print("v.");
   display.println(FIRMWARE_VERSION);

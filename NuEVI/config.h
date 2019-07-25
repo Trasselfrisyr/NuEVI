@@ -5,14 +5,9 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.3.9"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
-
-
-//#define CASSIDY
-#define CVSCALEBOARD
+#define FIRMWARE_VERSION "1.4.0"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
-//#define touch_Thr 1200  // sensitivity for Teensy touch sensors
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
 
@@ -21,7 +16,6 @@
 #define CC_INTERVAL 2
 
 
-// MAybe move these to config.h (as defines?)
 #define breathLoLimit   0
 #define breathHiLimit   4095
 #define portamLoLimit   700

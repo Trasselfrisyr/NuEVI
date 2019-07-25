@@ -709,7 +709,7 @@ void loop() {
     pixelUpdateTime = millis();
   }
 
-  #if defined(CVSCALEBOARD) // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
+  if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
     if (portIsOn){
       if (targetPitch > cvPitch){
@@ -726,9 +726,9 @@ void loop() {
     }
     analogWrite(dacPin,constrain(cvPitch+map(pitchBend,0,16383,-84,84),0,4095));
     analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
-  #else // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
+  else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
-  #endif
+  }
 
   midiDiscardInput();
 

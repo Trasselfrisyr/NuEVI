@@ -154,8 +154,6 @@ bool readEEPROM() {
 
     if(trill3_interval<3 || trill3_interval > 4) trill3_interval = TRILL3_INTERVAL_FACTORY; //Deal with possible zero/bad values
 
-    
-
     //Flags stored in bit field
     fastBoot = dipSwBits & (1<<DIPSW_FASTBOOT);
     legacy = dipSwBits & (1<<DIPSW_LEGACY);
