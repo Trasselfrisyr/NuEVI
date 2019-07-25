@@ -269,14 +269,6 @@ void setup() {
   //Read eeprom data into global vars
   readEEPROM();
 
-  //Parse out flags from bit field
-  fastBoot = dipSwBits & (1<<0);
-  legacy = dipSwBits & (1<<1);
-  legacyBrAct = dipSwBits & (1<<2);
-  slowMidi = dipSwBits & (1<<3);
-  gateOpenEnable = dipSwBits & (1<<4);
-  specialKeyEnable = dipSwBits & (1<<5);
-  bcasMode = dipSwBits & (1<<6);
   activePatch = patch;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);

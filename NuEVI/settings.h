@@ -1,6 +1,7 @@
-
 #ifndef __SETTINGS_H
 #define __SETTINGS_H
+
+#include <stdint.h>
 
 // EEPROM addresses for settings
 #define VERSION_ADDR 0
@@ -61,6 +62,15 @@
 #define DAC_MODE_BREATH 0
 #define DAC_MODE_PITCH 1
 
+#define DIPSW_FASTBOOT    0
+#define DIPSW_LEGACY      1
+#define DIPSW_LEGACYBRACT 2
+#define DIPSW_SLOWMIDI    3
+#define DIPSW_GATEOPEN    4
+#define DIPSW_SPKEYENABLE 5
+#define DIPSW_BCASMODE    6
+
+
 //"factory" values for settings
 #define EEPROM_VERSION 32
 #define BREATH_THR_FACTORY 1400
@@ -112,6 +122,7 @@
 
 
 bool readEEPROM();
+void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
 
 
 #endif

@@ -446,11 +446,6 @@ static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char**
   }
 }
 
-//Poke at a certain bit in a bit field
-void setBit(uint16_t &bitfield, const uint8_t pos, const uint8_t value) {
-  bitfield = (bitfield & ~(1<<pos)) | ((value?1:0)<<pos);
-}
-
 //***********************************************************
 
 const MenuEntrySub legacyPBMenu = {
@@ -458,7 +453,7 @@ const MenuEntrySub legacyPBMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacy?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    setBit(dipSwBits, 1, legacy);
+    setBit(dipSwBits, DIPSW_LEGACY, legacy);
     writeSetting(DIPSW_BITS_ADDR,dipSwBits);
   }
   , nullptr
@@ -469,7 +464,7 @@ const MenuEntrySub legacyBRMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacyBrAct?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    setBit(dipSwBits, 2, legacyBrAct);
+    setBit(dipSwBits, DIPSW_LEGACYBRACT, legacyBrAct);
     writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
@@ -480,7 +475,7 @@ const MenuEntrySub gateOpenMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, gateOpenEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    setBit(dipSwBits, 4, gateOpenEnable);
+    setBit(dipSwBits, DIPSW_GATEOPEN, gateOpenEnable);
     writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
@@ -491,7 +486,7 @@ const MenuEntrySub specialKeyMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, specialKeyEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    setBit(dipSwBits, 5, specialKeyEnable);
+    setBit(dipSwBits, DIPSW_SPKEYENABLE, specialKeyEnable);
     writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
@@ -512,7 +507,7 @@ const MenuEntrySub bcasModeMenu = {
     strncpy(out, bcasMode?"ON":"OFF", 4);
   },
   [](SubMenuRef __unused) {
-    setBit(dipSwBits, 6, bcasMode);
+    setBit(dipSwBits, DIPSW_BCASMODE, bcasMode);
     writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
@@ -534,12 +529,11 @@ const MenuEntrySub fastBootMenu = {
     strncpy(out, fastBoot?"ON":"OFF", 4);
   },
   [](SubMenuRef __unused) {
-    setBit(dipSwBits, 0, fastBoot);
+    setBit(dipSwBits, DIPSW_FASTBOOT, fastBoot);
     writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
-
 
 const MenuEntrySub wlPowerMenu = {
   MenuType::ESub, "WL POWER", "WL POWER", &wlPower, 0, 3, MenuEntryFlags::ENone,

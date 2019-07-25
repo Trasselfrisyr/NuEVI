@@ -28,6 +28,8 @@ TARGET=nuevisim
 
 CXXFILES=		../NuEVI/menu.cpp \
 				../NuEVI/adjustmenu.cpp \
+				../NuEVI/midi.cpp \
+				../NuEVI/settings.cpp \
 				src/nuevisim.cpp \
 				src/simeeprom.cpp \
 				src/Print.cpp \
@@ -35,8 +37,6 @@ CXXFILES=		../NuEVI/menu.cpp \
 				src/simwire.cpp \
 				src/simusbmidi.cpp \
 				src/filters.cpp \
-				../NuEVI/midi.cpp \
-				../NuEVI/settings.cpp \
 				src/Adafruit_GFX_sim.cpp \
 				src/Adafruit_SSD1306_sim.cpp \
 				src/Adafruit_MPR121_sim.cpp \
