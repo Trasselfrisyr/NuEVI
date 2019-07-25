@@ -1,4 +1,3 @@
-#include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPR121.h>
@@ -361,29 +360,6 @@ static void drawSubBox(const char* label)
 void drawMenuCursor(byte itemNo, byte color){
   byte ymid = 15 + 9 * itemNo;
   display.drawTriangle(57, ymid,61, ymid+2,61, ymid-2, color);
-}
-
-//***********************************************************
-
-// TODO: Move these to a settings.cpp maybe?
-void writeSetting(byte address, unsigned short value){
-  union {
-    byte v[2];
-    unsigned short val;
-  } data;
-  data.val = value;
-  EEPROM.update(address, data.v[0]);
-  EEPROM.update(address+1, data.v[1]);
-}
-
-unsigned short readSetting(byte address){
-  union {
-    byte v[2];
-    unsigned short val;
-  } data;
-  data.v[0] = EEPROM.read(address);
-  data.v[1] = EEPROM.read(address+1);
-  return data.val;
 }
 
 //***********************************************************

@@ -123,6 +123,7 @@
 
 bool readEEPROM();
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
-
+uint16_t readSetting(uint16_t address);
+void writeSetting(uint16_t address, uint16_t value);
 
 #endif

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <EEPROM.h>
 
 #include "settings.h"
 #include "globals.h"
@@ -171,4 +172,26 @@ bool readEEPROM() {
 //Poke at a certain bit in a bit field
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value) {
   bitfield = (bitfield & ~(1<<pos)) | ((value?1:0)<<pos);
+}
+
+
+//Read and write EEPROM data
+void writeSetting(uint16_t address, uint16_t value){
+  union {
+    uint8_t v[2];
+    uint16_t val;
+  } data;
+  data.val = value;
+  EEPROM.update(address, data.v[0]);
+  EEPROM.update(address+1, data.v[1]);
+}
+
+uint16_t readSetting(uint16_t address){
+  union {
+    uint8_t v[2];
+    uint16_t val;
+  } data;
+  data.v[0] = EEPROM.read(address);
+  data.v[1] = EEPROM.read(address+1);
+  return data.val;
 }
