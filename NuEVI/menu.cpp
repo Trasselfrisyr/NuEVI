@@ -366,7 +366,7 @@ void drawMenuCursor(byte itemNo, byte color){
 
 static int readTrills() {
   readSwitches();
-  return K5+2*K6+4*K7;
+  return K5+2*K6+trill3_interval*K7;
 }
 
 //***********************************************************
