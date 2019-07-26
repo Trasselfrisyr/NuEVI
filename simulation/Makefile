@@ -30,6 +30,7 @@ CXXFILES=		../NuEVI/menu.cpp \
 				../NuEVI/adjustmenu.cpp \
 				../NuEVI/midi.cpp \
 				../NuEVI/settings.cpp \
+				../NuEVI/led.cpp \
 				src/nuevisim.cpp \
 				src/simeeprom.cpp \
 				src/Print.cpp \

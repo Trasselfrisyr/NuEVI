@@ -11,6 +11,7 @@
 #include "menu.h"
 #include "config.h"
 #include "settings.h"
+#include "led.h"
 
 /*
 NAME:                 NuEVI
@@ -233,9 +234,6 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
-const int breathLedBrightness = 500; // up to 4095, PWM
-const int portamLedBrightness = 500; // up to 4095, PWM
-
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
 
@@ -291,7 +289,7 @@ void setup() {
     vibZero += touchRead(vibratoPin);
     breathCalZero += analogRead(breathSensorPin);
     if (biteJumper) vibZeroBite += analogRead(A7); else vibZeroBite += touchRead(bitePin);
-    digitalWrite( statusLedPin, i&1 );
+    statusLed(i&1);
     delay(fastBoot?75:250); //Shorter delay for fastboot
   }
 
@@ -687,7 +685,7 @@ void loop() {
     } else {
       if (slowMidi) breath();
       extraController();
-      statusLEDs();
+      updateSensorLEDs();
       doorKnobCheck();
     }
     ccSendTime = millis();
@@ -774,23 +772,6 @@ int noteValueCheck(int note) {
 
 int patchLimit(int value) {
   return constrain(value, 1, 128);
-}
-
-//**************************************************************
-
-void statusLEDs() {
-  if (breathLevel > breathThrVal) { // breath indicator LED, labeled "B" on PCB
-    //analogWrite(bLedPin, map(breathLevel,0,4096,5,breathLedBrightness));
-    analogWrite(bLedPin, map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 5, breathLedBrightness));
-  } else {
-    analogWrite(bLedPin, 0);
-  }
-  if (portIsOn) { // portamento indicator LED, labeled "P" on PCB
-    //analogWrite(pLedPin, map(biteSensor,0,4096,5,portamLedBrightness));
-    analogWrite(pLedPin, map(constrain(oldport, 0, 127), 0, 127, 5, portamLedBrightness));
-  } else {
-    analogWrite(pLedPin, 0);
-  }
 }
 
 //**************************************************************
@@ -1169,25 +1150,4 @@ void readSwitches() {
     fingeredNote = fingeredNoteRead; 
   }
   lastFingering = fingeredNoteRead;
-}
-
-
-
-void statusLedOn() {
-  digitalWrite(statusLedPin, HIGH);
-}
-
-void statusLedOff() {
-  digitalWrite(statusLedPin, LOW);
-}
-
-void statusLedFlip() {
-  digitalWrite(statusLedPin, !digitalRead(statusLedPin));
-}
-
-void statusLedFlash(uint16_t delayTime) {
-  statusLedOff();
-  delay(delayTime/2);
-  statusLedOn();
-  delay(delayTime/2);
 }

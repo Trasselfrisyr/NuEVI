@@ -116,6 +116,10 @@ extern int vibZeroBite;
 extern int vibThrBite;
 extern int vibThrBiteLo;
 
+extern int breathLevel;
+extern byte portIsOn;
+extern int oldport;
+
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
 extern byte K1;   // Valve 1 (pitch change -2)
 extern byte K2;   // Valve 2 (pitch change -1)

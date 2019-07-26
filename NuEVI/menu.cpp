@@ -10,6 +10,7 @@
 #include "globals.h"
 #include "midi.h"
 #include "numenu.h"
+#include "led.h"
 
 enum CursorIdx {
   EMain,
@@ -1228,17 +1229,6 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
   return redraw;
 }
 
-//***********************************************************
-// This should be moved to a separate file/process that handles only led
-static void statusBlink() {
-  digitalWrite(statusLedPin,LOW);
-  delay(150);
-  digitalWrite(statusLedPin,HIGH);
-  delay(150);
-  digitalWrite(statusLedPin,LOW);
-  delay(150);
-  digitalWrite(statusLedPin,HIGH);
-}
 
 //***********************************************************
 
@@ -1391,12 +1381,12 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
           legacyBrAct = !legacyBrAct;
           dipSwBits = dipSwBits ^ (1<<2);
           writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-          statusBlink();
+          statusLedBlink();
         } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
           legacy = !legacy;
           dipSwBits = dipSwBits ^ (1<<1);
           writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-          statusBlink();
+          statusLedBlink();
         } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
           display.ssd1306_command(SSD1306_DISPLAYON);
           menuState= ROTATOR_MENU;

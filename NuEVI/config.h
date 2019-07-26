@@ -30,4 +30,9 @@
 #define ttouchHiLimit   1900
 
 
+#define MIN_LED_BRIGHTNESS    5   // lowest PWM value that still is visible
+#define BREATH_LED_BRIGHTNESS 500 // up to 4095, PWM
+#define PORTAM_LED_BRIGHTNESS 500 // up to 4095, PWM
+
+
 #endif
