@@ -1131,42 +1131,35 @@ void portOff() {
 
 void readSwitches() {
   
-  int qTransp;
-  // Read touch pads (MPR121) and put value in variables
-  int touchValue[12];
+  // Read touch pads (MPR121), compare against threshold value
+  bool touchKeys[12];
   for (byte i = 0; i < 12; i++) {
-    touchValue[i] = touchSensor.filteredData(i);
+    touchKeys[i] = touchSensor.filteredData(i) < ctouchThrVal;
   }
 
   // Octave rollers
   octaveR = 0;
-  if ((touchValue[R5Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) octaveR = 6; //R6 = R5 && R3
-  else if (touchValue[R5Pin] < ctouchThrVal) octaveR = 5; //R5
-  else if (touchValue[R4Pin] < ctouchThrVal) octaveR = 4; //R4
-  else if ((touchValue[R3Pin] < ctouchThrVal) && lastOctaveR) octaveR = 3; //R3
-  else if (touchValue[R2Pin] < ctouchThrVal) octaveR = 2; //R2
-  else if (touchValue[R1Pin] < ctouchThrVal) octaveR = 1; //R1
+  if (touchKeys[R5Pin] && touchValue[R3Pin]) octaveR = 6; //R6 = R5 && R3
+  else if (touchKeys[R5Pin]) octaveR = 5; //R5
+  else if (touchKeys[R4Pin]) octaveR = 4; //R4
+  else if (touchKeys[R3Pin] && lastOctaveR) octaveR = 3; //R3
+  else if (touchKeys[R2Pin]) octaveR = 2; //R2
+  else if (touchKeys[R1Pin]) octaveR = 1; //R1
 
   lastOctaveR = octaveR;
 
   // Valves and trill keys
-  K4 = (touchValue[K4Pin] < ctouchThrVal);
-  K1 = (touchValue[K1Pin] < ctouchThrVal);
-  K2 = (touchValue[K2Pin] < ctouchThrVal);
-  K3 = (touchValue[K3Pin] < ctouchThrVal);
-  K5 = (touchValue[K5Pin] < ctouchThrVal);
-  K6 = (touchValue[K6Pin] < ctouchThrVal);
-  K7 = (touchValue[K7Pin] < ctouchThrVal);
+  K1 = touchKeys[K1Pin];
+  K2 = touchKeys[K2Pin];
+  K3 = touchKeys[K3Pin];
+  K4 = touchKeys[K4Pin];
+  K5 = touchKeys[K5Pin];
+  K6 = touchKeys[K6Pin];
+  K7 = touchKeys[K7Pin];
 
   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
 
-  if ((pinkySetting < 12) && pinkyKey) {
-    qTransp = pinkySetting - 12;
-  } else if ((pinkySetting > 12) && pinkyKey) {
-    qTransp = pinkySetting - 12;
-  } else {
-    qTransp = 0;
-  }
+  int qTransp = pinkyKey ? pinkySetting-12 : 0;
 
   // Calculate midi note number from pressed keys  
 
