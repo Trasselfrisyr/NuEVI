@@ -1125,7 +1125,7 @@ void readSwitches() {
 
   // Octave rollers
   octaveR = 0;
-  if (touchKeys[R5Pin] && touchValue[R3Pin]) octaveR = 6; //R6 = R5 && R3
+  if (touchKeys[R5Pin] && touchKeys[R3Pin]) octaveR = 6; //R6 = R5 && R3
   else if (touchKeys[R5Pin]) octaveR = 5; //R5
   else if (touchKeys[R4Pin]) octaveR = 4; //R4
   else if (touchKeys[R3Pin] && lastOctaveR) octaveR = 3; //R3
