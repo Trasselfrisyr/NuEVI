@@ -305,11 +305,8 @@ void setup() {
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
   if(!fastBoot) {
-    digitalWrite(statusLedPin, LOW);
-    delay(250);
-    digitalWrite(statusLedPin,HIGH);
-    delay(250);
-    digitalWrite(statusLedPin,LOW);
+    statusLedFlash(500);
+    statusLedOff();
 
     showVersion();
 
@@ -328,7 +325,7 @@ void setup() {
 
   //Serial.begin(9600); // debug
 
-  digitalWrite(statusLedPin,HIGH); // Switch on the onboard LED to indicate power on/ready
+  statusLedOn();    // Switch on the onboard LED to indicate power on/ready
 
 }
 
@@ -700,9 +697,9 @@ void loop() {
     // this is one of the big reasons the display is for setup use only
     drawSensorPixels(); // live sensor monitoring for the setup screens
     if (rotatorOn || slurSustain || parallelChord || subOctaveDouble || gateOpen) {
-      digitalWrite(statusLedPin, !digitalRead(statusLedPin));
-    } else if (!digitalRead(statusLedPin)) {
-      digitalWrite(statusLedPin, HIGH);
+      statusLedFlip();
+    } else {
+      statusLedOn();
     }
     pixelUpdateTime = millis();
   }
@@ -944,10 +941,10 @@ void pitch_bend() {
   pitchBend = constrain(pitchBend, 0, 16383);
 
   if (subVibSquelch && (8192 != pitchBend)) {
-    digitalWrite(statusLedPin, LOW);
+    statusLedOff();
     vibLedOff = 1;
   } else if (vibLedOff) {
-    digitalWrite(statusLedPin, HIGH);
+    statusLedOn();
     vibLedOff = 0;
   }
 
@@ -972,25 +969,14 @@ void doorKnobCheck() {
     if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) { // doorknob grip on canister
       if (!gateOpen && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2))) {
         gateOpen = 1;
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
+        statusLedFlash(100);
       } else if (gateOpen && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2))) {
         gateOpen = 0;
         midiPanic();
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(700);
+        statusLedFlash(100);
+        statusLedFlash(100);
+        statusLedFlash(100);
+        delay(600);
       }
     }
   } else if (gateOpen) {
@@ -1183,4 +1169,25 @@ void readSwitches() {
     fingeredNote = fingeredNoteRead; 
   }
   lastFingering = fingeredNoteRead;
+}
+
+
+
+void statusLedOn() {
+  digitalWrite(statusLedPin, HIGH);
+}
+
+void statusLedOff() {
+  digitalWrite(statusLedPin, LOW);
+}
+
+void statusLedFlip() {
+  digitalWrite(statusLedPin, !digitalRead(statusLedPin));
+}
+
+void statusLedFlash(uint16_t delayTime) {
+  statusLedOff();
+  delay(delayTime/2);
+  statusLedOn();
+  delay(delayTime/2);
 }
