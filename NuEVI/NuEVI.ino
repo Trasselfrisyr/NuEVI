@@ -821,8 +821,8 @@ void pitch_bend() {
   int vibMax;
   int calculatedPBdepth;
   byte pbTouched = 0;
-  int vibRead;
-  int vibReadBite;
+  int vibRead = 0;
+  int vibReadBite = 0;
   pbUp = touchRead(pbUpPin); // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin); // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
