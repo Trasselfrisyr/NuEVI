@@ -1,10 +1,9 @@
 #include <Wire.h>
-
 #include <Adafruit_MPR121.h>
 #include <SPI.h>
 #include <EEPROM.h>
-#include <Filters.h>  // for the breath signal LP filtering, https://github.com/edgar-bonet/Filters
 
+#include "FilterOnePole.h"  // for the breath signal low-pass filtering, from https://github.com/JonHub/Filters
 #include "globals.h"
 #include "hardware.h"
 #include "midi.h"

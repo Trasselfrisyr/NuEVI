@@ -17,7 +17,7 @@ CXXFLAGS= $(CFLAGS) -std=c++14
 LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
 LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
 
-SYSINC = ~/Documents/Arduino/libraries/Filters ./include
+SYSINC = ./include
 INCS = ../NuEVI ./include ./imgui ./gl3w
 
 INCDIRS = $(addprefix -isystem ,$(SYSINC))
@@ -46,6 +46,7 @@ CXXFILES=		../NuEVI/menu.cpp \
 				imgui/imgui_widgets.cpp \
 				imgui/examples/imgui_impl_sdl.cpp \
 				imgui/examples/imgui_impl_opengl3.cpp
+
 
 CFILES= 		gl3w/gl3w.c
 
