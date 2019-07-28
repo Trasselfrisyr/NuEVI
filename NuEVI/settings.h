@@ -1,8 +1,7 @@
-
 #ifndef __SETTINGS_H
 #define __SETTINGS_H
 
-
+#include <stdint.h>
 
 // EEPROM addresses for settings
 #define VERSION_ADDR 0
@@ -54,9 +53,26 @@
 #define VIB_SENS_BITE_ADDR 92
 #define VIB_SQUELCH_BITE_ADDR 94
 #define VIB_CONTROL_ADDR 96
+#define TRILL3_INTERVAL_ADDR 98
+#define DAC_MODE_ADDR 100
+
+
+
+//DAC output modes
+#define DAC_MODE_BREATH 0
+#define DAC_MODE_PITCH 1
+
+#define DIPSW_FASTBOOT    0
+#define DIPSW_LEGACY      1
+#define DIPSW_LEGACYBRACT 2
+#define DIPSW_SLOWMIDI    3
+#define DIPSW_GATEOPEN    4
+#define DIPSW_SPKEYENABLE 5
+#define DIPSW_BCASMODE    6
+
 
 //"factory" values for settings
-#define VERSION 32
+#define EEPROM_VERSION 32
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -100,5 +116,16 @@
 #define VIB_SENS_BITE_FACTORY 3
 #define VIB_SQUELCH_BITE_FACTORY 10
 #define VIB_CONTROL_FACTORY 0
+
+#define TRILL3_INTERVAL_FACTORY 4
+#define DAC_MODE_FACTORY DAC_MODE_BREATH
+
+
+void readEEPROM();
+void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
+uint16_t readSetting(uint16_t address);
+void writeSetting(uint16_t address, uint16_t value);
+uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue);
+
 
 #endif

@@ -16,11 +16,7 @@ added directly via the Library Manager in the Arduino IDE:
 * Adafruit MPR121
 * Adafruit GFX
 * Adafruit SSD1306 (version 1.2.9 or above)
-
-You also need to install [Edgar Bonet's Filters library](https://github.com/edgar-bonet/Filters),
-specifically the `fix-integer-overflow` branch. One of the easiest way to do that is to download the
-git repo [as a zip file](https://github.com/edgar-bonet/Filters/archive/fix-integer-overflow.zip),
-and then add that in the Arduino IDE (under Sketch -> Include Library -> Add .ZIP library)
+* NuEVI also includes on the [Filters](https://github.com/JonHub/Filters) library by Jonathan Driscoll, but that is no longer an external dependency.
 
 
 ### Compile options

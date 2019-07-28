@@ -1,16 +1,16 @@
 #include <Wire.h>
-
 #include <Adafruit_MPR121.h>
 #include <SPI.h>
 #include <EEPROM.h>
-#include <Filters.h>  // for the breath signal LP filtering, https://github.com/edgar-bonet/Filters
 
+#include "FilterOnePole.h"  // for the breath signal low-pass filtering, from https://github.com/JonHub/Filters
 #include "globals.h"
 #include "hardware.h"
 #include "midi.h"
 #include "menu.h"
 #include "config.h"
 #include "settings.h"
+#include "led.h"
 
 /*
 NAME:                 NuEVI
@@ -80,6 +80,11 @@ unsigned short vibControl = 0;
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
+uint16_t bcasMode; //Legacy CASSIDY compile flag
+uint16_t trill3_interval;
+uint16_t fastBoot;
+uint16_t dacMode;
+
 byte rotatorOn = 0;
 byte currentRotation = 0;
 uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
@@ -89,8 +94,6 @@ byte gateOpen = 0; // setting for gate always open, note on sent for every time 
 uint16_t gateOpenEnable = 0;
 
 uint16_t specialKeyEnable = 0;
-
-uint16_t wlPower = 0;
 
 int touch_Thr = 1300;
 
@@ -230,9 +233,6 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
-const int breathLedBrightness = 500; // up to 4095, PWM
-const int portamLedBrightness = 500; // up to 4095, PWM
-
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
 
@@ -260,126 +260,10 @@ void setup() {
   pinMode(biteJumperGndPin, OUTPUT);    //PBITE
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
 
-  // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
 
-  uint16_t settingsVersion = readSetting(VERSION_ADDR);
+  //Read eeprom data into global vars
+  readEEPROM();
 
-  if (((settingsVersion != VERSION) && (settingsVersion < 24)) || (!digitalRead(ePin) && !digitalRead(mPin)) || (settingsVersion == 0xffffu)) {
-    writeSetting(VERSION_ADDR,VERSION);
-    writeSetting(BREATH_THR_ADDR,BREATH_THR_FACTORY);
-    writeSetting(BREATH_MAX_ADDR,BREATH_MAX_FACTORY);
-      if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
-        writeSetting(PORTAM_THR_ADDR,PORTAM_THR_FACTORY);  
-        writeSetting(PORTAM_MAX_ADDR,PORTAM_MAX_FACTORY); 
-      } else {
-        writeSetting(PORTAM_THR_ADDR,PORTPR_THR_FACTORY);  
-        writeSetting(PORTAM_MAX_ADDR,PORTPR_MAX_FACTORY); 
-      }
-    writeSetting(PITCHB_THR_ADDR,PITCHB_THR_FACTORY);
-    writeSetting(PITCHB_MAX_ADDR,PITCHB_MAX_FACTORY);
-    writeSetting(EXTRAC_THR_ADDR,EXTRAC_THR_FACTORY);
-    writeSetting(EXTRAC_MAX_ADDR,EXTRAC_MAX_FACTORY);
-    writeSetting(CTOUCH_THR_ADDR,CTOUCH_THR_FACTORY);
-  }
-
-  if ((settingsVersion != VERSION) || (!digitalRead(ePin) && !digitalRead(mPin))) {
-    writeSetting(VERSION_ADDR,VERSION);
-    
-    writeSetting(TRANSP_ADDR,TRANSP_FACTORY);
-    writeSetting(MIDI_ADDR,MIDI_FACTORY);
-    writeSetting(BREATH_CC_ADDR,BREATH_CC_FACTORY);
-    writeSetting(BREATH_AT_ADDR,BREATH_AT_FACTORY);
-    writeSetting(VELOCITY_ADDR,VELOCITY_FACTORY);
-    writeSetting(PORTAM_ADDR,PORTAM_FACTORY);
-    writeSetting(PB_ADDR,PB_FACTORY);
-    writeSetting(EXTRA_ADDR,EXTRA_FACTORY);
-    writeSetting(VIBRATO_ADDR,VIBRATO_FACTORY);
-    writeSetting(DEGLITCH_ADDR,DEGLITCH_FACTORY);
-    writeSetting(PATCH_ADDR,PATCH_FACTORY);
-    writeSetting(OCTAVE_ADDR,OCTAVE_FACTORY);
-    writeSetting(BREATHCURVE_ADDR,BREATHCURVE_FACTORY);
-    writeSetting(VEL_SMP_DL_ADDR,VEL_SMP_DL_FACTORY);
-    writeSetting(VEL_BIAS_ADDR,VEL_BIAS_FACTORY);
-    writeSetting(PINKY_KEY_ADDR,PINKY_KEY_FACTORY);
-    writeSetting(FP1_ADDR,0);
-    writeSetting(FP2_ADDR,0);
-    writeSetting(FP3_ADDR,0);
-    writeSetting(FP4_ADDR,0);
-    writeSetting(FP5_ADDR,0);
-    writeSetting(FP6_ADDR,0);
-    writeSetting(FP7_ADDR,0);
-    writeSetting(DIPSW_BITS_ADDR,DIPSW_BITS_FACTORY);
-    writeSetting(PARAL_ADDR,PARAL_FACTORY);
-    writeSetting(ROTN1_ADDR,ROTN1_FACTORY);
-    writeSetting(ROTN2_ADDR,ROTN2_FACTORY);
-    writeSetting(ROTN3_ADDR,ROTN3_FACTORY);
-    writeSetting(ROTN4_ADDR,ROTN4_FACTORY);
-    writeSetting(PRIO_ADDR,PRIO_FACTORY);
-    writeSetting(VIB_SENS_ADDR,VIB_SENS_FACTORY);
-    writeSetting(VIB_RETN_ADDR,VIB_RETN_FACTORY);
-    writeSetting(VIB_SQUELCH_ADDR,VIB_SQUELCH_FACTORY);
-    writeSetting(VIB_DIRECTION_ADDR,VIB_DIRECTION_FACTORY);
-    writeSetting(BREATH_CC2_ADDR,BREATH_CC2_FACTORY);
-    writeSetting(BREATH_CC2_RISE_ADDR,BREATH_CC2_RISE_FACTORY);
-    writeSetting(VIB_SENS_BITE_ADDR,VIB_SENS_BITE_FACTORY);
-    writeSetting(VIB_SQUELCH_BITE_ADDR,VIB_SQUELCH_BITE_FACTORY);
-    writeSetting(VIB_CONTROL_ADDR,VIB_CONTROL_FACTORY);
-  }
-  // read settings from EEPROM
-  breathThrVal = readSetting(BREATH_THR_ADDR);
-  breathMaxVal = readSetting(BREATH_MAX_ADDR);
-  portamThrVal = readSetting(PORTAM_THR_ADDR);
-  portamMaxVal = readSetting(PORTAM_MAX_ADDR);
-  pitchbThrVal = readSetting(PITCHB_THR_ADDR);
-  pitchbMaxVal = readSetting(PITCHB_MAX_ADDR);
-  transpose    = readSetting(TRANSP_ADDR);
-  MIDIchannel  = readSetting(MIDI_ADDR);
-  breathCC     = readSetting(BREATH_CC_ADDR);
-  breathAT     = readSetting(BREATH_AT_ADDR);
-  velocity     = readSetting(VELOCITY_ADDR);
-  portamento   = readSetting(PORTAM_ADDR);
-  PBdepth      = readSetting(PB_ADDR);
-  extraCT      = readSetting(EXTRA_ADDR);
-  vibrato      = readSetting(VIBRATO_ADDR);
-  deglitch     = readSetting(DEGLITCH_ADDR);
-  extracThrVal = readSetting(EXTRAC_THR_ADDR);
-  extracMaxVal = readSetting(EXTRAC_MAX_ADDR);
-  patch        = readSetting(PATCH_ADDR);
-  octave       = readSetting(OCTAVE_ADDR);
-  ctouchThrVal = readSetting(CTOUCH_THR_ADDR);
-  curve        = readSetting(BREATHCURVE_ADDR);
-  velSmpDl     = readSetting(VEL_SMP_DL_ADDR);
-  velBias      = readSetting(VEL_BIAS_ADDR);
-  pinkySetting = readSetting(PINKY_KEY_ADDR);
-  fastPatch[0] = readSetting(FP1_ADDR);
-  fastPatch[1] = readSetting(FP2_ADDR);
-  fastPatch[2] = readSetting(FP3_ADDR);
-  fastPatch[3] = readSetting(FP4_ADDR);
-  fastPatch[4] = readSetting(FP5_ADDR);
-  fastPatch[5] = readSetting(FP6_ADDR);
-  fastPatch[6] = readSetting(FP7_ADDR);
-  dipSwBits    = readSetting(DIPSW_BITS_ADDR);
-  parallel     = readSetting(PARAL_ADDR);
-  rotations[0] = readSetting(ROTN1_ADDR);
-  rotations[1] = readSetting(ROTN2_ADDR);
-  rotations[2] = readSetting(ROTN3_ADDR);
-  rotations[3] = readSetting(ROTN4_ADDR);
-  priority     = readSetting(PRIO_ADDR);
-  vibSens      = readSetting(VIB_SENS_ADDR);
-  vibRetn      = readSetting(VIB_RETN_ADDR);
-  vibSquelch   = readSetting(VIB_SQUELCH_ADDR);
-  vibDirection = readSetting(VIB_DIRECTION_ADDR);
-  breathCC2    = readSetting(BREATH_CC2_ADDR);
-  breathCC2Rise   = readSetting(BREATH_CC2_RISE_ADDR);
-  vibSensBite     = readSetting(VIB_SENS_BITE_ADDR);
-  vibSquelchBite  = readSetting(VIB_SQUELCH_BITE_ADDR);
-  vibControl      = readSetting(VIB_CONTROL_ADDR);
-
-  legacy = dipSwBits & (1<<1);
-  legacyBrAct = dipSwBits & (1<<2);
-  slowMidi = dipSwBits & (1<<3);
-  gateOpenEnable = dipSwBits & (1<<4);
-  specialKeyEnable = dipSwBits & (1<<5);
   activePatch = patch;
 
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
@@ -404,9 +288,10 @@ void setup() {
     vibZero += touchRead(vibratoPin);
     breathCalZero += analogRead(breathSensorPin);
     if (biteJumper) vibZeroBite += analogRead(A7); else vibZeroBite += touchRead(bitePin);
-    digitalWrite( statusLedPin, i&1 );
-    delay(250);
+    statusLed(i&1);
+    delay(fastBoot?75:250); //Shorter delay for fastboot
   }
+
   vibZero /= sampleCount;
   breathCalZero /= sampleCount;
   vibZeroBite /= sampleCount;
@@ -416,15 +301,14 @@ void setup() {
   vibThrBite = vibZeroBite - vibSquelchBite;
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
-  digitalWrite(statusLedPin, LOW);
-  delay(250);
-  digitalWrite(statusLedPin,HIGH);
-  delay(250);
-  digitalWrite(statusLedPin,LOW);
+  if(!fastBoot) {
+    statusLedFlash(500);
+    statusLedOff();
 
-  showVersion();
+    showVersion();
 
-  delay(1500);
+    delay(1500);
+  }
 
   mainState = NOTE_OFF;       // initialize main state machine
 
@@ -438,7 +322,7 @@ void setup() {
 
   //Serial.begin(9600); // debug
 
-  digitalWrite(statusLedPin,HIGH); // Switch on the onboard LED to indicate power on/ready
+  statusLedOn();    // Switch on the onboard LED to indicate power on/ready
 
 }
 
@@ -469,54 +353,37 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
-      #if defined(CASSIDY)
-      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(breathSensorPin) < breathCalZero - 900) && legacyBrAct)) { // both pb pads touched or br suck
-      #else
-      if (((pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2)) && legacy) ||
-          ((analogRead(breathSensorPin) < breathCalZero - 800) && legacyBrAct && (pbUp > (pitchbMaxVal + pitchbThrVal) / 2) && (pbDn < (pitchbMaxVal + pitchbThrVal) / 2))) { // both pb pads touched or br suck
-      #endif  
+
+      bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
+      bool brSuck = analogRead(breathSensorPin) < (breathCalZero - (bcasMode?900:800));
+      
+      if (
+          (bothPB && legacy) ||
+          (brSuck && legacyBrAct && (bothPB || bcasMode))
+          ) { // both pb pads touched or br suck
+
+
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
           if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
             MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up 
-            #if !defined(CASSIDY)
-            digitalWrite(statusLedPin, LOW);
-            delay(150);
-            digitalWrite(statusLedPin, HIGH);
-            #endif
           }
         } else {
           if (!pinkyKey) { // note number to patch number
             if (patch != fingeredNoteUntransposed) {
               patch = fingeredNoteUntransposed;
               doPatchUpdate = 1;
-              #if !defined(CASSIDY)
-              digitalWrite(statusLedPin, LOW);
-              delay(150);
-              digitalWrite(statusLedPin, HIGH);
-              #endif
             }
           } else { // hi and lo patch numbers
             if (fingeredNoteUntransposed > 75) {
               if (patch != patchLimit(fingeredNoteUntransposed + 24)) {
                 patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
                 doPatchUpdate = 1;
-                #if !defined(CASSIDY)
-                digitalWrite(statusLedPin, LOW);
-                delay(150);
-                digitalWrite(statusLedPin, HIGH);
-                #endif
               }
             } else {
               if (patch != patchLimit(fingeredNoteUntransposed - 36)) {
                 patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
                 doPatchUpdate = 1;
-                #if !defined(CASSIDY)
-                digitalWrite(statusLedPin, LOW);
-                delay(150);
-                digitalWrite(statusLedPin, HIGH);
-                #endif
               }
             }
           }
@@ -817,7 +684,7 @@ void loop() {
     } else {
       if (slowMidi) breath();
       extraController();
-      statusLEDs();
+      updateSensorLEDs();
       doorKnobCheck();
     }
     ccSendTime = millis();
@@ -827,14 +694,14 @@ void loop() {
     // this is one of the big reasons the display is for setup use only
     drawSensorPixels(); // live sensor monitoring for the setup screens
     if (rotatorOn || slurSustain || parallelChord || subOctaveDouble || gateOpen) {
-      digitalWrite(statusLedPin, !digitalRead(statusLedPin));
-    } else if (!digitalRead(statusLedPin)) {
-      digitalWrite(statusLedPin, HIGH);
+      statusLedFlip();
+    } else {
+      statusLedOn();
     }
     pixelUpdateTime = millis();
   }
 
-  #if defined(CVSCALEBOARD) // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
+  if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
     if (portIsOn){
       if (targetPitch > cvPitch){
@@ -851,9 +718,9 @@ void loop() {
     }
     analogWrite(dacPin,constrain(cvPitch+map(pitchBend,0,16383,-84,84),0,4095));
     analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
-  #else // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
+  } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
-  #endif
+  }
 
   midiDiscardInput();
 
@@ -908,23 +775,6 @@ int patchLimit(int value) {
 
 //**************************************************************
 
-void statusLEDs() {
-  if (breathLevel > breathThrVal) { // breath indicator LED, labeled "B" on PCB
-    //analogWrite(bLedPin, map(breathLevel,0,4096,5,breathLedBrightness));
-    analogWrite(bLedPin, map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 5, breathLedBrightness));
-  } else {
-    analogWrite(bLedPin, 0);
-  }
-  if (portIsOn) { // portamento indicator LED, labeled "P" on PCB
-    //analogWrite(pLedPin, map(biteSensor,0,4096,5,portamLedBrightness));
-    analogWrite(pLedPin, map(constrain(oldport, 0, 127), 0, 127, 5, portamLedBrightness));
-  } else {
-    analogWrite(pLedPin, 0);
-  }
-}
-
-//**************************************************************
-
 void breath() {
   int breathCCval, breathCCvalFine,breathCC2val;
   unsigned int breathCCvalHires;
@@ -970,8 +820,8 @@ void pitch_bend() {
   int vibMax;
   int calculatedPBdepth;
   byte pbTouched = 0;
-  int vibRead;
-  int vibReadBite;
+  int vibRead = 0;
+  int vibReadBite = 0;
   pbUp = touchRead(pbUpPin); // SENSOR PIN 23 - PCB PIN "Pu"
   pbDn = touchRead(pbDnPin); // SENSOR PIN 22 - PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
@@ -1071,10 +921,10 @@ void pitch_bend() {
   pitchBend = constrain(pitchBend, 0, 16383);
 
   if (subVibSquelch && (8192 != pitchBend)) {
-    digitalWrite(statusLedPin, LOW);
+    statusLedOff();
     vibLedOff = 1;
   } else if (vibLedOff) {
-    digitalWrite(statusLedPin, HIGH);
+    statusLedOn();
     vibLedOff = 0;
   }
 
@@ -1099,25 +949,14 @@ void doorKnobCheck() {
     if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) { // doorknob grip on canister
       if (!gateOpen && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2))) {
         gateOpen = 1;
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
+        statusLedFlash(100);
       } else if (gateOpen && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2))) {
         gateOpen = 0;
         midiPanic();
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(50);
-        digitalWrite(statusLedPin, LOW);
-        delay(50);
-        digitalWrite(statusLedPin, HIGH);
-        delay(700);
+        statusLedFlash(100);
+        statusLedFlash(100);
+        statusLedFlash(100);
+        delay(600);
       }
     }
   } else if (gateOpen) {
@@ -1258,61 +1097,43 @@ void portOff() {
 
 void readSwitches() {
   
-  int qTransp;
-  // Read touch pads (MPR121) and put value in variables
-  int touchValue[12];
+  // Read touch pads (MPR121), compare against threshold value
+  bool touchKeys[12];
   for (byte i = 0; i < 12; i++) {
-    touchValue[i] = touchSensor.filteredData(i);
+    touchKeys[i] = touchSensor.filteredData(i) < ctouchThrVal;
   }
 
   // Octave rollers
   octaveR = 0;
-  if ((touchValue[R5Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) octaveR = 6; //R6 = R5 && R3
-  else if (touchValue[R5Pin] < ctouchThrVal) octaveR = 5; //R5
-  else if (touchValue[R4Pin] < ctouchThrVal) octaveR = 4; //R4
-  else if ((touchValue[R3Pin] < ctouchThrVal) && lastOctaveR) octaveR = 3; //R3
-  else if (touchValue[R2Pin] < ctouchThrVal) octaveR = 2; //R2
-  else if (touchValue[R1Pin] < ctouchThrVal) octaveR = 1; //R1
+  if (touchKeys[R5Pin] && touchKeys[R3Pin]) octaveR = 6; //R6 = R5 && R3
+  else if (touchKeys[R5Pin]) octaveR = 5; //R5
+  else if (touchKeys[R4Pin]) octaveR = 4; //R4
+  else if (touchKeys[R3Pin] && lastOctaveR) octaveR = 3; //R3
+  else if (touchKeys[R2Pin]) octaveR = 2; //R2
+  else if (touchKeys[R1Pin]) octaveR = 1; //R1
 
   lastOctaveR = octaveR;
 
   // Valves and trill keys
-  K4 = (touchValue[K4Pin] < ctouchThrVal);
-  K1 = (touchValue[K1Pin] < ctouchThrVal);
-  K2 = (touchValue[K2Pin] < ctouchThrVal);
-  K3 = (touchValue[K3Pin] < ctouchThrVal);
-  K5 = (touchValue[K5Pin] < ctouchThrVal);
-  K6 = (touchValue[K6Pin] < ctouchThrVal);
-  K7 = (touchValue[K7Pin] < ctouchThrVal);
+  K1 = touchKeys[K1Pin];
+  K2 = touchKeys[K2Pin];
+  K3 = touchKeys[K3Pin];
+  K4 = touchKeys[K4Pin];
+  K5 = touchKeys[K5Pin];
+  K6 = touchKeys[K6Pin];
+  K7 = touchKeys[K7Pin];
 
   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
 
-  if ((pinkySetting < 12) && pinkyKey) {
-    qTransp = pinkySetting - 12;
-  } else if ((pinkySetting > 12) && pinkyKey) {
-    qTransp = pinkySetting - 12;
-  } else {
-    qTransp = 0;
-  }
+  int qTransp = pinkyKey ? pinkySetting-12 : 0;
 
   // Calculate midi note number from pressed keys  
-  #if defined(CASSIDY)
 
   fingeredNoteUntransposed = startNote
     - 2*K1 - K2 - 3*K3  //"Trumpet valves"
     - 5*K4              //Fifth key
-    + 2*K5 + K6 + 3*K7  //Trill keys (different from standard)
+    + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
     + octaveR*12;       //Octave rollers
-
-  #else
-
-  fingeredNoteUntransposed = startNote
-    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
-    - 5*K4              //Fifth key
-    + 2*K5 + K6 + 4*K7  //Trill keys
-    + octaveR*12;       //Octave rollers
-
-  #endif
 
   int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
 

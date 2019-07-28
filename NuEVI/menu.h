@@ -41,8 +41,6 @@ void initDisplay();
 void showVersion();
 void menu();
 void drawSensorPixels();
-unsigned short readSetting(byte address);
-void writeSetting(byte address, unsigned short value);
 
 int updateAdjustMenu(uint32_t timeNow, KeyState &input, bool firstRun, bool drawSensor);
 bool adjustPageUpdate(KeyState &input, uint32_t timeNow);

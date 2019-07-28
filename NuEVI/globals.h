@@ -73,7 +73,11 @@ extern byte currentRotation;
 extern uint16_t rotations[4];
 extern uint16_t parallel; // semitones
 
-extern uint16_t wlPower;
+extern uint16_t bcasMode; //Legacy CASSIDY compile flag
+extern uint16_t trill3_interval;
+extern uint16_t fastBoot;
+extern uint16_t dacMode;
+
 
 extern int touch_Thr;
 
@@ -111,6 +115,10 @@ extern int vibZero;
 extern int vibZeroBite;
 extern int vibThrBite;
 extern int vibThrBiteLo;
+
+extern int breathLevel;
+extern byte portIsOn;
+extern int oldport;
 
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
 extern byte K1;   // Valve 1 (pitch change -2)

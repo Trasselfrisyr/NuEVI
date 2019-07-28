@@ -1,5 +1,3 @@
-
-#include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MPR121.h>
@@ -12,6 +10,7 @@
 #include "globals.h"
 #include "midi.h"
 #include "numenu.h"
+#include "led.h"
 
 enum CursorIdx {
   EMain,
@@ -156,14 +155,6 @@ void initDisplay() {
 void showVersion() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
-  #if defined(CASSIDY)
-  display.setCursor(0,0);
-  display.print("BC");
-  #endif
-  #if defined(CVSCALEBOARD)
-  display.setCursor(15,0);
-  display.print("CV");
-  #endif
   display.setCursor(85,52);
   display.print("v.");
   display.println(FIRMWARE_VERSION);
@@ -374,32 +365,9 @@ void drawMenuCursor(byte itemNo, byte color){
 
 //***********************************************************
 
-// TODO: Move these to a settings.cpp maybe?
-void writeSetting(byte address, unsigned short value){
-  union {
-    byte v[2];
-    unsigned short val;
-  } data;
-  data.val = value;
-  EEPROM.update(address, data.v[0]);
-  EEPROM.update(address+1, data.v[1]);
-}
-
-unsigned short readSetting(byte address){
-  union {
-    byte v[2];
-    unsigned short val;
-  } data;
-  data.v[0] = EEPROM.read(address);
-  data.v[1] = EEPROM.read(address+1);
-  return data.val;
-}
-
-//***********************************************************
-
 static int readTrills() {
   readSwitches();
-  return K5+2*K6+4*K7;
+  return K5+2*K6+trill3_interval*K7;
 }
 
 //***********************************************************
@@ -450,7 +418,6 @@ static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char**
   }
 }
 
-
 //***********************************************************
 
 const MenuEntrySub legacyPBMenu = {
@@ -458,8 +425,7 @@ const MenuEntrySub legacyPBMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacy?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<1);
-    dipSwBits |= (legacy <<1);
+    setBit(dipSwBits, DIPSW_LEGACY, legacy);
     writeSetting(DIPSW_BITS_ADDR,dipSwBits);
   }
   , nullptr
@@ -470,9 +436,8 @@ const MenuEntrySub legacyBRMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, legacyBrAct?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<2);
-    dipSwBits |= (legacyBrAct <<2);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, DIPSW_LEGACYBRACT, legacyBrAct);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
@@ -482,9 +447,8 @@ const MenuEntrySub gateOpenMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, gateOpenEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<4);
-    dipSwBits |= (gateOpenEnable <<4);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, DIPSW_GATEOPEN, gateOpenEnable);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
@@ -494,29 +458,89 @@ const MenuEntrySub specialKeyMenu = {
   [](SubMenuRef __unused, char* out, const char ** __unused unit) {
     strncpy(out, specialKeyEnable?"ON":"OFF", 4);
   }, [](const MenuEntrySub & __unused sub) {
-    dipSwBits = dipSwBits & ~(1<<5);
-    dipSwBits |= (specialKeyEnable <<5);
-    writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    setBit(dipSwBits, DIPSW_SPKEYENABLE, specialKeyEnable);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub trill3Menu = {
+  MenuType::ESub, "3RD TRILL", "3RD TRILL", &trill3_interval, 3, 4, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(trill3_interval, out, true);
+  },
+  [](SubMenuRef __unused) { writeSetting(TRILL3_INTERVAL_ADDR, trill3_interval); }
+  , nullptr
+};
+
+const MenuEntrySub bcasModeMenu = {
+  MenuType::ESub, "BCAS MODE", "BCAS MODE", &bcasMode, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    strncpy(out, bcasMode?"ON":"OFF", 4);
+  },
+  [](SubMenuRef __unused) {
+    setBit(dipSwBits, DIPSW_BCASMODE, bcasMode);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
+  }
+  , nullptr
+};
+
+const MenuEntrySub dacModeMenu = {
+  MenuType::ESub, "DAC OUT", "DAC OUT", &dacMode, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* dacModeLabels[] = { "BRTH", "PTCH"};
+    strncpy(out, dacModeLabels[dacMode], 5);
+  },
+  [](SubMenuRef __unused) { writeSetting(DAC_MODE_ADDR, dacMode); }
+  , nullptr
+};
+
+const MenuEntrySub fastBootMenu = {
+  MenuType::ESub, "FAST BOOT", "FAST BOOT", &fastBoot, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    strncpy(out, fastBoot?"ON":"OFF", 4);
+  },
+  [](SubMenuRef __unused) {
+    setBit(dipSwBits, DIPSW_FASTBOOT, fastBoot);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
   }
   , nullptr
 };
 
 
+static uint16_t wireless_power=0;
+static uint16_t wireless_channel=4;
+
 const MenuEntrySub wlPowerMenu = {
-  MenuType::ESub, "WL POWER", "WL POWER", &wlPower, 0, 3, MenuEntryFlags::ENone,
+  MenuType::ESub, "WL POWER", "WL POWER", &wireless_power, 0, 3, MenuEntryFlags::ENone,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    numToString(-6*wlPower, out, true);
+    numToString(-6*wireless_power, out, true);
   },
-  [](SubMenuRef __unused) { sendWLPower(wlPower); }
+  [](SubMenuRef __unused) { sendWLPower(wireless_power); }
   , nullptr
 };
+
+const MenuEntrySub wlChannelMenu = {
+  MenuType::ESub, "WL CHAN", "WL CHAN", &wireless_channel, 4, 80, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(wireless_channel, out, false);
+  },
+  [](SubMenuRef __unused) { sendWLChannel(wireless_channel); }
+  , nullptr
+};
+
 
 const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
   (MenuEntry*)&legacyBRMenu,
   (MenuEntry*)&gateOpenMenu,
   (MenuEntry*)&specialKeyMenu,
+  (MenuEntry*)&trill3Menu,
+  (MenuEntry*)&bcasModeMenu,
+  (MenuEntry*)&dacModeMenu,
+  (MenuEntry*)&fastBootMenu,
   (MenuEntry*)&wlPowerMenu,
+  (MenuEntry*)&wlChannelMenu,
 };
 
 const MenuPage extrasMenuPage = {
@@ -1205,17 +1229,6 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
   return redraw;
 }
 
-//***********************************************************
-// This should be moved to a separate file/process that handles only led
-static void statusBlink() {
-  digitalWrite(statusLedPin,LOW);
-  delay(150);
-  digitalWrite(statusLedPin,HIGH);
-  delay(150);
-  digitalWrite(statusLedPin,LOW);
-  delay(150);
-  digitalWrite(statusLedPin,HIGH);
-}
 
 //***********************************************************
 
@@ -1368,12 +1381,12 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
           legacyBrAct = !legacyBrAct;
           dipSwBits = dipSwBits ^ (1<<2);
           writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-          statusBlink();
+          statusLedBlink();
         } else if ((exSensor >= ((extracThrVal+extracMaxVal)/2))) { // switch pb pad activated legacy settings control on/off
           legacy = !legacy;
           dipSwBits = dipSwBits ^ (1<<1);
           writeSetting(DIPSW_BITS_ADDR,dipSwBits);
-          statusBlink();
+          statusLedBlink();
         } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
           display.ssd1306_command(SSD1306_DISPLAYON);
           menuState= ROTATOR_MENU;

@@ -17,7 +17,7 @@ CXXFLAGS= $(CFLAGS) -std=c++14
 LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
 LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
 
-SYSINC = ~/Documents/Arduino/libraries/Filters ./include
+SYSINC = ./include
 INCS = ../NuEVI ./include ./imgui ./gl3w
 
 INCDIRS = $(addprefix -isystem ,$(SYSINC))
@@ -28,6 +28,9 @@ TARGET=nuevisim
 
 CXXFILES=		../NuEVI/menu.cpp \
 				../NuEVI/adjustmenu.cpp \
+				../NuEVI/midi.cpp \
+				../NuEVI/settings.cpp \
+				../NuEVI/led.cpp \
 				src/nuevisim.cpp \
 				src/simeeprom.cpp \
 				src/Print.cpp \
@@ -35,7 +38,6 @@ CXXFILES=		../NuEVI/menu.cpp \
 				src/simwire.cpp \
 				src/simusbmidi.cpp \
 				src/filters.cpp \
-				../NuEVI/midi.cpp \
 				src/Adafruit_GFX_sim.cpp \
 				src/Adafruit_SSD1306_sim.cpp \
 				src/Adafruit_MPR121_sim.cpp \
@@ -44,6 +46,7 @@ CXXFILES=		../NuEVI/menu.cpp \
 				imgui/imgui_widgets.cpp \
 				imgui/examples/imgui_impl_sdl.cpp \
 				imgui/examples/imgui_impl_opengl3.cpp
+
 
 CFILES= 		gl3w/gl3w.c
 
