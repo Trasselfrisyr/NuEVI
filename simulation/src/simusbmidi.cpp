@@ -58,3 +58,12 @@ bool SimUsbMidi::read(uint8_t __unused channel) {
 	return false;
 }
 
+//Regular sysex handler
+void SimUsbMidi::setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *array, uint8_t size)) {
+
+}
+
+//"Chunked" sysex handler (teensy extension), for large messages
+void SimUsbMidi::setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *array, uint16_t size, bool last)) {
+
+}

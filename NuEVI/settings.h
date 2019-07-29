@@ -56,6 +56,7 @@
 #define TRILL3_INTERVAL_ADDR 98
 #define DAC_MODE_ADDR 100
 
+#define EEPROM_SIZE 102
 
 
 //DAC output modes
@@ -121,11 +122,24 @@
 #define DAC_MODE_FACTORY DAC_MODE_BREATH
 
 
-void readEEPROM();
+void readEEPROM(bool factoryReset);
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
 uint16_t readSetting(uint16_t address);
 void writeSetting(uint16_t address, uint16_t value);
 uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue);
 
+//Functions for config management mode
+void sendSysexSettings();
+void sendSysexMessage(const char* messageCode);
+void sendSysexVersion();
+
+void handleSysex(uint8_t *data, uint8_t length);
+uint32_t crc32(uint8_t *message, size_t length);
+
+void configInitScreen();
+void configShowMessage(const char* message);
+
+void configModeSetup();
+void configModeLoop();
 
 #endif

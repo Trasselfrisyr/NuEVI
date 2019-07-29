@@ -1,15 +1,18 @@
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <Adafruit_SSD1306.h>
+
 
 #include "settings.h"
 #include "globals.h"
 #include "menu.h"
 #include "hardware.h"
 #include "config.h"
+#include "midi.h"
+#include "led.h"
 
 //Read settings from eeprom. Returns wether or not anything was written (due to factory reset or upgrade)
-void readEEPROM() {
-    bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
+void readEEPROM(bool factoryReset) {
 
     // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
     uint16_t settingsVersion = readSetting(VERSION_ADDR);
@@ -26,11 +29,11 @@ void readEEPROM() {
             writeSetting(BREATH_THR_ADDR, BREATH_THR_FACTORY);
             writeSetting(BREATH_MAX_ADDR, BREATH_MAX_FACTORY);
             if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
-                writeSetting(PORTAM_THR_ADDR, PORTAM_THR_FACTORY);  
-                writeSetting(PORTAM_MAX_ADDR, PORTAM_MAX_FACTORY); 
+                writeSetting(PORTAM_THR_ADDR, PORTAM_THR_FACTORY);
+                writeSetting(PORTAM_MAX_ADDR, PORTAM_MAX_FACTORY);
             } else {
-                writeSetting(PORTAM_THR_ADDR, PORTPR_THR_FACTORY);  
-                writeSetting(PORTAM_MAX_ADDR, PORTPR_MAX_FACTORY); 
+                writeSetting(PORTAM_THR_ADDR, PORTPR_THR_FACTORY);
+                writeSetting(PORTAM_MAX_ADDR, PORTPR_MAX_FACTORY);
             }
             writeSetting(PITCHB_THR_ADDR, PITCHB_THR_FACTORY);
             writeSetting(PITCHB_MAX_ADDR, PITCHB_MAX_FACTORY);
@@ -98,7 +101,7 @@ void readEEPROM() {
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
- 
+
     // read all settings from EEPROM
     breathThrVal    = readSettingBounded(BREATH_THR_ADDR, breathLoLimit, breathHiLimit, BREATH_THR_FACTORY);
     breathMaxVal    = readSettingBounded(BREATH_MAX_ADDR, breathLoLimit, breathHiLimit, BREATH_MAX_FACTORY);
@@ -198,4 +201,200 @@ uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16
         writeSetting(address, val);
     }
     return val;
+}
+
+
+
+
+//Functions to send and receive config (and other things) via USB MIDI SysEx messages
+uint32_t crc32(uint8_t *message, size_t length) {
+   size_t pos=0;
+   uint32_t crc=0xFFFFFFFF;
+
+   while (pos<length) {
+      crc ^= message[pos++]; //Get next byte and increment position
+      for (uint8_t j=0; j<8; ++j) { //Mask off 8 next bits
+         crc = (crc >> 1) ^ (0xEDB88320 &  -(crc & 1));
+      }
+   }
+   return ~crc;
+}
+
+
+/*
+
+Send EEPROM config dump as sysex message. Message format is structured like this:
+
++------------------------------------------------------------------------------------+
+| vendor(3) | "NuEVIc01" (8) | Payload size (2) | EEPROM data (variable) | crc32 (4) |
++------------------------------------------------------------------------------------+
+
+Payload size is for the EEPROM data chunk (not including anything else before or after
+CRC32 covers the entire buffer up to and including the eeprom data (but not the checksum itself)
+
+This currently operates under the assumption that the whole EEPROM chunk only consists of unsigned 16 bit ints, only using the range 0-16383
+
+*/
+void sendSysexSettings() {
+  const char *header = "NuEVIc01"; //NuEVI config dump 01
+
+  //Build a send buffer of all the things
+  size_t sysex_size = 3 + strlen(header) + 2 + EEPROM_SIZE + 4;
+  uint8_t *sysex_data = (uint8_t*)malloc(sysex_size);
+
+  //Positions (offsets) of parts in send buffer
+  int header_pos = 3;
+  int size_pos = header_pos + strlen(header);
+  int payload_pos = size_pos + 2;
+  int checksum_pos = payload_pos + EEPROM_SIZE;
+
+  //SysEX manufacturer ID
+  memcpy(sysex_data, sysex_id, 3);
+
+  //Header with command code
+  memcpy(sysex_data+header_pos, header, strlen(header));
+
+  //Payload length
+  *(uint16_t*)(sysex_data+size_pos) = midi16to14(EEPROM_SIZE);
+
+  //Config data
+  uint16_t* config_buffer_start = (uint16_t*)(sysex_data+payload_pos);
+
+  //Read one settings item at a time, change data format, and put in send buffer
+  for(uint16_t idx=0; idx<EEPROM_SIZE/2; idx++) {
+    uint16_t eepromval = readSetting(idx*2);
+    config_buffer_start[idx] = midi16to14(eepromval);
+  }
+
+  uint32_t checksum = crc32(sysex_data, checksum_pos);
+
+/*
+  printf("CRC len: %d\n", checksum_pos);
+  printf("CRC32: %X | %u\n", checksum, checksum);
+*/
+
+  *(uint32_t*)(sysex_data+checksum_pos) = midi32to28(checksum);
+
+  usbMIDI.sendSysEx(sysex_size, sysex_data);
+
+  free(sysex_data);
+}
+
+//Send a simple 3-byte message code as sysex
+void sendSysexMessage(const char* messageCode) {
+  char sysexMessage[] = "vvvNuEVIccc"; //Placeholders for vendor and code
+
+  memcpy(sysexMessage, sysex_id, 3);
+  memcpy(sysexMessage+8, messageCode, 3);
+
+  usbMIDI.sendSysEx(11, (const uint8_t *)sysexMessage);
+}
+
+//Send EEPROM and firmware versions
+void sendSysexVersion() {
+  char sysexMessage[] = "vvvNuEVIc04eevvvvvvvv"; //Placeholders for vendor and code
+
+  memcpy(sysexMessage, sysex_id, 3);
+  memcpy(sysexMessage+13, FIRMWARE_VERSION, min(strlen(FIRMWARE_VERSION), 8));
+
+  *(uint16_t*)(sysexMessage+11) = midi16to14(EEPROM_VERSION);
+
+  uint8_t message_length = 13+strlen(FIRMWARE_VERSION);
+
+  usbMIDI.sendSysEx(message_length, (const uint8_t *)sysexMessage);
+}
+
+extern Adafruit_SSD1306 display;
+
+void configShowMessage(const char* message) {
+  display.fillRect(0,32,128,64,BLACK);
+  display.setCursor(0,32);
+  display.setTextColor(WHITE);
+
+  display.print(message);
+
+  display.display();
+}
+
+uint8_t* sysex_rcv_buffer = NULL;
+
+void handleSysexChunk(const uint8_t *data, uint16_t length, bool last) {
+  size_t pos = 0;
+
+  if(!sysex_rcv_buffer) {
+    //Start out with an empty buffer
+    sysex_rcv_buffer = (uint8_t *)malloc(length);
+  } else {
+    //Increase size of current buffer
+    size_t pos = sizeof(sysex_rcv_buffer);
+    sysex_rcv_buffer = (uint8_t *)realloc(sysex_rcv_buffer, pos + length);
+  }
+
+  //Append this chunk to buffer
+  memcpy(sysex_rcv_buffer + pos, data, length);
+
+  //If it's the last one, call the regular handler to process it
+  if(last) {
+    handleSysex(sysex_rcv_buffer, pos+length);
+    free(sysex_rcv_buffer);
+    sysex_rcv_buffer = NULL;
+  }
+}
+
+
+void handleSysex(const uint8_t *data, uint8_t length) {
+
+  //Too short to even contain a 3-byte vendor id is not for us.
+  if(length<3) return;
+
+  //Verify vendor
+  if(strncmp((char*)data, sysex_id, 3)) return; //Silently ignore different vendor id
+
+  //Verify header. Min length is 3+5+3 bytes (vendor+header+message code)
+  if(length<11 || strncmp((char*)(data+3), "NuEVI", 3)) {
+    configShowMessage("Invalid message received.");
+    sendSysexMessage("e00");
+    return;
+  }
+
+  //Get message code
+  char messageCode[3];
+  strncpy(messageCode, (char*)(data+8), 3);
+
+  if(!strncmp(messageCode, "c00", 3)) { //Config dump request
+    configShowMessage("Sending config...");
+    sendSysexSettings();
+    configShowMessage("Config sent.");
+  } else if(!strncmp(messageCode, "c03", 3)) { //Version info request
+    configShowMessage("Sending version.");
+    sendSysexVersion();
+  } else {
+    configShowMessage("Unknown message.");
+    sendSysexMessage("e01"); //Unimplemented message code
+  }
+}
+
+void configModeSetup() {
+    statusLedFlash(500);
+
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.setTextColor(WHITE);
+    display.setTextSize(0);
+
+    display.println("Config mgmt");
+    display.println("Power off NuEVI");
+    display.println("to exit");
+    display.display();
+
+    usbMIDI.setHandleSystemExclusive(handleSysexChunk);
+
+    statusLedFlash(500);
+
+    configShowMessage("Ready.");
+}
+
+//"Main loop". Just sits and wait for midi messages and lets the sysex handler do all the work.
+void configModeLoop() {
+    usbMIDI.read();
 }

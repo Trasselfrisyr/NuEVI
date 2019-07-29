@@ -1,6 +1,9 @@
 #ifndef __MIDI_H
 #define __MIDI_H
 
+//This is a completely made up "European" SysEx manufacturer ID.
+static const char sysex_id[] = { 0x00, 0x3e, 0x7f };
+
 //Enable use of USB and serial MIDI
 #define USE_MIDI_USB
 #define USE_MIDI_SERIAL
@@ -32,5 +35,11 @@ void dinMIDIsendSysex(const uint8_t data[], const uint8_t length);
 
 void sendWLPower(const uint8_t level);
 void sendWLChannel(const uint8_t channel);
+
+
+//Convert things between "regular data" and MIDI data (byte order and 7-bits-per-byte)
+uint16_t midi16to14(uint16_t realdata);
+uint16_t midi14to16(uint16_t mididata);
+uint32_t midi32to28(uint32_t realdata);
 
 #endif

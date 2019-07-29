@@ -236,6 +236,8 @@ byte subOctaveDouble = 0;
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
 
+bool configManagementMode = false;
+
 
 //_______________________________________________________________________________________________ SETUP
 
@@ -260,9 +262,19 @@ void setup() {
   pinMode(biteJumperGndPin, OUTPUT);    //PBITE
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
 
+  bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
+  configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
+
+  initDisplay(); //Start up display and show logo
+
+  //If going into config management mode, stop here before we even touch the EEPROM.
+  if(configManagementMode) {
+    configModeSetup();
+    return;
+  }
 
   //Read eeprom data into global vars
-  readEEPROM();
+  readEEPROM(factoryReset);
 
   activePatch = patch;
 
@@ -273,8 +285,6 @@ void setup() {
   }
 
   breathFilter.setFilter(LOWPASS, filterFreq, 0.0);   // create a one pole (RC) lowpass filter
-  
-  initDisplay(); //Start up display and show logo
 
   biteJumper = !digitalRead(biteJumperPin);
   if (biteJumper){
@@ -329,6 +339,13 @@ void setup() {
 //_______________________________________________________________________________________________ MAIN LOOP
 
 void loop() {
+
+  //If in config mgmt loop, do that and nothing else
+  if(configManagementMode) {
+    configModeLoop();
+    return;
+  }
+
   breathFilter.input(analogRead(breathSensorPin));
   pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP 
   readSwitches();
@@ -356,7 +373,7 @@ void loop() {
 
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool brSuck = analogRead(breathSensorPin) < (breathCalZero - (bcasMode?900:800));
-      
+
       if (
           (bothPB && legacy) ||
           (brSuck && legacyBrAct && (bothPB || bcasMode))
@@ -364,9 +381,9 @@ void loop() {
 
 
         fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
-        if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting     
+        if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting
           if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
-            MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up 
+            MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up
           }
         } else {
           if (!pinkyKey) { // note number to patch number
@@ -408,7 +425,7 @@ void loop() {
               doPatchUpdate = 1;
             }
 
-            if (!K1 && !K2 && K3 && !K4) { //send reverb pitchlatch value  
+            if (!K1 && !K2 && K3 && !K4) { //send reverb pitchlatch value
               reverb = ((pitchlatch - 36) * 2);
               reverb = constrain(reverb, 0, 127);
 
@@ -854,7 +871,7 @@ void pitch_bend() {
       vibSignal = vibSignal * 0.5;
     }
   } else { //lever vibrato
-    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap  
+    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
         vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
@@ -1031,7 +1048,7 @@ void portamento_() {
 
   if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-   } else { 
+   } else {
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
   if (!vibControl){
@@ -1096,7 +1113,7 @@ void portOff() {
 //***********************************************************
 
 void readSwitches() {
-  
+
   // Read touch pads (MPR121), compare against threshold value
   bool touchKeys[12];
   for (byte i = 0; i < 12; i++) {
@@ -1123,11 +1140,11 @@ void readSwitches() {
   K6 = touchKeys[K6Pin];
   K7 = touchKeys[K7Pin];
 
-  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
+  pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
 
   int qTransp = pinkyKey ? pinkySetting-12 : 0;
 
-  // Calculate midi note number from pressed keys  
+  // Calculate midi note number from pressed keys
 
   fingeredNoteUntransposed = startNote
     - 2*K1 - K2 - 3*K3  //"Trumpet valves"
@@ -1146,7 +1163,7 @@ void readSwitches() {
   if ((millis() - lastDeglitchTime) > deglitch) {
     // whatever the reading is at, it's been there for longer
     // than the debounce delay, so take it as the actual current state
-    fingeredNote = fingeredNoteRead; 
+    fingeredNote = fingeredNoteRead;
   }
   lastFingering = fingeredNoteRead;
 }

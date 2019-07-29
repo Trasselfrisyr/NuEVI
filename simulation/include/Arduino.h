@@ -15,7 +15,7 @@
 
 #ifndef _BV
 #define _BV(x) (1u<<(x))
-#endif 
+#endif
 
 // SPI CTRL REG BITS
 #define SPIE 	7
@@ -85,6 +85,8 @@ public:
 	void sendPitchBend(int value, uint8_t channel, uint8_t cable=0);
 	void sendSysEx(uint16_t length, const uint8_t *data, bool hasTerm=false, uint8_t cable=0);
 	bool read(uint8_t channel=0);
+	void setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *array, uint8_t size));
+	void setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *data, uint16_t length, bool complete));
 };
 
 extern SimSerial Serial;
