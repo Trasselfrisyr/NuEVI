@@ -1,5 +1,6 @@
 #include <functional>
 #include <string>
+#include <iostream>
 
 #include <SDL2/SDL.h>
 
@@ -16,6 +17,7 @@
 
 #include <Arduino.h>
 
+#define ARGS_NOEXCEPT
 #include "args.hxx"
 
 // Forward declarations
@@ -622,16 +624,27 @@ static void SimQuit()
 int main(int argc, const char** argv)
 {
 
-    args::ArgumentParser parser("This is a test program.", "This goes after the options.");
+    args::ArgumentParser parser("NuEVI simulator.");
 
-
-    args::ValueFlag<std::string> eepromFile(parser, "eeprom-write", "File to use for EEPROM data", {'e', "eeprom-file"});
+    args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+    args::ValueFlag<std::string> eepromFile(parser, "filename", "File to use for EEPROM data", {'e', "eeprom-file"});
     args::Flag eepromWrite(parser, "eeprom-write", "Write EEPROM changes to file", {'w', "eeprom-write"});
     args::Flag factoryReset(parser, "factory-reset", "Trigger factory reset", {'r', "factory-reset"});
     args::Flag configMode(parser, "config-mode", "Trigger config-management mode", {'c', "config-mode"});
     args::Flag nodelay(parser, "nodelay", "Skip all delays when running", {'n', "nodelay"});
 
     parser.ParseCLI(argc, argv);
+
+    if(parser.GetError() != args::Error::None) {
+
+        if(parser.GetError() == args::Error::Help) {
+            std::cout << parser << std::endl;
+            return 0;
+        }
+
+        std::cerr << parser.GetErrorMsg() << std::endl;
+        return 1;
+    }
 
     std::string eepromFileName = args::get(eepromFile);
 
