@@ -12,7 +12,7 @@
 #include "led.h"
 
 //Read settings from eeprom. Returns wether or not anything was written (due to factory reset or upgrade)
-void readEEPROM(bool factoryReset) {
+void readEEPROM(const bool factoryReset) {
 
     // if stored settings are not for current version, or Enter+Menu are pressed at startup, they are replaced by factory settings
     uint16_t settingsVersion = readSetting(VERSION_ADDR);
@@ -174,7 +174,7 @@ void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value) {
 
 
 //Read and write EEPROM data
-void writeSetting(uint16_t address, uint16_t value) {
+void writeSetting(const uint16_t address, const uint16_t value) {
     union {
         uint8_t v[2];
         uint16_t val;
@@ -184,7 +184,7 @@ void writeSetting(uint16_t address, uint16_t value) {
     EEPROM.update(address+1, data.v[1]);
 }
 
-uint16_t readSetting(uint16_t address) {
+uint16_t readSetting(const uint16_t address) {
     union {
         uint8_t v[2];
         uint16_t val;
@@ -194,7 +194,7 @@ uint16_t readSetting(uint16_t address) {
     return data.val;
 }
 
-uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue) {
+uint16_t readSettingBounded(const uint16_t address, const uint16_t min, const uint16_t max, const uint16_t defaultValue) {
     uint16_t val = readSetting(address);
     if(val < min || val > max) {
         val = defaultValue;
@@ -207,7 +207,7 @@ uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16
 
 
 //Functions to send and receive config (and other things) via USB MIDI SysEx messages
-uint32_t crc32(uint8_t *message, size_t length) {
+uint32_t crc32(const uint8_t *message, const size_t length) {
    size_t pos=0;
    uint32_t crc=0xFFFFFFFF;
 
@@ -290,6 +290,86 @@ void sendSysexMessage(const char* messageCode) {
   usbMIDI.sendSysEx(11, (const uint8_t *)sysexMessage);
 }
 
+
+bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
+
+  //Expected size of data (vendor+NuEVIc02+len+payload+crc32)
+  uint16_t expected_size = 3 + 8 + 2 + EEPROM_SIZE + 4;
+
+
+  //Positions (offsets) of parts in buffer
+  int size_pos = 11;
+  int payload_pos = size_pos + 2;
+  int checksum_pos = payload_pos + EEPROM_SIZE;
+
+  //Make sure length of receive buffer is enough to read all we need to. We can accept extra junk at the end though.
+  if(length<expected_size) {
+    configShowMessage("Invalid config format");
+    return false;
+  }
+
+  //No need to verify vendor or header/command, already done before we get here.
+
+  //Calculate checksum of stuff received (everything before checksum), transform to midi format
+  //(being a one-way operation, we can't do the reverse anyway)
+  uint32_t crc=midi32to28(crc32(data, checksum_pos));
+  uint32_t crc_rcv;
+  memcpy(&crc_rcv, data+checksum_pos, 4);
+  if(crc != crc_rcv) {
+    configShowMessage("Invalid checksum");
+    return false;
+  }
+
+  //Verify that payload size matches the size of our EEPROM config
+  uint16_t payload_size = midi14to16(data[payload_pos]);
+  if(payload_size != EEPROM_SIZE) {
+    configShowMessage("Invalid config size");
+    return false;
+  }
+
+
+  uint16_t eeprom_version_rcv = midi14to16(data[payload_pos+VERSION_ADDR]);
+  if(eeprom_version_rcv != EEPROM_VERSION) {
+    configShowMessage("Invalid config version");
+    return false;
+  }
+
+  //Grab all the items in payload and save to EEPROM
+  for(uint16_t i=0; i<payload_size/2; i++) {
+    uint16_t addr = i*2;
+    uint16_t val;
+    memcpy(&val, data+payload_pos+addr, 2);
+    val = midi14to16(val);
+
+    //Skip sensor calibration values if they are "out of bounds". This makes it possible to send a config that does
+    //not overwrite sensor calibration.
+    if(addr == BREATH_THR_ADDR || addr == BREATH_MAX_ADDR) {
+      if(val<breathLoLimit || val>breathHiLimit) continue;
+    }
+
+    if(addr == PORTAM_THR_ADDR || addr == PORTAM_MAX_ADDR) {
+      if(val<portamLoLimit || val>portamHiLimit) continue;
+    }
+
+    if(addr == PITCHB_THR_ADDR || addr == PITCHB_MAX_ADDR) {
+      if(val<pitchbLoLimit || val>pitchbHiLimit) continue;
+    }
+
+    if(addr == EXTRAC_THR_ADDR || addr == EXTRAC_MAX_ADDR) {
+      if(val<extracLoLimit || val>extracHiLimit) continue;
+    }
+
+    if(addr == CTOUCH_THR_ADDR) {
+      if(val<ctouchLoLimit || val>ctouchHiLimit) continue;
+    }
+
+    writeSetting(i, val);
+  }
+
+  //All went well
+  return true;
+}
+
 //Send EEPROM and firmware versions
 void sendSysexVersion() {
   char sysexMessage[] = "vvvNuEVIc04eevvvvvvvv"; //Placeholders for vendor and code
@@ -318,7 +398,7 @@ void configShowMessage(const char* message) {
 
 uint8_t* sysex_rcv_buffer = NULL;
 
-void handleSysexChunk(const uint8_t *data, uint16_t length, bool last) {
+void handleSysexChunk(const uint8_t *data, const uint16_t length, const bool last) {
   size_t pos = 0;
 
   if(!sysex_rcv_buffer) {
@@ -342,24 +422,25 @@ void handleSysexChunk(const uint8_t *data, uint16_t length, bool last) {
 }
 
 
-void handleSysex(const uint8_t *data, uint8_t length) {
+void handleSysex(const uint8_t *data, const unsigned int length) {
+  //Note: Sysex data as received here contains sysex start and end markers (0xF0 and 0xF7)
 
   //Too short to even contain a 3-byte vendor id is not for us.
-  if(length<3) return;
+  if(length<4) return;
 
   //Verify vendor
-  if(strncmp((char*)data, sysex_id, 3)) return; //Silently ignore different vendor id
+  if(strncmp((char*)(data+1), sysex_id, 3)) return; //Silently ignore different vendor id
 
   //Verify header. Min length is 3+5+3 bytes (vendor+header+message code)
-  if(length<11 || strncmp((char*)(data+3), "NuEVI", 3)) {
-    configShowMessage("Invalid message received.");
+  if(length<12 || strncmp((char*)(data+4), "NuEVI", 5)) {
+    configShowMessage("Invalid message.");
     sendSysexMessage("e00");
     return;
   }
 
   //Get message code
   char messageCode[3];
-  strncpy(messageCode, (char*)(data+8), 3);
+  strncpy(messageCode, (char*)(data+9), 3);
 
   if(!strncmp(messageCode, "c00", 3)) { //Config dump request
     configShowMessage("Sending config...");
@@ -368,6 +449,11 @@ void handleSysex(const uint8_t *data, uint8_t length) {
   } else if(!strncmp(messageCode, "c03", 3)) { //Version info request
     configShowMessage("Sending version.");
     sendSysexVersion();
+  } else if(!strncmp(messageCode, "c02", 3)) { //New config incoming
+    configShowMessage("Receiving config...");
+
+    //Tell receiveSysexSettings about what's between sysex start and end markers
+    if(receiveSysexSettings(data+1, length-2)) configShowMessage("New config saved.");
   } else {
     configShowMessage("Unknown message.");
     sendSysexMessage("e01"); //Unimplemented message code
@@ -390,6 +476,8 @@ void configModeSetup() {
     usbMIDI.setHandleSystemExclusive(handleSysexChunk);
 
     statusLedFlash(500);
+
+    sendSysexVersion(); //Friendly hello
 
     configShowMessage("Ready.");
 }

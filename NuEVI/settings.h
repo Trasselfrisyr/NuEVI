@@ -122,20 +122,20 @@
 #define DAC_MODE_FACTORY DAC_MODE_BREATH
 
 
-void readEEPROM(bool factoryReset);
+void readEEPROM(const bool factoryReset);
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
-uint16_t readSetting(uint16_t address);
-void writeSetting(uint16_t address, uint16_t value);
-uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue);
+uint16_t readSetting(const uint16_t address);
+void writeSetting(const uint16_t address, const uint16_t value);
+uint16_t readSettingBounded(const uint16_t address, const uint16_t min, const uint16_t max, const uint16_t defaultValue);
 
 //Functions for config management mode
 void sendSysexSettings();
 void sendSysexMessage(const char* messageCode);
 void sendSysexVersion();
 
-void handleSysex(const uint8_t *data, uint8_t length);
-void handleSysexChunk(const uint8_t *data, uint16_t length, bool last);
-uint32_t crc32(uint8_t *message, size_t length);
+void handleSysex(const uint8_t *data, const unsigned int length);
+void handleSysexChunk(const uint8_t *data, const uint16_t length, const bool last);
+uint32_t crc32(const uint8_t *message, const size_t length);
 
 void configInitScreen();
 void configShowMessage(const char* message);
