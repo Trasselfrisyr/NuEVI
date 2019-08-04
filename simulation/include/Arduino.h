@@ -85,8 +85,14 @@ public:
 	void sendPitchBend(int value, uint8_t channel, uint8_t cable=0);
 	void sendSysEx(uint16_t length, const uint8_t *data, bool hasTerm=false, uint8_t cable=0);
 	bool read(uint8_t channel=0);
-	void setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *array, uint8_t size));
-	void setHandleSystemExclusive(__unused void (*fptr) (const uint8_t *data, uint16_t length, bool complete));
+	void setHandleSystemExclusive(void (*fptr) (const uint8_t *array, unsigned int size));
+	void setHandleSystemExclusive(void (*fptr) (const uint8_t *data, uint16_t length, uint8_t complete));
+
+	void receiveMidiData(const uint8_t *data, const uint16_t length); //Send midi data "into simulator"
+private:
+	//Handlers registered to receive MIDI
+	void (*usb_midi_handleSysExPartial)(const uint8_t *data, uint16_t length, uint8_t complete);
+	void (*usb_midi_handleSysExComplete)(const uint8_t *data, unsigned int size);
 };
 
 extern SimSerial Serial;

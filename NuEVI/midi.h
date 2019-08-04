@@ -38,8 +38,9 @@ void sendWLChannel(const uint8_t channel);
 
 
 //Convert things between "regular data" and MIDI data (byte order and 7-bits-per-byte)
-uint16_t midi16to14(uint16_t realdata);
-uint16_t midi14to16(uint16_t mididata);
-uint32_t midi32to28(uint32_t realdata);
+uint16_t midi16to14(const uint16_t realdata);
+uint16_t midi14to16(const uint16_t mididata);
+uint16_t midi14to16(const uint8_t* mididata);
+uint32_t midi32to28(const uint32_t realdata);
 
 #endif

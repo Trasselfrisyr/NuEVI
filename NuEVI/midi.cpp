@@ -184,16 +184,24 @@ void sendWLChannel(const uint8_t channel) {
 //Only 14 LSB of int value are used (2MSB are discarded), so only works for unsigned data 0-16383
 
 //NOTE: This assumes code is running on a little-endian CPU, both for real device (Teensy) and simulator.
-uint16_t midi16to14(uint16_t realdata) {
+uint16_t midi16to14(const uint16_t realdata) {
   return (realdata & 0x3F80) >>7 | (realdata & 0x007F) <<8;
 }
 
-uint16_t midi14to16(uint16_t mididata) {
+uint16_t midi14to16(const uint16_t mididata) {
   return (mididata & 0x7F00) >> 8 | (mididata & 0x007F) <<7 ;
 }
 
+//Read from a memory location, such as MIDI receive buffer
+uint16_t midi14to16(const uint8_t* mididata) {
+  uint8_t msb = *mididata;
+  uint8_t lsb = *(mididata+1);
+
+  return (msb & 0x007F) <<7 | (lsb & 0x007F);
+}
+
 //This is a bit different. MSB of each byte is just discarded (instead of discarding MSB for whole value). Just used for CRC (easier to compare)
-uint32_t midi32to28(uint32_t realdata) {
+uint32_t midi32to28(const uint32_t realdata) {
   uint8_t* p = (uint8_t*)&realdata;
 
   uint32_t r=0;

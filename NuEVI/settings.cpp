@@ -305,6 +305,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   //Make sure length of receive buffer is enough to read all we need to. We can accept extra junk at the end though.
   if(length<expected_size) {
     configShowMessage("Invalid config format");
+    printf("Invalid config format %d %d\n", length, expected_size);
     return false;
   }
 
@@ -317,18 +318,20 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   memcpy(&crc_rcv, data+checksum_pos, 4);
   if(crc != crc_rcv) {
     configShowMessage("Invalid checksum");
+    printf("[crc] expected: %x got: %x\n", crc, crc_rcv);
     return false;
   }
 
   //Verify that payload size matches the size of our EEPROM config
-  uint16_t payload_size = midi14to16(data[payload_pos]);
+  uint16_t payload_size = midi14to16(data+size_pos);
   if(payload_size != EEPROM_SIZE) {
     configShowMessage("Invalid config size");
+    printf("[size] expected: %d got: %d (at %d)\n", EEPROM_SIZE, payload_size, size_pos);
     return false;
   }
 
 
-  uint16_t eeprom_version_rcv = midi14to16(data[payload_pos+VERSION_ADDR]);
+  uint16_t eeprom_version_rcv = midi14to16(data+(payload_pos+VERSION_ADDR));
   if(eeprom_version_rcv != EEPROM_VERSION) {
     configShowMessage("Invalid config version");
     return false;
@@ -338,8 +341,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   for(uint16_t i=0; i<payload_size/2; i++) {
     uint16_t addr = i*2;
     uint16_t val;
-    memcpy(&val, data+payload_pos+addr, 2);
-    val = midi14to16(val);
+    val = midi14to16(data+(payload_pos+addr));
 
     //Skip sensor calibration values if they are "out of bounds". This makes it possible to send a config that does
     //not overwrite sensor calibration.
@@ -363,7 +365,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
       if(val<ctouchLoLimit || val>ctouchHiLimit) continue;
     }
 
-    writeSetting(i, val);
+    writeSetting(addr, val);
   }
 
   //All went well
@@ -397,17 +399,21 @@ void configShowMessage(const char* message) {
 }
 
 uint8_t* sysex_rcv_buffer = NULL;
+uint16_t sysex_buf_size = 0;
 
-void handleSysexChunk(const uint8_t *data, const uint16_t length, const bool last) {
-  size_t pos = 0;
+void handleSysexChunk(const uint8_t *data, const uint16_t length, const uint8_t last) {
+  uint16_t pos;
 
   if(!sysex_rcv_buffer) {
     //Start out with an empty buffer
-    sysex_rcv_buffer = (uint8_t *)malloc(length);
+    pos = 0;
+    sysex_buf_size = length;
+    sysex_rcv_buffer = (uint8_t *)malloc(sysex_buf_size);
   } else {
     //Increase size of current buffer
-    size_t pos = sizeof(sysex_rcv_buffer);
-    sysex_rcv_buffer = (uint8_t *)realloc(sysex_rcv_buffer, pos + length);
+    pos = sysex_buf_size;
+    sysex_buf_size += length;
+    sysex_rcv_buffer = (uint8_t *)realloc(sysex_rcv_buffer, sysex_buf_size);
   }
 
   //Append this chunk to buffer
@@ -415,9 +421,12 @@ void handleSysexChunk(const uint8_t *data, const uint16_t length, const bool las
 
   //If it's the last one, call the regular handler to process it
   if(last) {
-    handleSysex(sysex_rcv_buffer, pos+length);
+    handleSysex(sysex_rcv_buffer, sysex_buf_size);
+
+    //Discard the buffer
     free(sysex_rcv_buffer);
     sysex_rcv_buffer = NULL;
+    sysex_buf_size = 0;
   }
 }
 
