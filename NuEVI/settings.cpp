@@ -393,7 +393,8 @@ void configShowMessage(const char* message) {
 uint8_t* sysex_rcv_buffer = NULL;
 uint16_t sysex_buf_size = 0;
 
-void handleSysexChunk(const uint8_t *data, const uint16_t length, const uint8_t last) {
+
+void handleSysexChunk(const uint8_t *data, uint16_t length, bool last) {
   uint16_t pos;
 
   if(!sysex_rcv_buffer) {
@@ -423,7 +424,7 @@ void handleSysexChunk(const uint8_t *data, const uint16_t length, const uint8_t 
 }
 
 
-void handleSysex(const uint8_t *data, const unsigned int length) {
+void handleSysex(uint8_t *data, unsigned int length) {
   //Note: Sysex data as received here contains sysex start and end markers (0xF0 and 0xF7)
 
   //Too short to even contain a 3-byte vendor id is not for us.

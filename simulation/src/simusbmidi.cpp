@@ -134,12 +134,12 @@ void SimUsbMidi::receiveMidiData(const uint8_t *data, const uint16_t length) {
 	}
 }
 
-//Regular sysex handler. For some reason the data pointer is not const, but we'll set it as such to not be dumb.
+//MIDI SysEx handlers. Choice of data types is a bit odd, but done to match Arduino/Teensy libraries
 void SimUsbMidi::setHandleSystemExclusive(void (*fptr) (const uint8_t *array, unsigned int size)) {
 	this->usb_midi_handleSysExComplete = fptr;
 }
 
 //"Chunked" sysex handler (teensy extension), for large messages
-void SimUsbMidi::setHandleSystemExclusive(void (*fptr) (const uint8_t *array, uint16_t size, uint8_t last)) {
-	this->usb_midi_handleSysExPartial = fptr;
+void SimUsbMidi::setHandleSystemExclusive(void (*fptr) (const uint8_t *array, uint16_t size, bool last)) {
+	this->usb_midi_handleSysExPartial = (void (*)(const uint8_t *, uint16_t, uint8_t))fptr;
 }

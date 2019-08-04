@@ -133,8 +133,9 @@ void sendSysexSettings();
 void sendSysexMessage(const char* messageCode);
 void sendSysexVersion();
 
-void handleSysex(const uint8_t *data, const unsigned int length);
-void handleSysexChunk(const uint8_t *data, const uint16_t length, const bool last);
+void handleSysex(uint8_t *data, unsigned int length);
+void handleSysexChunk(const uint8_t *data, uint16_t length, bool last);
+
 uint32_t crc32(const uint8_t *message, const size_t length);
 
 void configInitScreen();
