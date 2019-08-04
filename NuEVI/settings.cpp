@@ -268,11 +268,6 @@ void sendSysexSettings() {
 
   uint32_t checksum = crc32(sysex_data, checksum_pos);
 
-/*
-  printf("CRC len: %d\n", checksum_pos);
-  printf("CRC32: %X | %u\n", checksum, checksum);
-*/
-
   *(uint32_t*)(sysex_data+checksum_pos) = midi32to28(checksum);
 
   usbMIDI.sendSysEx(sysex_size, sysex_data);
@@ -305,7 +300,6 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   //Make sure length of receive buffer is enough to read all we need to. We can accept extra junk at the end though.
   if(length<expected_size) {
     configShowMessage("Invalid config format");
-    printf("Invalid config format %d %d\n", length, expected_size);
     return false;
   }
 
@@ -318,7 +312,6 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   memcpy(&crc_rcv, data+checksum_pos, 4);
   if(crc != crc_rcv) {
     configShowMessage("Invalid checksum");
-    printf("[crc] expected: %x got: %x\n", crc, crc_rcv);
     return false;
   }
 
@@ -326,7 +319,6 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   uint16_t payload_size = midi14to16(data+size_pos);
   if(payload_size != EEPROM_SIZE) {
     configShowMessage("Invalid config size");
-    printf("[size] expected: %d got: %d (at %d)\n", EEPROM_SIZE, payload_size, size_pos);
     return false;
   }
 
