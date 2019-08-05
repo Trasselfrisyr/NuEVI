@@ -14,6 +14,7 @@
 #include "examples/imgui_impl_sdl.h"
 #include "examples/imgui_impl_opengl3.h"
 #include "EEPROM.h"
+#include "simusbmidi.h"
 
 #include <Arduino.h>
 
@@ -413,6 +414,9 @@ static void toggleAnalogAnimation() {
     printf("Analog input variations: %s\n", animateAnalogs ? "ON": "OFF");
 }
 
+static void sendMidiData() {
+    usbMIDI.triggerMidi();
+}
 
 static void SimLoop(std::function<bool()> continue_predicate, std::function<void()> loopFunc)
 {
@@ -455,6 +459,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_UP:       digitalInputs[uPin] = 1; break;
                     case SDLK_DOWN:     digitalInputs[dPin] = 1; break;
                     case SDLK_w:        toggleAnalogAnimation(); break;
+                    case SDLK_m:        sendMidiData(); break;
 
                     case SDLK_1:        touchSensor.mockFilteredData(K1Pin, ctouchThrVal +100); break;
                     case SDLK_2:        touchSensor.mockFilteredData(K2Pin, ctouchThrVal +100); break;
@@ -632,6 +637,8 @@ int main(int argc, const char** argv)
     args::Flag factoryReset(parser, "factory-reset", "Trigger factory reset", {'r', "factory-reset"});
     args::Flag configMode(parser, "config-mode", "Trigger config-management mode", {'c', "config-mode"});
     args::Flag nodelay(parser, "nodelay", "Skip all delays when running", {'n', "nodelay"});
+    args::ValueFlag<std::string> midiFile(parser, "filename", "Name of file with raw MIDI data to send to NuEVI", {'m', "midi-file"});
+    args::Flag midiSend(parser, "midi-send", "Trigger automatic sending of MIDI data", {'M', "midi-send"});
 
     parser.ParseCLI(argc, argv);
 
@@ -647,12 +654,19 @@ int main(int argc, const char** argv)
     }
 
     std::string eepromFileName = args::get(eepromFile);
+    std::string midiFileName   = args::get(midiFile);
 
     //Use a default EEPROM file if none is provided.
-    if(eepromFileName.length()==0)
-    {
+    if(eepromFileName.length()==0) {
         eepromFileName = SDL_GetPrefPath("Vulk Data System", "NuEVI Simulator");
         eepromFileName += "eeprom.bin";
+    }
+
+    if(midiFileName.length()>0) {
+        usbMIDI.setMidiFile(midiFileName);
+        if(args::get(midiSend)) {
+            usbMIDI.triggerMidi();
+        }
     }
 
     no_delay = args::get(nodelay);

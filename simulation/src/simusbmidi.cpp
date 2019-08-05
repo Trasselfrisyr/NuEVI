@@ -1,8 +1,10 @@
 #include <cstdint>
 #include <cstdio>
+#include <iostream>
+#include <fstream>
 
 
-#include "Arduino.h"
+#include "simusbmidi.h"
 
 /*************************************
  *	Stub simulation of Teensy usbMidi
@@ -56,54 +58,41 @@ void SimUsbMidi::sendSysEx(uint16_t length, const uint8_t __unused *data, bool _
 //Set a low chunk size on purpose just to let the receiver work for it
 #define MIDI_SYSEX_CHUNK_SIZE 32
 
-/* Test data for config mode
-
-//Carefully crafted config command chunk to send via midi
-static const uint8_t midimessage[] = {
- 0xf0,								//Sysex start
- 0x00, 0x3e, 0x7f,					//Vendor
- 'N', 'u', 'E', 'V', 'I',           //header
- 'c', '0', '2',                     //message code
- 0, 102,                            //length
-
- //Payload
- 0x00, 0x20, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F,  //00
- 0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x06, 0x07,  //08
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //10
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //18
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //20
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //28
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //30
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //38
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //40
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //48
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //50
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  //58
- 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,              //60
- 0x2a, 0x11, 0x32, 0x5a,                          //crc32
- 0xf7								//sysex end marker
-};
-
-static bool midisent = false;
-
-//On first midi read, send a message
 bool SimUsbMidi::read(uint8_t __unused channel) {
-	if(!midisent) {
-		this->receiveMidiData(midimessage, sizeof(midimessage));
-		midisent=true;
+	if(this->sendMidi) {
+
+		printf("[SimUsbMidi::read] Attempting to send midi data\n");
+
+		std::ifstream file(this->midiFile, std::ios::binary | std::ios::ate);
+		std::streamsize size = file.tellg();
+		file.seekg(0, std::ios::beg);
+
+		uint8_t *buffer = (uint8_t*)malloc(size);
+
+		if (file.read((char*)buffer, size))
+		{
+			printf("[SimUsbMidi::read] Sending %lu bytes.\n", size);
+
+			this->receiveMidiData(buffer, size);
+
+		}
+		free(buffer);
+
+		this->sendMidi = false;
+
 	}
-	return false;
-}
 
-*/
-
-bool SimUsbMidi::read(uint8_t __unused channel) {
 	return false;
 }
 
 
 //Provide midi data for simulation to receive
 void SimUsbMidi::receiveMidiData(const uint8_t *data, const uint16_t length) {
+	if(length==0) return; //There is no data, what's even the point
+	uint8_t midi_message = data[0]; //First byte of data
+
+	if(midi_message != 0xF0) return; //Only sysex data supported (no other handlers available)
+
 	if(this->usb_midi_handleSysExPartial) {
 		//Chunked sysex receiver set, use that.
 		if(length<=MIDI_SYSEX_CHUNK_SIZE) {
@@ -115,7 +104,7 @@ void SimUsbMidi::receiveMidiData(const uint8_t *data, const uint16_t length) {
 			int pos=0;
 			while(pos<length) {
 				int remaining = length-pos;
-				int bytesToSend = min(remaining, MIDI_SYSEX_CHUNK_SIZE);
+				int bytesToSend = std::min(remaining, MIDI_SYSEX_CHUNK_SIZE);
 				bool complete = (bytesToSend == remaining);
 
 				memcpy(buf, data+pos, bytesToSend);
@@ -142,4 +131,12 @@ void SimUsbMidi::setHandleSystemExclusive(void (*fptr) (const uint8_t *array, un
 //"Chunked" sysex handler (teensy extension), for large messages
 void SimUsbMidi::setHandleSystemExclusive(void (*fptr) (const uint8_t *array, uint16_t size, bool last)) {
 	this->usb_midi_handleSysExPartial = (void (*)(const uint8_t *, uint16_t, uint8_t))fptr;
+}
+
+void SimUsbMidi::setMidiFile(std::string filename) {
+	this->midiFile = filename;
+}
+
+void SimUsbMidi::triggerMidi() {
+    this->sendMidi = true;
 }
