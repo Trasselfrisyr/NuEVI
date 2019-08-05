@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <CoreMIDI/MIDIServices.h>
+#include <CoreFoundation/CFRunLoop.h>
 
 #include "simusbmidi.h"
 
@@ -139,4 +141,66 @@ void SimUsbMidi::setMidiFile(std::string filename) {
 
 void SimUsbMidi::triggerMidi() {
     this->sendMidi = true;
+}
+
+
+
+
+//MIDIPortRef     gOutPort = NULL;
+//MIDIEndpointRef gDest = NULL;
+MIDIPortRef     gOutPort = 0;
+MIDIEndpointRef gDest = 0;
+int             gChannel = 0;
+
+static void midiInputHandler(const MIDIPacketList *pktlist, __unused void *refCon, __unused void *connRefCon)
+{
+    //if (gOutPort != NULL && gDest != NULL) {
+	if (gOutPort && gDest) {
+        MIDIPacket *packet = (MIDIPacket *)pktlist->packet; // remove const (!)
+        for (unsigned int j = 0; j < pktlist->numPackets; ++j) {
+            for (int i = 0; i < packet->length; ++i) {
+//              printf("%02X ", packet->data[i]);
+
+                // rechannelize status bytes
+                if (packet->data[i] >= 0x80 && packet->data[i] < 0xF0)
+                    packet->data[i] = (packet->data[i] & 0xF0) | gChannel;
+            }
+
+//          printf("\n");
+            packet = MIDIPacketNext(packet);
+        }
+
+        //MIDISend(gOutPort, gDest, pktlist);
+    }
+}
+
+
+void SimUsbMidi::setupCoreMidi() {
+	    // create client and ports
+    //MIDIClientRef client = NULL;
+    MIDIClientRef client = 0;
+
+    OSStatus result;
+    result = MIDIClientCreate(CFSTR("NuEVI simulator"), NULL, NULL, &client);
+
+	if (result != noErr) {
+	    printf("Error creating MIDI client: %u", (int)result);
+	    return;
+	}
+
+    //MIDIPortRef inPort = NULL;
+    MIDIPortRef inPort = 0;
+    result = MIDIInputPortCreate(client, CFSTR("Input port"), midiInputHandler, NULL, &inPort);
+    if (result != noErr) {
+	    printf("Error creating input port: %u", (int)result);
+	    return;
+	}
+
+    result = MIDIOutputPortCreate(client, CFSTR("Output port"), &gOutPort);
+	if (result != noErr) {
+	    printf("Error creating output port: %u", (int)result);
+	    return;
+	}
+    printf("I am a MIDI device now!\n");
+
 }

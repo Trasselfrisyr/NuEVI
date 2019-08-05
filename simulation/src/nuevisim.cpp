@@ -671,5 +671,7 @@ int main(int argc, const char** argv)
 
     no_delay = args::get(nodelay);
 
+    usbMIDI.setupCoreMidi();
+
     return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset), args::get(configMode));
 }

@@ -14,7 +14,7 @@ endif
 
 CXXFLAGS= $(CFLAGS) -std=c++14
 
-LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
+LIBS=-framework SDL2 -lc++ -lc -framework OpenGL -framework CoreMIDI -framework CoreFoundation
 LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
 
 SYSINC = ./include

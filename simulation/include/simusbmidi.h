@@ -23,6 +23,9 @@ public:
 	void receiveMidiData(const uint8_t *data, const uint16_t length); //Send midi data "into simulator"
 	void setMidiFile(std::string filename); //MIDI data to send to device
 	void triggerMidi(); //"Arm" so data is sent to device next time it tries to read anything
+
+	void setupCoreMidi();
+
 private:
 	//Handlers registered to receive MIDI
 	void (*usb_midi_handleSysExPartial)(const uint8_t *data, uint16_t length, uint8_t complete);
