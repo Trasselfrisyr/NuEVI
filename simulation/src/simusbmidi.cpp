@@ -167,15 +167,15 @@ void SimUsbMidi::triggerMidi() {
 //Send midi data, only as a single packet
 void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
 
-	printf("[SimUsbMidi::sendRealMidi] sending some midi data");
+	printf("[SimUsbMidi::sendRealMidi] sending %d bytes midi data\n", size);
 
 	if(!this->midiOutPort) {
-		printf("[SimUsbMidi::sendRealMidi] no midi out port");
+		printf("[SimUsbMidi::sendRealMidi] no midi out port\n");
 		return;
 	}
 
 	if (size==0) {
-		printf("[SimUsbMidi::sendRealMidi] no data to send");
+		printf("[SimUsbMidi::sendRealMidi] no data to send\n");
 		return;
 	}
 
@@ -201,7 +201,16 @@ void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
 		printf("[SimUsbMidi::sendRealMidi] error sending MIDI message: %u\n", result);
 		return;
     }
+
+	// Send to any destinations that may have connected to us.
+    result = MIDIReceived( this->midiDestination, packetList );
+	if ( result != noErr ) {
+        printf("[SimUsbMidi::sendRealMidi] error sending MIDI to virtual destinations.\n");
+	}
+
     printf("[SimUsbMidi::sendRealMidi] Success?\n");
+
+
 }
 
 static void midiInputHandler(const MIDIPacketList *pktlist, void *refCon, __unused void *connRefCon)
@@ -245,8 +254,8 @@ void SimUsbMidi::setupCoreMidi() {
 
 	result = MIDISourceCreate(client, clientName, &(this->midiOutPort));
 	if (result != noErr) {
-	    printf("Error creating MIDI source: %u", (int)result);
-	    return;
+		printf("Error creating MIDI source: %u", (int)result);
+		return;
 	}
 
 	result = MIDIDestinationCreate(client, clientName, midiInputHandler, this, &(this->midiInPort));
