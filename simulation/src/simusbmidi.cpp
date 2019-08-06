@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include <CoreFoundation/CFRunLoop.h>
+#include <mach/mach_time.h>
 
 #include "simusbmidi.h"
 
@@ -192,10 +193,11 @@ void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
   MIDIPacket *packet = MIDIPacketListInit( packetList );
 
   ByteCount remainingBytes = nBytes;
+  MIDITimeStamp timeStamp = 0; //AudioGetCurrentHostTime();
   while ( remainingBytes && packet ) {
     ByteCount bytesForPacket = remainingBytes > 65535 ? 65535 : remainingBytes; // 65535 = maximum size of a MIDIPacket
     const Byte* dataStartPtr = (const Byte *) &message[nBytes - remainingBytes];
-    packet = MIDIPacketListAdd( packetList, listSize, packet, 0, bytesForPacket, dataStartPtr );
+    packet = MIDIPacketListAdd( packetList, listSize, packet, timeStamp, bytesForPacket, dataStartPtr );
     remainingBytes -= bytesForPacket;
   }
 
@@ -212,6 +214,21 @@ void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
 	if ( result != noErr ) {
         printf("[SimUsbMidi::sendRealMidi] error sending MIDI to virtual destinations.\n");
 	}
+
+
+   // send MIDI message to all MIDI output devices connected to computer:
+   ItemCount nDests = MIDIGetNumberOfDestinations();
+   ItemCount iDest;
+   MIDIEndpointRef dest;
+   printf("Sending to %lu destinations\n", nDests);
+   for(iDest=0; iDest<nDests; iDest++) {
+      dest = MIDIGetDestination(iDest);
+      result = MIDISend(this->midiOutPort, dest, packetList);
+      if (result != noErr ) {
+          printf("Problem sending MIDI data on port %lu, %u\n", iDest, result);
+      }
+   }
+
 
     printf("[SimUsbMidi::sendRealMidi] Success?\n");
 
