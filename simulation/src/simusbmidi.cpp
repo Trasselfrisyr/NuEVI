@@ -19,6 +19,11 @@ void SimUsbMidi::sendNoteOff(uint8_t note, uint8_t velocity, uint8_t channel, ui
 void SimUsbMidi::sendNoteOn(uint8_t note, uint8_t velocity, uint8_t channel, uint8_t __unused cable)
 {
 	printf( "[usbMIDI::noteOn] note %03d vel %03d ch %02d\n", note, velocity, channel);
+    uint8_t midi[3];
+    midi[0] = 0x90 | (channel & 0x0F);
+    midi[1] = note;
+    midi[2] = velocity;
+    this->sendRealMidi(midi, 3);
 }
 
 void SimUsbMidi::sendPolyPressure(uint8_t note, uint8_t pressure, uint8_t channel, uint8_t __unused cable)
@@ -215,25 +220,29 @@ void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
 
 static void midiInputHandler(const MIDIPacketList *pktlist, void *refCon, __unused void *connRefCon)
 {
+    printf("[SimUsbMidi::midiInputHandler] I got a MIDI message!\n");
 	SimUsbMidi *simUsbMidi = (SimUsbMidi*)refCon;
-    //if (gOutPort != NULL && gDest != NULL) {
-	if (simUsbMidi->midiOutPort && simUsbMidi->midiDestination) {
+
+	//if (simUsbMidi->midiOutPort && simUsbMidi->midiDestination) {
         MIDIPacket *packet = (MIDIPacket *)pktlist->packet; // remove const (!)
         for (unsigned int j = 0; j < pktlist->numPackets; ++j) {
+/*
             for (int i = 0; i < packet->length; ++i) {
-//              printf("%02X ", packet->data[i]);
+                printf("%02X ", packet->data[i]);
 
                 // rechannelize status bytes
-                if (packet->data[i] >= 0x80 && packet->data[i] < 0xF0)
-                    packet->data[i] = (packet->data[i] & 0xF0) | simUsbMidi->midiChannel;
+                //if (packet->data[i] >= 0x80 && packet->data[i] < 0xF0)
+                //    packet->data[i] = (packet->data[i] & 0xF0) | simUsbMidi->midiChannel;
             }
 
-//          printf("\n");
+            printf("\n");
+            */
+            simUsbMidi->receiveMidiData(packet->data, packet->length);
             packet = MIDIPacketNext(packet);
         }
 
         //MIDISend(gOutPort, gDest, pktlist);
-    }
+    //}
 }
 
 

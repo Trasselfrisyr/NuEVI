@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+#include <Arduino.h>
 #include <Adafruit_MPR121.h>
 #include <Adafruit_SSD1306.h>
 #include <cmath>
@@ -15,8 +16,6 @@
 #include "examples/imgui_impl_opengl3.h"
 #include "EEPROM.h"
 #include "simusbmidi.h"
-
-#include <Arduino.h>
 
 #define ARGS_NOEXCEPT
 #include "args.hxx"
