@@ -460,6 +460,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_DOWN:     digitalInputs[dPin] = 1; break;
                     case SDLK_w:        toggleAnalogAnimation(); break;
                     case SDLK_m:        sendMidiData(); break;
+                    case SDLK_d:        usbMIDI.dumpa(); break;
 
                     case SDLK_1:        touchSensor.mockFilteredData(K1Pin, ctouchThrVal +100); break;
                     case SDLK_2:        touchSensor.mockFilteredData(K2Pin, ctouchThrVal +100); break;

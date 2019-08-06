@@ -2,6 +2,7 @@
 #define __SIMUSBMIDI_H__
 
 #include <string>
+#include <CoreMIDI/MIDIServices.h>
 
 class SimUsbMidi
 {
@@ -26,12 +27,24 @@ public:
 
 	void setupCoreMidi();
 
+	void dumpa();
+
+
+	MIDIPortRef     midiOutPort = 0;
+	MIDIPortRef		midiInPort = 0;
+	MIDIEndpointRef midiDestination = 0;
+	int             midiChannel = 0;
+
 private:
 	//Handlers registered to receive MIDI
 	void (*usb_midi_handleSysExPartial)(const uint8_t *data, uint16_t length, uint8_t complete);
 	void (*usb_midi_handleSysExComplete)(const uint8_t *data, unsigned int size);
 	std::string midiFile;
 	bool sendMidi;
+
+;
+
+	void sendRealMidi(const uint8_t* data, uint16_t size);
 };
 
 

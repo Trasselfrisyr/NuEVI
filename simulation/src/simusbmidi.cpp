@@ -3,7 +3,6 @@
 #include <iostream>
 #include <fstream>
 
-#include <CoreMIDI/MIDIServices.h>
 #include <CoreFoundation/CFRunLoop.h>
 
 #include "simusbmidi.h"
@@ -55,10 +54,32 @@ void SimUsbMidi::sendPitchBend(int value, uint8_t channel, uint8_t __unused cabl
 void SimUsbMidi::sendSysEx(uint16_t length, const uint8_t __unused *data, bool __unused hasTerm, uint8_t __unused cable)
 {
 	printf( "[usbMIDI::sysEx] len %d\n", length);
+	//this->sendRealMidi(data, length);
+
 }
 
 //Set a low chunk size on purpose just to let the receiver work for it
 #define MIDI_SYSEX_CHUNK_SIZE 32
+
+void SimUsbMidi::dumpa() {
+	printf("[SimUsbMidi::read] Attempting to send midi data\n");
+
+	std::ifstream file(this->midiFile, std::ios::binary | std::ios::ate);
+	std::streamsize size = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	uint8_t *buffer = (uint8_t*)malloc(size);
+
+	if (file.read((char*)buffer, size))
+	{
+		printf("[SimUsbMidi::dumpa] Sending %lu bytes.\n", size);
+
+		this->sendRealMidi(buffer, size);
+		//this->receiveMidiData(buffer, size);
+
+	}
+	free(buffer);
+}
 
 bool SimUsbMidi::read(uint8_t __unused channel) {
 	if(this->sendMidi) {
@@ -143,19 +164,51 @@ void SimUsbMidi::triggerMidi() {
     this->sendMidi = true;
 }
 
+//Send midi data, only as a single packet
+void SimUsbMidi::sendRealMidi(const uint8_t* message, uint16_t size) {
 
+	printf("[SimUsbMidi::sendRealMidi] sending some midi data");
 
+	if(!this->midiOutPort) {
+		printf("[SimUsbMidi::sendRealMidi] no midi out port");
+		return;
+	}
 
-//MIDIPortRef     gOutPort = NULL;
-//MIDIEndpointRef gDest = NULL;
-MIDIPortRef     gOutPort = 0;
-MIDIEndpointRef gDest = 0;
-int             gChannel = 0;
+	if (size==0) {
+		printf("[SimUsbMidi::sendRealMidi] no data to send");
+		return;
+	}
 
-static void midiInputHandler(const MIDIPacketList *pktlist, __unused void *refCon, __unused void *connRefCon)
+  unsigned int nBytes = static_cast<unsigned int> (size);
+
+  Byte buffer[nBytes+(sizeof( MIDIPacketList ))];
+  ByteCount listSize = sizeof( buffer );
+  MIDIPacketList *packetList = (MIDIPacketList*)buffer;
+  MIDIPacket *packet = MIDIPacketListInit( packetList );
+
+  ByteCount remainingBytes = nBytes;
+  while ( remainingBytes && packet ) {
+    ByteCount bytesForPacket = remainingBytes > 65535 ? 65535 : remainingBytes; // 65535 = maximum size of a MIDIPacket
+    const Byte* dataStartPtr = (const Byte *) &message[nBytes - remainingBytes];
+    packet = MIDIPacketListAdd( packetList, listSize, packet, 0, bytesForPacket, dataStartPtr );
+    remainingBytes -= bytesForPacket;
+  }
+
+  	OSStatus result;
+
+    result = MIDISend(this->midiOutPort, this->midiDestination, packetList );
+    if ( result != noErr ) {
+		printf("[SimUsbMidi::sendRealMidi] error sending MIDI message: %u\n", result);
+		return;
+    }
+    printf("[SimUsbMidi::sendRealMidi] Success?\n");
+}
+
+static void midiInputHandler(const MIDIPacketList *pktlist, void *refCon, __unused void *connRefCon)
 {
+	SimUsbMidi *simUsbMidi = (SimUsbMidi*)refCon;
     //if (gOutPort != NULL && gDest != NULL) {
-	if (gOutPort && gDest) {
+	if (simUsbMidi->midiOutPort && simUsbMidi->midiDestination) {
         MIDIPacket *packet = (MIDIPacket *)pktlist->packet; // remove const (!)
         for (unsigned int j = 0; j < pktlist->numPackets; ++j) {
             for (int i = 0; i < packet->length; ++i) {
@@ -163,7 +216,7 @@ static void midiInputHandler(const MIDIPacketList *pktlist, __unused void *refCo
 
                 // rechannelize status bytes
                 if (packet->data[i] >= 0x80 && packet->data[i] < 0xF0)
-                    packet->data[i] = (packet->data[i] & 0xF0) | gChannel;
+                    packet->data[i] = (packet->data[i] & 0xF0) | simUsbMidi->midiChannel;
             }
 
 //          printf("\n");
@@ -180,27 +233,28 @@ void SimUsbMidi::setupCoreMidi() {
     //MIDIClientRef client = NULL;
     MIDIClientRef client = 0;
 
+    CFStringRef clientName = CFSTR("NuEVI simulator");
+
     OSStatus result;
-    result = MIDIClientCreate(CFSTR("NuEVI simulator"), NULL, NULL, &client);
+    result = MIDIClientCreate(clientName, NULL, NULL, &client);
 
 	if (result != noErr) {
 	    printf("Error creating MIDI client: %u", (int)result);
 	    return;
 	}
 
-    //MIDIPortRef inPort = NULL;
-    MIDIPortRef inPort = 0;
-    result = MIDIInputPortCreate(client, CFSTR("Input port"), midiInputHandler, NULL, &inPort);
-    if (result != noErr) {
-	    printf("Error creating input port: %u", (int)result);
+	result = MIDISourceCreate(client, clientName, &(this->midiOutPort));
+	if (result != noErr) {
+	    printf("Error creating MIDI source: %u", (int)result);
 	    return;
 	}
 
-    result = MIDIOutputPortCreate(client, CFSTR("Output port"), &gOutPort);
+	result = MIDIDestinationCreate(client, clientName, midiInputHandler, this, &(this->midiInPort));
 	if (result != noErr) {
-	    printf("Error creating output port: %u", (int)result);
+	    printf("Error creating MIDI destination: %u", (int)result);
 	    return;
 	}
+
     printf("I am a MIDI device now!\n");
 
 }
