@@ -1,7 +1,7 @@
 #ifndef __MENU_H
 #define __MENU_H
 
-#include "Wiring.h"
+#include "wiring.h"
 #include "numenu.h"
 
 #define MENU_ROW_HEIGHT 9
