@@ -121,6 +121,7 @@
 #define TRILL3_INTERVAL_FACTORY 4
 #define DAC_MODE_FACTORY DAC_MODE_BREATH
 
+#define NO_CHECKSUM 0x7F007F00
 
 void readEEPROM(const bool factoryReset);
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);

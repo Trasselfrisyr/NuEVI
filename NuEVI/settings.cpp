@@ -310,7 +310,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   uint32_t crc=midi32to28(crc32(data, checksum_pos));
   uint32_t crc_rcv;
   memcpy(&crc_rcv, data+checksum_pos, 4);
-  if(crc != crc_rcv) {
+  if(crc != crc_rcv && crc_rcv != NO_CHECKSUM) {
     configShowMessage("Invalid checksum");
     return false;
   }
