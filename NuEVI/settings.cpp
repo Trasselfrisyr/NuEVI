@@ -255,7 +255,7 @@ void sendSysexSettings() {
   memcpy(sysex_data+header_pos, header, strlen(header));
 
   //Payload length
-  *(uint16_t*)(sysex_data+size_pos) = midi16to14(EEPROM_SIZE);
+  *(uint16_t*)(sysex_data+size_pos) = convertToMidiValue(EEPROM_SIZE);
 
   //Config data
   uint16_t* config_buffer_start = (uint16_t*)(sysex_data+payload_pos);
@@ -263,12 +263,12 @@ void sendSysexSettings() {
   //Read one settings item at a time, change data format, and put in send buffer
   for(uint16_t idx=0; idx<EEPROM_SIZE/2; idx++) {
     uint16_t eepromval = readSetting(idx*2);
-    config_buffer_start[idx] = midi16to14(eepromval);
+    config_buffer_start[idx] = convertToMidiValue(eepromval);
   }
 
   uint32_t checksum = crc32(sysex_data, checksum_pos);
 
-  *(uint32_t*)(sysex_data+checksum_pos) = midi32to28(checksum);
+  *(uint32_t*)(sysex_data+checksum_pos) = convertToMidiCRC(checksum);
 
   usbMIDI.sendSysEx(sysex_size, sysex_data);
 
@@ -307,7 +307,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
 
   //Calculate checksum of stuff received (everything before checksum), transform to midi format
   //(being a one-way operation, we can't do the reverse anyway)
-  uint32_t crc=midi32to28(crc32(data, checksum_pos));
+  uint32_t crc=convertToMidiCRC(crc32(data, checksum_pos));
   uint32_t crc_rcv;
   memcpy(&crc_rcv, data+checksum_pos, 4);
   if(crc != crc_rcv && crc_rcv != NO_CHECKSUM) {
@@ -316,14 +316,14 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   }
 
   //Verify that payload size matches the size of our EEPROM config
-  uint16_t payload_size = midi14to16(data+size_pos);
+  uint16_t payload_size = convertFromMidiValue(data+size_pos);
   if(payload_size != EEPROM_SIZE) {
     configShowMessage("Invalid config size");
     return false;
   }
 
 
-  uint16_t eeprom_version_rcv = midi14to16(data+(payload_pos+VERSION_ADDR));
+  uint16_t eeprom_version_rcv = convertFromMidiValue(data+(payload_pos+VERSION_ADDR));
   if(eeprom_version_rcv != EEPROM_VERSION) {
     configShowMessage("Invalid config version");
     return false;
@@ -333,7 +333,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
   for(uint16_t i=0; i<payload_size/2; i++) {
     uint16_t addr = i*2;
     uint16_t val;
-    val = midi14to16(data+(payload_pos+addr));
+    val = convertFromMidiValue(data+(payload_pos+addr));
 
     //Skip sensor calibration values if they are "out of bounds". This makes it possible to send a config that does
     //not overwrite sensor calibration.
@@ -371,7 +371,7 @@ void sendSysexVersion() {
   memcpy(sysexMessage, sysex_id, 3);
   memcpy(sysexMessage+13, FIRMWARE_VERSION, min(strlen(FIRMWARE_VERSION), 8));
 
-  *(uint16_t*)(sysexMessage+11) = midi16to14(EEPROM_VERSION);
+  *(uint16_t*)(sysexMessage+11) = convertToMidiValue(EEPROM_VERSION);
 
   uint8_t message_length = 13+strlen(FIRMWARE_VERSION);
 
