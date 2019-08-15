@@ -50,9 +50,12 @@ void SimUsbMidi::sendPitchBend(int value, uint8_t channel, uint8_t __unused cabl
 	printf( "[usbMIDI::pitchBend] pb %05d ch %02d\n", value, channel);
 }
 
-void SimUsbMidi::sendSysEx(uint16_t length, const uint8_t __unused *data, bool __unused hasTerm, uint8_t __unused cable)
+void SimUsbMidi::sendSysEx(uint16_t length, const uint8_t *data, bool __unused hasTerm, uint8_t __unused cable)
 {
-	printf( "[usbMIDI::sysEx] len %d\n", length);
+	printf( "[usbMIDI::sysEx] Sending %d bytes\n", length);
+	for(int i=0; i<length; i++) {
+		printf("%02x%c", data[i], (i==length-1)?'\n':':');
+	}
 }
 
 //Set a low chunk size on purpose just to let the receiver work for it
