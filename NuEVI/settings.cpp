@@ -111,7 +111,7 @@ void readEEPROM(const bool factoryReset) {
     pitchbMaxVal    = readSettingBounded(PITCHB_MAX_ADDR, pitchbLoLimit, pitchbHiLimit, PITCHB_MAX_FACTORY);
     transpose       = readSettingBounded(TRANSP_ADDR, 0, 24, TRANSP_FACTORY);
     MIDIchannel     = readSettingBounded(MIDI_ADDR, 1, 16, MIDI_FACTORY);
-    breathCC        = readSettingBounded(BREATH_CC_ADDR, 0, 127, BREATH_CC_FACTORY);
+    breathCC        = readSettingBounded(BREATH_CC_ADDR, 0, 10, BREATH_CC_FACTORY);
     breathAT        = readSettingBounded(BREATH_AT_ADDR, 0, 1, BREATH_AT_FACTORY);
     velocity        = readSettingBounded(VELOCITY_ADDR, 0, 127, VELOCITY_FACTORY);
     portamento      = readSettingBounded(PORTAM_ADDR, 0, 2, PORTAM_FACTORY);
