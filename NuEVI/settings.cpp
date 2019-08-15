@@ -367,13 +367,14 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
 //Send EEPROM and firmware versions
 void sendSysexVersion() {
   char sysexMessage[] = "vvvNuEVIc04eevvvvvvvv"; //Placeholders for vendor and code
+  uint8_t fwStrLen = min(strlen(FIRMWARE_VERSION), 8); //Limit firmware version string to 8 bytes
 
   memcpy(sysexMessage, sysex_id, 3);
-  memcpy(sysexMessage+13, FIRMWARE_VERSION, min(strlen(FIRMWARE_VERSION), 8));
+  memcpy(sysexMessage+13, FIRMWARE_VERSION, fwStrLen);
 
   *(uint16_t*)(sysexMessage+11) = convertToMidiValue(EEPROM_VERSION);
 
-  uint8_t message_length = 13+strlen(FIRMWARE_VERSION);
+  uint8_t message_length = 13+fwStrLen;
 
   usbMIDI.sendSysEx(message_length, (const uint8_t *)sysexMessage);
 }
