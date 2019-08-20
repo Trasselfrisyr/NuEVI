@@ -818,6 +818,7 @@ void pitch_bend() {
   // handle input from pitchbend touchpads and
   // on-pcb variable capacitor for vibrato.
   int vibMax;
+  int vibMaxBite;
   int calculatedPBdepth;
   byte pbTouched = 0;
   int vibRead = 0;
@@ -831,6 +832,7 @@ void pitch_bend() {
 
 
   vibMax = vibMaxList[vibSens - 1];
+  vibMaxBite = vibMax*4;
 
   if (vibControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
@@ -840,15 +842,15 @@ void pitch_bend() {
     }
         if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
       }
     } else if (vibReadBite > vibThrBiteLo) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
       }
     } else {
       vibSignal = vibSignal * 0.5;
