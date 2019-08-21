@@ -46,3 +46,8 @@ void updateSensorLEDs() {
     analogWrite(pLedPin, 0);
   }
 }
+
+void ledMeter(byte indicatedValue){
+  analogWrite(bLedPin, map(constrain(indicatedValue, 0, 127), 0, 127, 0, BREATH_LED_BRIGHTNESS)); // full glow at maximum value
+  analogWrite(pLedPin, map(constrain(indicatedValue, 0, 127), 127, 0, 0, PORTAM_LED_BRIGHTNESS)); // full glow at minimum value
+}

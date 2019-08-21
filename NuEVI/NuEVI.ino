@@ -66,9 +66,13 @@ unsigned short octave;
 unsigned short curve;
 unsigned short velSmpDl;  // 0-30 ms
 unsigned short velBias;   // 0-9
-unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
+unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12), 25 (EC2), 26 (ECSW), 27 (LVL), 28 (LVLP)
 unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 unsigned short priority; // mono priority for rotator chords
+
+unsigned short extraCT2; // OFF:1-127
+unsigned short levelCC; // 0-127
+unsigned short levelVal; // 0-127
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
@@ -158,7 +162,7 @@ int targetPitch;
 int exSensor=0;
 byte extracIsOn=0;
 int oldextrac=0;
-int lastEx=0;
+int oldextrac2=0;
 
 int pitchBend=8192;
 int oldpb=8192;
@@ -226,6 +230,7 @@ byte halfPitchBendKey;
 byte specialKey;
 byte pinkyKey;
 byte lastSpecialKey = 0;
+byte lastPinkyKey = 0;
 byte pitchlatch;
 int reverb;
 
@@ -315,6 +320,10 @@ void setup() {
   if (!digitalRead(ePin)) {
     activePatch=0;
     doPatchUpdate=1;
+  }
+
+  if ((pinkySetting == LVLP) && levelCC){
+    midiSendControlChange(levelCC, levelVal);
   }
 
   activeMIDIchannel = MIDIchannel;
@@ -507,6 +516,21 @@ void loop() {
       parallelChord = 0;
       subOctaveDouble = 0;
     }
+    if ((pinkySetting == LVL) || (pinkySetting == LVLP)){
+      if (pinkyKey){
+        ledMeter(levelVal);
+        if (K5 && (levelVal < 127)){
+          levelVal++;
+          if (levelCC) midiSendControlChange(levelCC, levelVal);
+        } else if (K1 && (levelVal > 0)){
+          levelVal--;
+          if (levelCC) midiSendControlChange(levelCC, levelVal);
+       }
+      } else if (lastPinkyKey){
+        writeSetting(LEVEL_VAL_ADDR,levelVal); 
+      }
+      lastPinkyKey = pinkyKey;
+    }
   } else if (mainState == RISE_WAIT) {
     if ((pressureSensor > breathThrVal) || gateOpen) {
       // Has enough time passed for us to collect our second
@@ -684,7 +708,9 @@ void loop() {
     } else {
       if (slowMidi) breath();
       extraController();
-      updateSensorLEDs();
+      if (((pinkySetting == LVL) || (pinkySetting == LVLP)) && pinkyKey){
+        // show LVL indication
+      } else updateSensorLEDs();
       doorKnobCheck();
     }
     ccSendTime = millis();
@@ -970,59 +996,102 @@ void doorKnobCheck() {
 //***********************************************************
 
 void extraController() {
+  bool CC2sw;
+  bool CC1sw;
+  int extracCC;
   // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
+  if (pinkySetting == EC2){
+    //send 0 or 127 on extra controller CC2 depending on pinky key touch
+    if (pinkyKey && extraCT2) {
+      if (lastPinkyKey != pinkyKey){
+        midiSendControlChange(extraCT2, 127);
+        lastPinkyKey = pinkyKey;
+      }
+    } else {
+      if (lastPinkyKey != pinkyKey){
+        midiSendControlChange(extraCT2, 0);
+        lastPinkyKey = pinkyKey;
+      }
+    }
+  } else if (pinkySetting == ECSW){
+    if (pinkyKey){
+      //send extra controller CC2 only 
+      CC2sw = 1;
+      CC1sw = 0;
+    } else {
+      //send extra controller primary CC only
+      CC2sw = 0;
+      CC1sw = 1;
+    }
+  } else {
+    //send both primary CC and CC2
+    CC2sw = 1;
+    CC1sw = 1;
+  }
   if (extraCT && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
       extracIsOn = 1;
-      if (extraCT == 4) { //Sustain ON
+      if ((extraCT == 4) && CC1sw) { //Sustain ON
         midiSendControlChange(64, 127);
       }
     }
-    if (extraCT == 1) { //Send modulation
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 1) && CC1sw) { //Send modulation
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(1, extracCC);
       }
       oldextrac = extracCC;
     }
-    if (extraCT == 2) { //Send foot pedal (CC#4)
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 2) && CC1sw) { //Send foot pedal (CC#4)
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(4, extracCC);
       }
       oldextrac = extracCC;
     }
-    if ((extraCT == 3) && (breathCC != 9)) { //Send filter cutoff (CC#74)
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 3) && (breathCC != 9) && CC1sw) { //Send filter cutoff (CC#74)
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(74, extracCC);
       }
       oldextrac = extracCC;
     }
+    if ((extraCT2 ) && CC2sw){ //Send extra controller CC2
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+      if (extracCC != oldextrac2) {
+        midiSendControlChange(extraCT2, extracCC);
+      }
+      oldextrac2 = extracCC;
+    }
   } else if (extracIsOn) { // we have just gone below threshold, so send zero value
     extracIsOn = 0;
-    if (extraCT == 1) { //MW
+    if ((extraCT == 1) && CC1sw) { //MW
       if (oldextrac != 0) {
         //send modulation 0
         midiSendControlChange(1, 0);
         oldextrac = 0;
       }
-    } else if (extraCT == 2) { //FP
+    } else if ((extraCT == 2) && CC1sw) { //FP
       if (oldextrac != 0) {
         //send foot pedal 0
         midiSendControlChange(4, 0);
         oldextrac = 0;
       }
-    } else if ((extraCT == 3) && (breathCC != 9)) { //CF
+    } else if ((extraCT == 3) && (breathCC != 9) && CC1sw) { //CF
       if (oldextrac != 0) {
         //send filter cutoff 0
         midiSendControlChange(74, 0);
         oldextrac = 0;
       }
-    } else if (extraCT == 4) { //SP
+    } else if ((extraCT == 4) && CC1sw) { //SP
       //send sustain off
       midiSendControlChange(64, 0);
+    }
+    if ((extraCT2 ) && CC2sw){ //CC2
+      //send 0 for extra ctr CC2
+      midiSendControlChange(extraCT2, 0);
+      oldextrac2 = 0;
     }
   }
 }
@@ -1127,7 +1196,7 @@ void readSwitches() {
 
   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
 
-  int qTransp = pinkyKey ? pinkySetting-12 : 0;
+  int qTransp = (pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0;
 
   // Calculate midi note number from pressed keys  
 

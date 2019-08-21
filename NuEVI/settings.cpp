@@ -96,6 +96,12 @@ void readEEPROM() {
             writeSetting(DAC_MODE_ADDR, DAC_MODE_FACTORY);
         }
 
+        if(settingsVersion < 33) {
+            writeSetting(EXTRA2_ADDR, EXTRA2_FACTORY);
+            writeSetting(LEVEL_CC_ADDR, LEVEL_CC_FACTORY);
+            writeSetting(LEVEL_VAL_ADDR, LEVEL_VAL_FACTORY);
+        }
+
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
  
@@ -124,7 +130,7 @@ void readEEPROM() {
     curve           = readSettingBounded(BREATHCURVE_ADDR, 0, 12, BREATHCURVE_FACTORY);
     velSmpDl        = readSettingBounded(VEL_SMP_DL_ADDR, 0, 30, VEL_SMP_DL_FACTORY);
     velBias         = readSettingBounded(VEL_BIAS_ADDR, 0, 9, VEL_BIAS_FACTORY);
-    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 24, PINKY_KEY_FACTORY);
+    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 28, PINKY_KEY_FACTORY);
     fastPatch[0]    = readSettingBounded(FP1_ADDR, 0, 127, 0);
     fastPatch[1]    = readSettingBounded(FP2_ADDR, 0, 127, 0);
     fastPatch[2]    = readSettingBounded(FP3_ADDR, 0, 127, 0);
@@ -150,6 +156,9 @@ void readEEPROM() {
     vibControl      = readSettingBounded(VIB_CONTROL_ADDR, 0, 1, VIB_CONTROL_FACTORY);
     dacMode         = readSettingBounded(DAC_MODE_ADDR, DAC_MODE_BREATH, DAC_MODE_PITCH, DAC_MODE_FACTORY);
     trill3_interval = readSettingBounded(TRILL3_INTERVAL_ADDR, 3, 4, TRILL3_INTERVAL_FACTORY);
+    extraCT2        = readSettingBounded(EXTRA2_ADDR, 0, 127, EXTRA2_FACTORY);
+    levelCC         = readSettingBounded(LEVEL_CC_ADDR, 0, 127, LEVEL_CC_FACTORY);
+    levelVal        = readSettingBounded(LEVEL_VAL_ADDR, 0, 127, LEVEL_VAL_FACTORY);
 
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
