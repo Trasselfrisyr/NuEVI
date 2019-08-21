@@ -889,7 +889,7 @@ const MenuEntrySub lvlCtrlCCMenu = {
   MenuType::ESub, "LEVEL CC",  "LEVEL CC", &levelCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(levelCC) numToString(levelCC, out);
-    else strncpy(out, "OFF", 4);
+    else strncpy(out, "AT", 4);
   },
 [](const MenuEntrySub & __unused sub) { writeSetting(LEVEL_CC_ADDR,levelCC); }
   , nullptr

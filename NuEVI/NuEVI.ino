@@ -522,9 +522,11 @@ void loop() {
         if (K5 && (levelVal < 127)){
           levelVal++;
           if (levelCC) midiSendControlChange(levelCC, levelVal);
+          else midiSendAfterTouch(levelVal);
         } else if (K1 && (levelVal > 0)){
           levelVal--;
           if (levelCC) midiSendControlChange(levelCC, levelVal);
+          else midiSendAfterTouch(levelVal);
        }
       } else if (lastPinkyKey){
         writeSetting(LEVEL_VAL_ADDR,levelVal); 
