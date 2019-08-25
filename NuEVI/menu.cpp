@@ -777,7 +777,7 @@ const MenuEntrySub velSmpDlMenu = {
 };
 
 const MenuEntrySub velBiasMenu = {
-  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "VEL BOOST", "VEL BOOST", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (velBias) numToString(velBias, out);
     else strncpy(out, "OFF", 4);
@@ -964,7 +964,7 @@ const MenuEntrySub vibSquelchMenu = {
 };
 
 const MenuEntrySub vibSenseBiteMenu = {
-  MenuType::ESub, "SENSE BTE", "LEVEL", &vibSensBite, 1, 12, MenuEntryFlags::ENone,
+  MenuType::ESub, "SENSE BTE", "LEVEL", &vibSensBite, 1, 17, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     numToString(vibSensBite, textBuffer);
   },
@@ -982,9 +982,11 @@ const MenuEntrySub vibSquelchBiteMenu = {
 };
 
 const MenuEntrySub vibControlMenu = {
-  MenuType::ESub, "CONTROL", "CONTROL", &vibControl , 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "CONTROL", "CONTROL", &vibControl , 0, 2, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    if (vibControl)
+    if (2 == vibControl)
+      strncpy(out, "BTH", 4);
+    else if (1 == vibControl)
       strncpy(out, "BIT", 4);
     else
       strncpy(out, "LVR", 4);

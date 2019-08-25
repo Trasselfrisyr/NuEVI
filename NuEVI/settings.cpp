@@ -151,9 +151,9 @@ void readEEPROM() {
     vibDirection    = readSettingBounded(VIB_DIRECTION_ADDR, 0, 1, VIB_DIRECTION_FACTORY);
     breathCC2       = readSettingBounded(BREATH_CC2_ADDR, 0, 127, BREATH_CC2_FACTORY);
     breathCC2Rise   = readSettingBounded(BREATH_CC2_RISE_ADDR, 1, 10, BREATH_CC2_RISE_FACTORY);
-    vibSensBite     = readSettingBounded(VIB_SENS_BITE_ADDR, 1, 12, VIB_SENS_BITE_FACTORY);
+    vibSensBite     = readSettingBounded(VIB_SENS_BITE_ADDR, 1, 17, VIB_SENS_BITE_FACTORY);
     vibSquelchBite  = readSettingBounded(VIB_SQUELCH_BITE_ADDR, 1, 30, VIB_SQUELCH_BITE_FACTORY);
-    vibControl      = readSettingBounded(VIB_CONTROL_ADDR, 0, 1, VIB_CONTROL_FACTORY);
+    vibControl      = readSettingBounded(VIB_CONTROL_ADDR, 0, 2, VIB_CONTROL_FACTORY);
     dacMode         = readSettingBounded(DAC_MODE_ADDR, DAC_MODE_BREATH, DAC_MODE_PITCH, DAC_MODE_FACTORY);
     trill3_interval = readSettingBounded(TRILL3_INTERVAL_ADDR, 3, 4, TRILL3_INTERVAL_FACTORY);
     extraCT2        = readSettingBounded(EXTRA2_ADDR, 0, 127, EXTRA2_FACTORY);
