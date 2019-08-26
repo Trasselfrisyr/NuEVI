@@ -63,6 +63,7 @@ extern void doorKnobCheck(void);
 extern void portOn(void);
 extern void portOff(void);
 extern void port(void);
+extern void readTeensySwitches(void);
 extern void readSwitches(void);
 extern int patchLimit(int value);
 
