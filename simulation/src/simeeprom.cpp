@@ -63,7 +63,7 @@ int16_t EEPROMClass::setStorage(const char* filename, bool write)
     autoUpdate = write;
 
 	storage = fopen(filename, "rb");
-	
+
 
     //If only reading, fail if file does not exist (makes no sense otherwise)
     if(!storage && !autoUpdate) {

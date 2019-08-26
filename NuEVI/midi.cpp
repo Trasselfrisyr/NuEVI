@@ -141,6 +141,7 @@ void dinMIDIsendProgramChange(uint8_t value, uint8_t ch) {
     midiSend2B((0xC0 | ch), value);
 }
 
+// Send sysex commands to wireless module
 void dinMIDIsendSysex(const uint8_t data[], const uint8_t length) {
   MIDI_SERIAL.write(0xF0); //Sysex command
   for(int i=0; i<length; ++i) {
@@ -148,7 +149,6 @@ void dinMIDIsendSysex(const uint8_t data[], const uint8_t length) {
   }
   MIDI_SERIAL.write(0xF7); //Sysex end
 }
-
 
 void sendWLPower(const uint8_t level) {
   uint8_t buf[6] = {
@@ -165,7 +165,6 @@ void sendWLPower(const uint8_t level) {
 
 }
 
-
 void sendWLChannel(const uint8_t channel) {
   uint8_t buf[6] = {
     0x00, 0x21, 0x11,  //Manufacturer id
@@ -179,4 +178,35 @@ void sendWLChannel(const uint8_t channel) {
   buf[5] = channel;
   dinMIDIsendSysex(buf, 6);
 
+}
+
+//Translate between "midi data" (only use 7 LSB per byte, big endian) and "teensy data" (little endian)
+//Only 14 LSB of int value are used (2MSB are discarded), so only works for unsigned data 0-16383
+
+//NOTE: This assumes code is running on a little-endian CPU, both for real device (Teensy) and simulator.
+uint16_t convertToMidiValue(const uint16_t realdata) {
+  return (realdata & 0x3F80) >>7 | (realdata & 0x007F) <<8;
+}
+
+uint16_t convertFromMidiValue(const uint16_t mididata) {
+  return (mididata & 0x7F00) >> 8 | (mididata & 0x007F) <<7 ;
+}
+
+//Read from a memory location, such as MIDI receive buffer
+uint16_t convertFromMidiValue(const uint8_t* mididata) {
+  uint8_t msb = *mididata;
+  uint8_t lsb = *(mididata+1);
+
+  return (msb & 0x007F) <<7 | (lsb & 0x007F);
+}
+
+//This is a bit different. MSB of each byte is just discarded (instead of discarding MSB for whole value). Just used for CRC (easier to compare)
+uint32_t convertToMidiCRC(const uint32_t realdata) {
+  uint8_t* p = (uint8_t*)&realdata;
+
+  uint32_t r=0;
+  for(int i=0; i<4; ++i) {
+    r = r<<8 | (p[i] & 0x7F);
+  }
+  return r;
 }

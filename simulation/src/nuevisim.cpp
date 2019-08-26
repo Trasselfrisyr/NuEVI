@@ -1,5 +1,6 @@
 #include <functional>
 #include <string>
+#include <iostream>
 
 #include <SDL2/SDL.h>
 
@@ -13,15 +14,17 @@
 #include "examples/imgui_impl_sdl.h"
 #include "examples/imgui_impl_opengl3.h"
 #include "EEPROM.h"
+#include "simusbmidi.h"
 
 #include <Arduino.h>
 
+#define ARGS_NOEXCEPT
 #include "args.hxx"
 
 // Forward declarations
 static void SimQuit(void);
 static int SimInit(void);
-static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset);
+static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset, bool ConfigMode);
 static void SimLoop(std::function<bool()>, std::function<void()>);
 
 
@@ -38,6 +41,8 @@ EEPROMClass EEPROM;
 static const int scale = 3;
 
 static SDL_Window *window;
+
+bool no_delay = false;
 
 void _reboot_Teensyduino_()
 {
@@ -81,6 +86,8 @@ uint8_t digitalRead(uint8_t pin) {
 
 void delay(unsigned int ms)
 {
+    if(no_delay) return;
+
     uint32_t endTick = SDL_GetTicks() + ms;
     auto checktime = [endTick]() -> bool { return endTick > SDL_GetTicks(); };
     SimLoop(checktime,NULL);
@@ -407,6 +414,9 @@ static void toggleAnalogAnimation() {
     printf("Analog input variations: %s\n", animateAnalogs ? "ON": "OFF");
 }
 
+static void sendMidiData() {
+    usbMIDI.triggerMidi();
+}
 
 static void SimLoop(std::function<bool()> continue_predicate, std::function<void()> loopFunc)
 {
@@ -449,6 +459,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
                     case SDLK_UP:       digitalInputs[uPin] = 1; break;
                     case SDLK_DOWN:     digitalInputs[dPin] = 1; break;
                     case SDLK_w:        toggleAnalogAnimation(); break;
+                    case SDLK_m:        sendMidiData(); break;
 
                     case SDLK_1:        touchSensor.mockFilteredData(K1Pin, ctouchThrVal +100); break;
                     case SDLK_2:        touchSensor.mockFilteredData(K2Pin, ctouchThrVal +100); break;
@@ -508,7 +519,7 @@ static void SimLoop(std::function<bool()> continue_predicate, std::function<void
     }
 }
 
-static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset)
+static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset, bool configMode)
 {
 	if( 0 != SimInit() ) { return 1; }
 
@@ -523,11 +534,19 @@ static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset)
         digitalInputs[ePin] = 0;
     }
 
+    //Go into config management mode. This should not happen (in NuEVI) if factory reset is done
+    if(configMode) {
+        digitalInputs[uPin] = 0;
+        digitalInputs[dPin] = 0;
+    }
+
     setup();
 
     //Let it go, let it go, not resetting any more
     digitalInputs[mPin] = 1;
     digitalInputs[ePin] = 1;
+    digitalInputs[uPin] = 1;
+    digitalInputs[dPin] = 1;
 
     SimLoop( []() -> bool { return true; }, loop );
     SimQuit();
@@ -583,7 +602,7 @@ static int SimInit()
 
     analogInputs[vMeterPin] = 3025;
 
-    // Initialize touch sensors to not be poked 
+    // Initialize touch sensors to not be poked
     for(int i = 0; i < 12; ++i) {
         touchSensor.mockFilteredData(i, 4095);
     }
@@ -610,23 +629,47 @@ static void SimQuit()
 int main(int argc, const char** argv)
 {
 
-    args::ArgumentParser parser("This is a test program.", "This goes after the options.");
+    args::ArgumentParser parser("NuEVI simulator.");
 
-
-    args::ValueFlag<std::string> eepromFile(parser, "eeprom-write", "File to use for EEPROM data", {'e', "eeprom-file"});
+    args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+    args::ValueFlag<std::string> eepromFile(parser, "filename", "File to use for EEPROM data", {'e', "eeprom-file"});
     args::Flag eepromWrite(parser, "eeprom-write", "Write EEPROM changes to file", {'w', "eeprom-write"});
     args::Flag factoryReset(parser, "factory-reset", "Trigger factory reset", {'r', "factory-reset"});
+    args::Flag configMode(parser, "config-mode", "Trigger config-management mode", {'c', "config-mode"});
+    args::Flag nodelay(parser, "nodelay", "Skip all delays when running", {'n', "nodelay"});
+    args::ValueFlag<std::string> midiFile(parser, "filename", "Name of file with raw MIDI data to send to NuEVI", {'m', "midi-file"});
+    args::Flag midiSend(parser, "midi-send", "Trigger automatic sending of MIDI data", {'M', "midi-send"});
 
     parser.ParseCLI(argc, argv);
 
+    if(parser.GetError() != args::Error::None) {
+
+        if(parser.GetError() == args::Error::Help) {
+            std::cout << parser << std::endl;
+            return 0;
+        }
+
+        std::cerr << parser.GetErrorMsg() << std::endl;
+        return 1;
+    }
+
     std::string eepromFileName = args::get(eepromFile);
+    std::string midiFileName   = args::get(midiFile);
 
     //Use a default EEPROM file if none is provided.
-    if(eepromFileName.length()==0)
-    {
+    if(eepromFileName.length()==0) {
         eepromFileName = SDL_GetPrefPath("Vulk Data System", "NuEVI Simulator");
         eepromFileName += "eeprom.bin";
     }
 
-    return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset));
+    if(midiFileName.length()>0) {
+        usbMIDI.setMidiFile(midiFileName);
+        if(args::get(midiSend)) {
+            usbMIDI.triggerMidi();
+        }
+    }
+
+    no_delay = args::get(nodelay);
+
+    return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset), args::get(configMode));
 }

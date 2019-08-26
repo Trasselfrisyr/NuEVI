@@ -59,6 +59,7 @@
 #define LEVEL_CC_ADDR 104
 #define LEVEL_VAL_ADDR 106
 
+#define EEPROM_SIZE 102
 
 
 //DAC output modes
@@ -125,12 +126,28 @@
 #define LEVEL_CC_FACTORY 11
 #define LEVEL_VAL_FACTORY 127
 
+#define NO_CHECKSUM 0x7F007F00
 
-void readEEPROM();
+void readEEPROM(const bool factoryReset);
 void setBit(uint16_t &bitfield, const uint8_t pos, const uint16_t value);
-uint16_t readSetting(uint16_t address);
-void writeSetting(uint16_t address, uint16_t value);
-uint16_t readSettingBounded(uint16_t address, uint16_t min, uint16_t max, uint16_t defaultValue);
+uint16_t readSetting(const uint16_t address);
+void writeSetting(const uint16_t address, const uint16_t value);
+uint16_t readSettingBounded(const uint16_t address, const uint16_t min, const uint16_t max, const uint16_t defaultValue);
 
+//Functions for config management mode
+void sendSysexSettings();
+void sendSysexMessage(const char* messageCode);
+void sendSysexVersion();
+
+void handleSysex(uint8_t *data, unsigned int length);
+void handleSysexChunk(const uint8_t *data, uint16_t length, bool last);
+
+uint32_t crc32(const uint8_t *message, const size_t length);
+
+void configInitScreen();
+void configShowMessage(const char* message);
+
+void configModeSetup();
+void configModeLoop();
 
 #endif

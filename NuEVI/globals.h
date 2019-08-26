@@ -1,7 +1,7 @@
 #ifndef __GLOBALS_H
 #define __GLOBALS_H
 
-#include "Wiring.h"
+#include "wiring.h"
 
 
 // The three states of our main state machine
