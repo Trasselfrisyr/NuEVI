@@ -66,9 +66,13 @@ unsigned short octave;
 unsigned short curve;
 unsigned short velSmpDl;  // 0-30 ms
 unsigned short velBias;   // 0-9
-unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
+unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12), 25 (EC2), 26 (ECSW), 27 (LVL), 28 (LVLP)
 unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 unsigned short priority; // mono priority for rotator chords
+
+unsigned short extraCT2; // OFF:1-127
+unsigned short levelCC; // 0-127
+unsigned short levelVal; // 0-127
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
@@ -110,6 +114,7 @@ static const unsigned long pixelUpdateInterval = 80;
 
 unsigned long lastDeglitchTime = 0;         // The last time the fingering was changed
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
+unsigned long ccBreathSendTime = 0L;        // The last time we sent breath CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
 
 int lastFingering = 0;             // Keep the last fingering value for debouncing
@@ -158,7 +163,7 @@ int targetPitch;
 int exSensor=0;
 byte extracIsOn=0;
 int oldextrac=0;
-int lastEx=0;
+int oldextrac2=0;
 
 int pitchBend=8192;
 int oldpb=8192;
@@ -169,6 +174,7 @@ byte vibLedOff = 0;
 byte oldpkey = 0;
 
 static const float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings
+static const short vibMaxBiteList[17] = {1600,1400,1200,1000,900,800,700,600,500,400,300,250,200,150,100,50,25};
 static const short vibMaxList[12] = {300,275,250,225,200,175,150,125,100,75,50,25};
 
 static const unsigned short curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
@@ -226,6 +232,7 @@ byte halfPitchBendKey;
 byte specialKey;
 byte pinkyKey;
 byte lastSpecialKey = 0;
+byte lastPinkyKey = 0;
 byte pitchlatch;
 int reverb;
 
@@ -325,6 +332,10 @@ void setup() {
   if (!digitalRead(ePin)) {
     activePatch=0;
     doPatchUpdate=1;
+  }
+
+  if ((pinkySetting == LVLP) && levelCC){
+    midiSendControlChange(levelCC, levelVal);
   }
 
   activeMIDIchannel = MIDIchannel;
@@ -475,9 +486,7 @@ void loop() {
     }
 
     if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
-
-    if (specialKeyEnable) {
-      specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
+    if (specialKeyEnable) {   
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
           // special key just pressed, check other keys
@@ -523,6 +532,23 @@ void loop() {
       slurSustain = 0;
       parallelChord = 0;
       subOctaveDouble = 0;
+    }
+    if ((pinkySetting == LVL) || (pinkySetting == LVLP)){
+      if (pinkyKey){
+        ledMeter(levelVal);
+        if (K5 && (levelVal < 127)){
+          levelVal++;
+          if (levelCC) midiSendControlChange(levelCC, levelVal);
+          else midiSendAfterTouch(levelVal);
+        } else if (K1 && (levelVal > 0)){
+          levelVal--;
+          if (levelCC) midiSendControlChange(levelCC, levelVal);
+          else midiSendAfterTouch(levelVal);
+       }
+      } else if (lastPinkyKey){
+        writeSetting(LEVEL_VAL_ADDR,levelVal); 
+      }
+      lastPinkyKey = pinkyKey;
     }
   } else if (mainState == RISE_WAIT) {
     if ((pressureSensor > breathThrVal) || gateOpen) {
@@ -691,19 +717,20 @@ void loop() {
     if (pressureSensor > breathThrVal) cursorBlinkTime = millis(); // keep display from updating with cursor blinking if breath is over thr
   }
   // Is it time to send more CC data?
+  if (millis() - ccBreathSendTime > (CC_BREATH_INTERVAL*(slowMidi+1))){
+    breath();
+    ccBreathSendTime = millis();
+  }
   if (millis() - ccSendTime > CC_INTERVAL) {
-    // deal with Breath, Pitch Bend, Modulation, etc.
-    if (!slowMidi) breath();
-    halfTime = !halfTime;
-    if (halfTime) {
-      pitch_bend();
-      portamento_();
-    } else {
-      if (slowMidi) breath();
-      extraController();
-      updateSensorLEDs();
-      doorKnobCheck();
-    }
+    // deal with Pitch Bend, Modulation, etc.
+    pitch_bend();
+    portamento_();
+    extraController();
+    readTeensySwitches();
+    if (((pinkySetting == LVL) || (pinkySetting == LVLP)) && pinkyKey){
+      // show LVL indication
+    } else updateSensorLEDs();
+    doorKnobCheck();
     ccSendTime = millis();
   }
   if (millis() - pixelUpdateTime > pixelUpdateInterval) {
@@ -835,6 +862,7 @@ void pitch_bend() {
   // handle input from pitchbend touchpads and
   // on-pcb variable capacitor for vibrato.
   int vibMax;
+  int vibMaxBite;
   int calculatedPBdepth;
   byte pbTouched = 0;
   int vibRead = 0;
@@ -848,6 +876,7 @@ void pitch_bend() {
 
 
   vibMax = vibMaxList[vibSens - 1];
+  vibMaxBite = vibMaxBiteList[vibSensBite - 1];
 
   if (vibControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
@@ -857,21 +886,22 @@ void pitch_bend() {
     }
         if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMax), vibThrBite), vibThrBite, (vibZeroBite - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
       }
     } else if (vibReadBite > vibThrBiteLo) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMax)), vibThrBiteLo, (vibZeroBite + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
       }
     } else {
       vibSignal = vibSignal * 0.5;
     }
-  } else { //lever vibrato
-    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
+  }
+  if (vibControl != 1) { //lever vibrato
+    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap  
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
         vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
@@ -985,59 +1015,102 @@ void doorKnobCheck() {
 //***********************************************************
 
 void extraController() {
+  bool CC2sw;
+  bool CC1sw;
+  int extracCC;
   // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
+  if (pinkySetting == EC2){
+    //send 0 or 127 on extra controller CC2 depending on pinky key touch
+    if (pinkyKey && extraCT2) {
+      if (lastPinkyKey != pinkyKey){
+        midiSendControlChange(extraCT2, 127);
+        lastPinkyKey = pinkyKey;
+      }
+    } else {
+      if (lastPinkyKey != pinkyKey){
+        midiSendControlChange(extraCT2, 0);
+        lastPinkyKey = pinkyKey;
+      }
+    }
+  } else if (pinkySetting == ECSW){
+    if (pinkyKey){
+      //send extra controller CC2 only 
+      CC2sw = 1;
+      CC1sw = 0;
+    } else {
+      //send extra controller primary CC only
+      CC2sw = 0;
+      CC1sw = 1;
+    }
+  } else {
+    //send both primary CC and CC2
+    CC2sw = 1;
+    CC1sw = 1;
+  }
   if (extraCT && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
       extracIsOn = 1;
-      if (extraCT == 4) { //Sustain ON
+      if ((extraCT == 4) && CC1sw) { //Sustain ON
         midiSendControlChange(64, 127);
       }
     }
-    if (extraCT == 1) { //Send modulation
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 1) && CC1sw) { //Send modulation
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(1, extracCC);
       }
       oldextrac = extracCC;
     }
-    if (extraCT == 2) { //Send foot pedal (CC#4)
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 2) && CC1sw) { //Send foot pedal (CC#4)
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(4, extracCC);
       }
       oldextrac = extracCC;
     }
-    if ((extraCT == 3) && (breathCC != 9)) { //Send filter cutoff (CC#74)
-      int extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+    if ((extraCT == 3) && (breathCC != 9) && CC1sw) { //Send filter cutoff (CC#74)
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
       if (extracCC != oldextrac) {
         midiSendControlChange(74, extracCC);
       }
       oldextrac = extracCC;
     }
+    if ((extraCT2 ) && CC2sw){ //Send extra controller CC2
+      extracCC = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 1, 127);
+      if (extracCC != oldextrac2) {
+        midiSendControlChange(extraCT2, extracCC);
+      }
+      oldextrac2 = extracCC;
+    }
   } else if (extracIsOn) { // we have just gone below threshold, so send zero value
     extracIsOn = 0;
-    if (extraCT == 1) { //MW
+    if ((extraCT == 1) && CC1sw) { //MW
       if (oldextrac != 0) {
         //send modulation 0
         midiSendControlChange(1, 0);
         oldextrac = 0;
       }
-    } else if (extraCT == 2) { //FP
+    } else if ((extraCT == 2) && CC1sw) { //FP
       if (oldextrac != 0) {
         //send foot pedal 0
         midiSendControlChange(4, 0);
         oldextrac = 0;
       }
-    } else if ((extraCT == 3) && (breathCC != 9)) { //CF
+    } else if ((extraCT == 3) && (breathCC != 9) && CC1sw) { //CF
       if (oldextrac != 0) {
         //send filter cutoff 0
         midiSendControlChange(74, 0);
         oldextrac = 0;
       }
-    } else if (extraCT == 4) { //SP
+    } else if ((extraCT == 4) && CC1sw) { //SP
       //send sustain off
       midiSendControlChange(64, 0);
+    }
+    if ((extraCT2 ) && CC2sw){ //CC2
+      //send 0 for extra ctr CC2
+      midiSendControlChange(extraCT2, 0);
+      oldextrac2 = 0;
     }
   }
 }
@@ -1046,12 +1119,12 @@ void extraController() {
 
 void portamento_() {
 
-  if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+  if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
    } else {
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
    }
-  if (!vibControl){
+  if (0 == vibControl) {
     // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
     if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
       if (!portIsOn) {
@@ -1061,7 +1134,8 @@ void portamento_() {
     } else if (portIsOn) { // we have just gone below threshold, so send zero value
       portOff();
     }
-  } else {
+  } else if (1 == vibControl) {
+    // Portamento is switched to lever control
     leverPortRead = touchRead(vibratoPin);
     if (portamento && (leverPortRead <= (leverPortZero-leverPortThr))) { // if we are enabled and over the threshold, send portamento
       if (!portIsOn) {
@@ -1071,6 +1145,10 @@ void portamento_() {
     } else if (portIsOn) { // we have just gone below threshold, so send zero value
     portOff();
   }
+  } else {
+    // no control for portamento
+    if (portIsOn)
+      portOff();
   }
 }
 
@@ -1087,7 +1165,7 @@ void portOn() {
 
 void port() {
   int portCC;
-  if (!vibControl)
+  if (1 != vibControl)
     portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
   else
     portCC = constrain((leverPortZero-leverPortThr-leverPortRead),0,127);
@@ -1111,6 +1189,12 @@ void portOff() {
 }
 
 //***********************************************************
+
+
+void readTeensySwitches() { //these seem to slow things down, so do it less often
+   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
+   specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
+}
 
 void readSwitches() {
 
@@ -1142,7 +1226,8 @@ void readSwitches() {
 
   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
 
-  int qTransp = pinkyKey ? pinkySetting-12 : 0;
+
+  int qTransp = (pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0;
 
   // Calculate midi note number from pressed keys
 

@@ -8,5 +8,6 @@ void statusLed(bool state);
 void statusLedFlash(uint16_t delayTime);
 void statusLedBlink();
 void updateSensorLEDs();
+void ledMeter(byte indicatedValue);
 
 #endif

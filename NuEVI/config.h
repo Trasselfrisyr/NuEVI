@@ -11,9 +11,10 @@
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
 
-// Send breath CC data no more than every CC_INTERVAL (other CC is sent with double interval)
+// Send breath CC data no more than every CC_BREATH_INTERVAL 
 // milliseconds (due to timing errors, the value should be about half the actual wanted value)
-#define CC_INTERVAL 2
+#define CC_BREATH_INTERVAL 1
+#define CC_INTERVAL 10
 
 
 #define breathLoLimit   0

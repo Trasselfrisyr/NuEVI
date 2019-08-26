@@ -20,6 +20,10 @@
 
 //Magic value where pinky button means "pitch bend"
 #define PBD 12
+#define EC2 25
+#define ECSW 26
+#define LVL 27
+#define LVLP 28
 
 //Vibrato direction
 #define UPWD 1
@@ -55,7 +59,7 @@ extern unsigned short octave;
 extern unsigned short curve;
 extern unsigned short velSmpDl;  // 0-30 ms
 extern unsigned short velBias;   // 0-9
-extern unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12)
+extern unsigned short pinkySetting; // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 24 (QuickTranspose +1 to +12), 25 (EC2), 26 (ECSW), 27 (LVL), 28 (LVLP)
 extern unsigned short dipSwBits; // virtual dip switch settings for special modes (work in progress)
 extern unsigned short priority; // mono priority for rotator chords
 extern unsigned short vibSens; // vibrato sensitivity
@@ -66,6 +70,9 @@ extern unsigned short vibSensBite; // vibrato sensitivity (bite)
 extern unsigned short vibSquelchBite; //vibrato signal squelch (bite)
 extern unsigned short vibControl;
 extern unsigned short fastPatch[7];
+extern unsigned short extraCT2; // OFF:1-127
+extern unsigned short levelCC; // 0-127
+extern unsigned short levelVal; // 0-127
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
@@ -99,7 +106,6 @@ extern int lastBite;
 extern byte biteJumper;
 
 extern int exSensor;
-extern int lastEx;
 
 extern int pitchBend;
 

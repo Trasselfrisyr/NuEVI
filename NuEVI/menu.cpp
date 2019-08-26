@@ -777,7 +777,7 @@ const MenuEntrySub velSmpDlMenu = {
 };
 
 const MenuEntrySub velBiasMenu = {
-  MenuType::ESub, "VEL BIAS", "VEL BIAS", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "VEL BOOST", "VEL BOOST", &velBias, 0, 9, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if (velBias) numToString(velBias, out);
     else strncpy(out, "OFF", 4);
@@ -840,6 +840,16 @@ const MenuEntrySub extraMenu = {
   , nullptr
 };
 
+const MenuEntrySub extraCC2Menu = {
+  MenuType::ESub, "EXCTR CC2",  "EXCTR CC2", &extraCT2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(extraCT2) numToString(extraCT2, out);
+    else strncpy(out, "OFF", 4);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(EXTRA2_ADDR,extraCT2); }
+  , nullptr
+};
+
 const MenuEntryStateCh vibratoSubMenu = { MenuType::EStateChange, "VIBRATO", VIBRATO_MENU };
 
 const MenuEntrySub deglitchMenu = {
@@ -856,10 +866,18 @@ const MenuEntrySub deglitchMenu = {
 };
 
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 24, MenuEntryFlags::ENone,
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 28, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     if (pinkySetting == PBD)
       strncpy(textBuffer, "PBD", 4);
+    else if (pinkySetting == EC2)
+      strncpy(textBuffer, "EC2", 4);
+    else if (pinkySetting == ECSW)
+      strncpy(textBuffer, "ECS", 4);
+    else if (pinkySetting == LVL)
+      strncpy(textBuffer, "LVL", 4);
+    else if (pinkySetting == LVLP)
+      strncpy(textBuffer, "LVP", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },
@@ -867,13 +885,25 @@ const MenuEntrySub pinkyMenu = {
   , nullptr
 };
 
+const MenuEntrySub lvlCtrlCCMenu = {
+  MenuType::ESub, "LEVEL CC",  "LEVEL CC", &levelCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(levelCC) numToString(levelCC, out);
+    else strncpy(out, "AT", 4);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(LEVEL_CC_ADDR,levelCC); }
+  , nullptr
+};
+
 const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
   (MenuEntry*)&pitchBendMenu,
   (MenuEntry*)&extraMenu,
+  (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
-  (MenuEntry*)&pinkyMenu
+  (MenuEntry*)&pinkyMenu,
+  (MenuEntry*)&lvlCtrlCCMenu
 };
 
 const MenuPage controlMenuPage = {
@@ -934,7 +964,7 @@ const MenuEntrySub vibSquelchMenu = {
 };
 
 const MenuEntrySub vibSenseBiteMenu = {
-  MenuType::ESub, "SENSE BTE", "LEVEL", &vibSensBite, 1, 12, MenuEntryFlags::ENone,
+  MenuType::ESub, "SENSE BTE", "LEVEL", &vibSensBite, 1, 17, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     numToString(vibSensBite, textBuffer);
   },
@@ -952,9 +982,11 @@ const MenuEntrySub vibSquelchBiteMenu = {
 };
 
 const MenuEntrySub vibControlMenu = {
-  MenuType::ESub, "CONTROL", "CONTROL", &vibControl , 0, 1, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "CONTROL", "CONTROL", &vibControl , 0, 2, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    if (vibControl)
+    if (2 == vibControl)
+      strncpy(out, "BTH", 4);
+    else if (1 == vibControl)
       strncpy(out, "BIT", 4);
     else
       strncpy(out, "LVR", 4);
