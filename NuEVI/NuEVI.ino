@@ -1237,7 +1237,7 @@ void readSwitches() {
     + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
     + octaveR*12;       //Octave rollers
 
-  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
+  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp;
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
 
