@@ -1048,7 +1048,7 @@ void extraController() {
     CC2sw = 1;
     CC1sw = 1;
   }
-  if (extraCT && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
+  if ((extraCT || extraCT2) && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
       extracIsOn = 1;
       if ((extraCT == 4) && CC1sw) { //Sustain ON
