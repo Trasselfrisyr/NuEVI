@@ -8363,6 +8363,8 @@ Source: AVX .. aphvc.pdf</description>
 <part name="JP74" library="pinhead" deviceset="PINHD-1X1" device=""/>
 <part name="JP75" library="pinhead" deviceset="PINHD-1X1" device=""/>
 <part name="JP76" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="JP77" library="pinhead" deviceset="PINHD-1X1" device=""/>
+<part name="JP78" library="pinhead" deviceset="PINHD-1X1" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -8459,6 +8461,8 @@ Source: AVX .. aphvc.pdf</description>
 <instance part="JP74" gate="G$1" x="-55.626" y="-7.62"/>
 <instance part="JP75" gate="G$1" x="63.5" y="60.96"/>
 <instance part="JP76" gate="G$1" x="63.5" y="38.1"/>
+<instance part="JP77" gate="G$1" x="76.454" y="-35.56"/>
+<instance part="JP78" gate="G$1" x="76.454" y="-50.8"/>
 </instances>
 <busses>
 </busses>
@@ -8692,7 +8696,6 @@ Source: AVX .. aphvc.pdf</description>
 <wire x1="53.34" y1="-5.08" x2="53.34" y2="-50.8" width="0.1524" layer="91"/>
 <pinref part="PS1" gate="G$1" pin="GND"/>
 <wire x1="53.34" y1="-50.8" x2="40.64" y2="-50.8" width="0.1524" layer="91"/>
-<wire x1="40.64" y1="-50.8" x2="40.64" y2="-40.64" width="0.1524" layer="91"/>
 <pinref part="C1" gate="G$1" pin="1"/>
 <junction x="68.58" y="-5.08"/>
 <pinref part="C2" gate="G$1" pin="1"/>
@@ -8708,6 +8711,9 @@ Source: AVX .. aphvc.pdf</description>
 <wire x1="38.1" y1="7.62" x2="17.78" y2="7.62" width="0.1524" layer="91"/>
 <wire x1="78.74" y1="-5.08" x2="88.9" y2="-5.08" width="0.1524" layer="91"/>
 <wire x1="106.68" y1="-5.08" x2="106.68" y2="-30.48" width="0.1524" layer="91"/>
+<wire x1="73.914" y1="-50.8" x2="53.34" y2="-50.8" width="0.1524" layer="91"/>
+<wire x1="40.64" y1="-50.8" x2="40.64" y2="-40.64" width="0.1524" layer="91"/>
+<pinref part="JP78" gate="G$1" pin="1"/>
 </segment>
 <segment>
 <pinref part="JP69" gate="G$1" pin="1"/>
@@ -8799,6 +8805,9 @@ Source: AVX .. aphvc.pdf</description>
 <pinref part="PS1" gate="G$1" pin="VOUT"/>
 <pinref part="C3" gate="G$1" pin="2"/>
 <junction x="83.82" y="-25.4"/>
+<wire x1="66.04" y1="-35.56" x2="66.04" y2="-25.4" width="0.1524" layer="91"/>
+<pinref part="JP77" gate="G$1" pin="1"/>
+<wire x1="66.04" y1="-35.56" x2="73.914" y2="-35.56" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$12" class="0">
