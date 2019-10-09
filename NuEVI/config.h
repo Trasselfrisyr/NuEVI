@@ -5,7 +5,7 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.4.0"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.4.1"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
@@ -14,7 +14,9 @@
 // Send breath CC data no more than every CC_BREATH_INTERVAL 
 // milliseconds (due to timing errors, the value should be about half the actual wanted value)
 #define CC_BREATH_INTERVAL 1
-#define CC_INTERVAL 10
+#define CC_INTERVAL 13
+#define CC_INTERVAL2 25
+#define CC_INTERVAL3 37
 
 
 #define breathLoLimit   0

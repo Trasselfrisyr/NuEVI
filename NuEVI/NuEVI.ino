@@ -114,8 +114,11 @@ static const unsigned long pixelUpdateInterval = 80;
 
 unsigned long lastDeglitchTime = 0;         // The last time the fingering was changed
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
+unsigned long ccSendTime2 = 0L;             // The last time we sent CC values 2 (slower)
+unsigned long ccSendTime3 = 0L;             // The last time we sent CC values 3 (and slower)
 unsigned long ccBreathSendTime = 0L;        // The last time we sent breath CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
+unsigned long currentTime;
 
 int lastFingering = 0;             // Keep the last fingering value for debouncing
 
@@ -486,6 +489,7 @@ void loop() {
     }
 
     if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
+    specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     if (specialKeyEnable) {   
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
@@ -717,23 +721,30 @@ void loop() {
     if (pressureSensor > breathThrVal) cursorBlinkTime = millis(); // keep display from updating with cursor blinking if breath is over thr
   }
   // Is it time to send more CC data?
-  if (millis() - ccBreathSendTime > (CC_BREATH_INTERVAL*(slowMidi+1))){
+  currentTime = millis();
+  if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL*(slowMidi+1))){
     breath();
-    ccBreathSendTime = millis();
+    ccBreathSendTime = currentTime;
   }
-  if (millis() - ccSendTime > CC_INTERVAL) {
+  if (currentTime - ccSendTime > CC_INTERVAL) {
     // deal with Pitch Bend, Modulation, etc.
     pitch_bend();
-    portamento_();
     extraController();
+    ccSendTime = currentTime;
+  }
+  if (currentTime - ccSendTime2 > CC_INTERVAL2) {
+    portamento_();
     readTeensySwitches();
+    ccSendTime2 = currentTime;
+  }
+   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
+    doorKnobCheck();
     if (((pinkySetting == LVL) || (pinkySetting == LVLP)) && pinkyKey){
       // show LVL indication
     } else updateSensorLEDs();
-    doorKnobCheck();
-    ccSendTime = millis();
+    ccSendTime3 = currentTime;
   }
-  if (millis() - pixelUpdateTime > pixelUpdateInterval) {
+  if (currentTime - pixelUpdateTime > pixelUpdateInterval) {
     // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
     // this is one of the big reasons the display is for setup use only
     drawSensorPixels(); // live sensor monitoring for the setup screens
@@ -742,7 +753,7 @@ void loop() {
     } else {
       statusLedOn();
     }
-    pixelUpdateTime = millis();
+    pixelUpdateTime = currentTime;
   }
 
   if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
@@ -1192,8 +1203,7 @@ void portOff() {
 
 
 void readTeensySwitches() { //these seem to slow things down, so do it less often
-   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" 
-   specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
+   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"  
 }
 
 void readSwitches() {
