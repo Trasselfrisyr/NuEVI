@@ -89,6 +89,9 @@ uint16_t trill3_interval;
 uint16_t fastBoot;
 uint16_t dacMode;
 
+volatile uint16_t dacModeCopy;
+volatile unsigned short brZero;
+
 byte rotatorOn = 0;
 byte currentRotation = 0;
 uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
@@ -228,6 +231,12 @@ byte K5;   // Trill key 1 (pitch change +2)
 byte K6;   // Trill key 2 (pitch change +1)
 byte K7;   // Trill key 3 (pitch change +4)
 
+byte R1;
+byte R2;
+byte R3;
+byte R4;
+byte R5;
+
 byte octaveR = 0;
 byte lastOctaveR = 0;
 
@@ -245,6 +254,7 @@ byte subOctaveDouble = 0;
 
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
 FilterOnePole breathFilter;
+IntervalTimer cvTimer;
 
 bool configManagementMode = false;
 
@@ -256,6 +266,7 @@ void setup() {
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
   analogWriteResolution(12);
   analogWriteFrequency(pwmDacPin,11718.75);
+  Wire.setClock(400000);
 
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -347,6 +358,8 @@ void setup() {
   //Serial.begin(9600); // debug
 
   statusLedOn();    // Switch on the onboard LED to indicate power on/ready
+
+  cvTimer.begin(cvUpdate,500); // Update breath CV output every 500 microseconds
 
 }
 
@@ -558,7 +571,7 @@ void loop() {
     if ((pressureSensor > breathThrVal) || gateOpen) {
       // Has enough time passed for us to collect our second
       // sample?
-      if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl)) {
+      if ((millis() - breath_on_time > velSmpDl) || (0 == velSmpDl) || velocity) {
         // Yes, so calculate MIDI note and velocity, then send a note on event
         // We should be at tonguing peak, so set velocity based on current pressureSensor value unless fixed velocity is set
         breathLevel = constrain(max(pressureSensor, initial_breath_value), breathThrVal, breathMaxVal);
@@ -722,7 +735,7 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL*(slowMidi+1))){
+  if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL+slowMidi*SLOW_MIDI_ADD)){
     breath();
     ccBreathSendTime = currentTime;
   }
@@ -737,8 +750,8 @@ void loop() {
     readTeensySwitches();
     ccSendTime2 = currentTime;
   }
-   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
-    doorKnobCheck();
+  if (currentTime - ccSendTime3 > CC_INTERVAL3) {
+    if (gateOpenEnable || gateOpen) doorKnobCheck();
     if (((pinkySetting == LVL) || (pinkySetting == LVLP)) && pinkyKey){
       // show LVL indication
     } else updateSensorLEDs();
@@ -772,11 +785,15 @@ void loop() {
       cvPitch = targetPitch;
     }
     analogWrite(dacPin,constrain(cvPitch+map(pitchBend,0,16383,-84,84),0,4095));
-    analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
+    //analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
   } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
-    analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
+    //analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
   }
-
+  noInterrupts();
+  dacModeCopy = dacMode;
+  brZero = breathThrVal;
+  interrupts();
+  
   midiDiscardInput();
 
   //do menu stuff
@@ -784,6 +801,16 @@ void loop() {
 }
 
 //_______________________________________________________________________________________________ FUNCTIONS
+
+void cvUpdate(){
+  int cvPressure = analogRead(breathSensorPin);
+  if(dacModeCopy == DAC_MODE_PITCH){
+    analogWrite(pwmDacPin,cvPressure);
+  } else { //DAC_MODE_BREATH
+    analogWrite(dacPin,map(constrain(cvPressure,brZero,4095),brZero,4095,0,4095));
+  }
+}
+
 
 // non linear mapping function (http://playground.arduino.cc/Main/MultiMap)
 // note: the _in array should have increasing values
@@ -1004,7 +1031,7 @@ void doorKnobCheck() {
     touchValue[i] = touchSensor.filteredData(i);
   }
   if (gateOpenEnable){
-    if ((touchValue[K4Pin] < ctouchThrVal) && (touchValue[R1Pin] < ctouchThrVal) && (touchValue[R2Pin] < ctouchThrVal) && (touchValue[R3Pin] < ctouchThrVal)) { // doorknob grip on canister
+    if (K4 && R1 && R2 && R3) { // doorknob grip on canister
       if (!gateOpen && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2))) {
         gateOpen = 1;
         statusLedFlash(100);
@@ -1215,13 +1242,20 @@ void readSwitches() {
   }
 
   // Octave rollers
+
+  R1 = touchKeys[R1Pin];
+  R2 = touchKeys[R2Pin];
+  R3 = touchKeys[R3Pin];
+  R4 = touchKeys[R4Pin];
+  R5 = touchKeys[R5Pin];
+  
   octaveR = 0;
-  if (touchKeys[R5Pin] && touchKeys[R3Pin]) octaveR = 6; //R6 = R5 && R3
-  else if (touchKeys[R5Pin]) octaveR = 5; //R5
-  else if (touchKeys[R4Pin]) octaveR = 4; //R4
-  else if (touchKeys[R3Pin] && lastOctaveR) octaveR = 3; //R3
-  else if (touchKeys[R2Pin]) octaveR = 2; //R2
-  else if (touchKeys[R1Pin]) octaveR = 1; //R1
+  if (R5 && R3) octaveR = 6; //R6 = R5 && R3
+  else if (R5) octaveR = 5; //R5
+  else if (R4) octaveR = 4; //R4
+  else if (R3 && lastOctaveR) octaveR = 3; //R3
+  else if (R2) octaveR = 2; //R2
+  else if (R1) octaveR = 1; //R1
 
   lastOctaveR = octaveR;
 

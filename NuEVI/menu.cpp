@@ -769,7 +769,7 @@ const MenuEntrySub velSmpDlMenu = {
   [](SubMenuRef __unused, char *out, const char** label) {
     if (velSmpDl) {
       numToString(velSmpDl, out);
-      *label = "ms";
+      *label = "";
     } else strncpy(out, "OFF", 4);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
