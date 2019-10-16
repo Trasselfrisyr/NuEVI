@@ -1051,8 +1051,8 @@ void doorKnobCheck() {
 //***********************************************************
 
 void extraController() {
-  bool CC2sw;
-  bool CC1sw;
+  bool CC2sw = false;
+  bool CC1sw = false;
   int extracCC;
   // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
@@ -1072,17 +1072,17 @@ void extraController() {
   } else if (pinkySetting == ECSW){
     if (pinkyKey){
       //send extra controller CC2 only
-      CC2sw = 1;
-      CC1sw = 0;
+      CC2sw = true;
+      CC1sw = false;
     } else {
       //send extra controller primary CC only
-      CC2sw = 0;
-      CC1sw = 1;
+      CC2sw = false;
+      CC1sw = true;
     }
   } else {
     //send both primary CC and CC2
-    CC2sw = 1;
-    CC1sw = 1;
+    CC2sw = true;
+    CC1sw = true;
   }
   if ((extraCT || extraCT2) && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
