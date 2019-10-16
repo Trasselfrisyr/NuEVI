@@ -374,7 +374,7 @@ void loop() {
   }
 
   breathFilter.input(analogRead(breathSensorPin));
-  pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP 
+  pressureSensor = constrain((int) breathFilter.output(), 0, 4095); // Get the filtered pressure sensor reading from analog pin A0, input from sensor MP3V5004GP
   readSwitches();
   if (mainState == NOTE_OFF) {
     if (activeMIDIchannel != MIDIchannel) {
@@ -503,7 +503,7 @@ void loop() {
 
     if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
-    if (specialKeyEnable) {   
+    if (specialKeyEnable) {
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
           // special key just pressed, check other keys
@@ -563,7 +563,7 @@ void loop() {
           else midiSendAfterTouch(levelVal);
        }
       } else if (lastPinkyKey){
-        writeSetting(LEVEL_VAL_ADDR,levelVal); 
+        writeSetting(LEVEL_VAL_ADDR,levelVal);
       }
       lastPinkyKey = pinkyKey;
     }
@@ -793,7 +793,7 @@ void loop() {
   dacModeCopy = dacMode;
   brZero = breathThrVal;
   interrupts();
-  
+
   midiDiscardInput();
 
   //do menu stuff
@@ -919,8 +919,8 @@ void pitch_bend() {
   if (vibControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-    } else { 
-      vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+    } else {
+      vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
     }
         if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
@@ -939,7 +939,7 @@ void pitch_bend() {
     }
   }
   if (vibControl != 1) { //lever vibrato
-    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap  
+    vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
         vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
@@ -1073,7 +1073,7 @@ void extraController() {
     }
   } else if (pinkySetting == ECSW){
     if (pinkyKey){
-      //send extra controller CC2 only 
+      //send extra controller CC2 only
       CC2sw = 1;
       CC1sw = 0;
     } else {
@@ -1160,7 +1160,7 @@ void portamento_() {
   if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
    } else {
-    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right) 
+    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
    }
   if (0 == vibControl) {
     // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
@@ -1230,7 +1230,7 @@ void portOff() {
 
 
 void readTeensySwitches() { //these seem to slow things down, so do it less often
-   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"  
+   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
 }
 
 void readSwitches() {
@@ -1248,7 +1248,7 @@ void readSwitches() {
   R3 = touchKeys[R3Pin];
   R4 = touchKeys[R4Pin];
   R5 = touchKeys[R5Pin];
-  
+
   octaveR = 0;
   if (R5 && R3) octaveR = 6; //R6 = R5 && R3
   else if (R5) octaveR = 5; //R5
