@@ -916,38 +916,38 @@ void pitch_bend() {
     } else {
       vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
     }
-        if (vibReadBite < vibThrBite) {
+    if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = (vibSignal + map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = (vibSignal + map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato])))/2;
       }
     } else if (vibReadBite > vibThrBiteLo) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = (vibSignal + map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, (0 - calculatedPBdepth * vibDepth[vibrato])))/2;
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = (vibSignal + map(constrain(vibReadBite, vibThrBiteLo, (vibZeroBite + vibMaxBite)), vibThrBiteLo, (vibZeroBite + vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
       }
     } else {
-      vibSignal = vibSignal * 0.5;
+      vibSignal = vibSignal / 2;
     }
   }
   if (vibControl != 1) { //lever vibrato
     vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = (vibSignal + map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = (vibSignal + map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato])))/2;
       }
     } else if (vibRead > vibThrLo) {
       if (UPWD == vibDirection) {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato]));
+        vibSignal = (vibSignal + map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, (0 - calculatedPBdepth * vibDepth[vibrato])))/2;
       } else {
-        vibSignal = vibSignal * 0.5 + 0.5 * map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]);
+        vibSignal = (vibSignal + map(constrain(vibRead, vibThrLo, (vibZero + vibMax)), vibThrLo, (vibZero + vibMax), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
       }
     } else {
-      vibSignal = vibSignal * 0.5;
+      vibSignal = vibSignal / 2;
     }
   }
 
