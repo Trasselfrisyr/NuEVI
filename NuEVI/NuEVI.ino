@@ -1027,10 +1027,7 @@ void pitch_bend() {
 //***********************************************************
 
 void doorKnobCheck() {
-  int touchValue[12];
-  for (byte i = 0; i < 12; i++) {
-    touchValue[i] = touchSensor.filteredData(i);
-  }
+
   if (gateOpenEnable){
     if (K4 && R1 && R2 && R3) { // doorknob grip on canister
       if (!gateOpen && (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2))) {
