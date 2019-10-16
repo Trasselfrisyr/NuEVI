@@ -89,9 +89,6 @@ uint16_t trill3_interval;
 uint16_t fastBoot;
 uint16_t dacMode;
 
-volatile uint16_t dacModeCopy;
-volatile unsigned short brZero;
-
 byte rotatorOn = 0;
 byte currentRotation = 0;
 uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
@@ -264,10 +261,10 @@ bool configManagementMode = false;
 //Update CV output pin, run from timer.
 void cvUpdate(){
   int cvPressure = analogRead(breathSensorPin);
-  if(dacModeCopy == DAC_MODE_PITCH){
+  if(dacMode == DAC_MODE_PITCH){
     analogWrite(pwmDacPin,cvPressure);
   } else { //DAC_MODE_BREATH
-    analogWrite(dacPin,map(constrain(cvPressure,brZero,4095),brZero,4095,0,4095));
+    analogWrite(dacPin,map(constrain(cvPressure,breathThrVal,4095),breathThrVal,4095,0,4095));
   }
 }
 
@@ -799,10 +796,6 @@ void loop() {
   } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     //analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
   }
-  noInterrupts();
-  dacModeCopy = dacMode;
-  brZero = breathThrVal;
-  interrupts();
 
   midiDiscardInput();
 
