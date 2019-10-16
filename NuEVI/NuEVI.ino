@@ -261,6 +261,16 @@ bool configManagementMode = false;
 
 //_______________________________________________________________________________________________ SETUP
 
+//Update CV output pin, run from timer.
+void cvUpdate(){
+  int cvPressure = analogRead(breathSensorPin);
+  if(dacModeCopy == DAC_MODE_PITCH){
+    analogWrite(pwmDacPin,cvPressure);
+  } else { //DAC_MODE_BREATH
+    analogWrite(dacPin,map(constrain(cvPressure,brZero,4095),brZero,4095,0,4095));
+  }
+}
+
 void setup() {
 
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
@@ -801,15 +811,6 @@ void loop() {
 }
 
 //_______________________________________________________________________________________________ FUNCTIONS
-
-void cvUpdate(){
-  int cvPressure = analogRead(breathSensorPin);
-  if(dacModeCopy == DAC_MODE_PITCH){
-    analogWrite(pwmDacPin,cvPressure);
-  } else { //DAC_MODE_BREATH
-    analogWrite(dacPin,map(constrain(cvPressure,brZero,4095),brZero,4095,0,4095));
-  }
-}
 
 
 // non linear mapping function (http://playground.arduino.cc/Main/MultiMap)

@@ -15,6 +15,7 @@
 #include "examples/imgui_impl_opengl3.h"
 #include "EEPROM.h"
 #include "simusbmidi.h"
+#include "interrupts.h"
 
 #include <Arduino.h>
 
