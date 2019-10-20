@@ -245,6 +245,11 @@ byte lastPinkyKey = 0;
 byte pitchlatch;
 int reverb;
 
+byte pcCombo1 = 0;
+byte pcCombo2 = 0;
+byte lastpcc1 = 0;
+byte lastpcc2 = 0;
+
 byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
@@ -406,8 +411,28 @@ void loop() {
     if (legacy || legacyBrAct) {
 
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
-      bool brSuck = analogRead(breathSensorPin) < (breathCalZero - (bcasMode?900:800));
+      bool brSuck = analogRead(breathSensorPin) < (breathCalZero - 850);
 
+      if (pcCombo1 && (pcCombo1 != lastpcc1)){ // latched note number to patch number, send with K1/K5 combo
+        if (patch != pitchlatch) {
+          patch = pitchlatch;
+          doPatchUpdate = 1;
+        }
+      } else if (pcCombo2 && (pcCombo2 != lastpcc2)) { // hi and lo patch numbers, send with K2/K6 combo
+        if (pitchlatch > 75) {
+          if (patch != patchLimit(pitchlatch + 24)) {
+            patch = patchLimit(pitchlatch + 24); // add 24 to get high numbers 108 to 127
+            doPatchUpdate = 1;
+          }
+        } else {
+          if (patch != patchLimit(pitchlatch - 36)) {
+            patch = patchLimit(pitchlatch - 36); // subtract 36 to get low numbers 0 to 36
+            doPatchUpdate = 1;
+          }
+        }
+      }
+      lastpcc1=pcCombo1;
+      lastpcc2=pcCombo2;
       if (
           (bothPB && legacy) ||
           (brSuck && legacyBrAct && (bothPB || bcasMode))
@@ -440,7 +465,7 @@ void loop() {
           }
         }
       } else {
-        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 800)) && programonce == false) { // down bend for suck programming button
+        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 850)) && programonce == false) { // down bend for suck programming button
           programonce = true;
 
           if (octaveR == 0) { //lowest octave position
@@ -508,7 +533,7 @@ void loop() {
       }
     }
 
-    if (analogRead(breathSensorPin) > (breathCalZero - 800)) programonce = false;
+    if (analogRead(breathSensorPin) > (breathCalZero - 850)) programonce = false;
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     if (specialKeyEnable) {
       if (lastSpecialKey != specialKey) {
@@ -754,7 +779,6 @@ void loop() {
   }
   if (currentTime - ccSendTime2 > CC_INTERVAL2) {
     portamento_();
-    readTeensySwitches();
     ccSendTime2 = currentTime;
   }
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
@@ -1219,11 +1243,6 @@ void portOff() {
 
 //***********************************************************
 
-
-void readTeensySwitches() { //these seem to slow things down, so do it less often
-   pinkyKey = (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1"
-}
-
 void readSwitches() {
 
   // Read touch pads (MPR121), compare against threshold value
@@ -1271,8 +1290,15 @@ void readSwitches() {
     - 5*K4              //Fifth key
     + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
     + octaveR*12;       //Octave rollers
-
+    
+  if (K3 && K7){
+    if (4 == trill3_interval) fingeredNoteUntransposed+=2; else fingeredNoteUntransposed+=4;
+  }
+  
   int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp;
+
+  pcCombo1 = (K1 && K5 && !K2 && !K3);
+  pcCombo2 = (K2 && K6 && !K1 && !K3);
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
 
