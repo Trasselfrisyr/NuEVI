@@ -585,11 +585,11 @@ void loop() {
     if ((pinkySetting == LVL) || (pinkySetting == LVLP)){
       if (pinkyKey){
         ledMeter(levelVal);
-        if (K5 && (levelVal < 127)){
+        if (K6 && (levelVal < 127)){
           levelVal++;
           if (levelCC) midiSendControlChange(levelCC, levelVal);
           else midiSendAfterTouch(levelVal);
-        } else if (K1 && (levelVal > 0)){
+        } else if (K5 && (levelVal > 0)){
           levelVal--;
           if (levelCC) midiSendControlChange(levelCC, levelVal);
           else midiSendAfterTouch(levelVal);
@@ -601,10 +601,10 @@ void loop() {
     } else if (pinkySetting == GLD){
       if (pinkyKey){
         ledMeter(levelVal);
-        if (K5 && (levelVal < 127)){
+        if (K6 && (levelVal < 127)){
           levelVal++;
           midiSendControlChange(CCN_Port, levelVal);
-        } else if (K1 && (levelVal > 0)){
+        } else if (K5 && (levelVal > 0)){
           levelVal--;
           midiSendControlChange(CCN_Port, levelVal);
         }
@@ -797,7 +797,7 @@ void loop() {
   }
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
     if (gateOpenEnable || gateOpen) doorKnobCheck();
-    if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey){
+    if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey && (mainState == NOTE_OFF)){
       // show LVL indication
     } else updateSensorLEDs();
     ccSendTime3 = currentTime;
