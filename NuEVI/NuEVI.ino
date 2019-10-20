@@ -598,6 +598,20 @@ void loop() {
         writeSetting(LEVEL_VAL_ADDR,levelVal);
       }
       lastPinkyKey = pinkyKey;
+    } else if (pinkySetting == GLD){
+      if (pinkyKey){
+        ledMeter(levelVal);
+        if (K5 && (levelVal < 127)){
+          levelVal++;
+          midiSendControlChange(CCN_Port, levelVal);
+        } else if (K1 && (levelVal > 0)){
+          levelVal--;
+          midiSendControlChange(CCN_Port, levelVal);
+        }
+      } else if (lastPinkyKey){
+        writeSetting(LEVEL_VAL_ADDR,levelVal);
+      }
+      lastPinkyKey = pinkyKey;
     }
   } else if (mainState == RISE_WAIT) {
     if ((pressureSensor > breathThrVal) || gateOpen) {
@@ -783,7 +797,7 @@ void loop() {
   }
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
     if (gateOpenEnable || gateOpen) doorKnobCheck();
-    if (((pinkySetting == LVL) || (pinkySetting == LVLP)) && pinkyKey){
+    if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey){
       // show LVL indication
     } else updateSensorLEDs();
     ccSendTime3 = currentTime;
@@ -1174,10 +1188,19 @@ void portamento_() {
 
   if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-   } else {
+  } else {
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
-   }
-  if (0 == vibControl) {
+  }
+  if (pinkySetting == GLD){
+    if (pinkyKey){
+      if (!portIsOn) {
+        portOn();
+      }
+      port();
+    } else if (portIsOn) { // pinky key released
+      portOff();
+    }
+  } else if (0 == vibControl) {
     // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
     if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
       if (!portIsOn) {
@@ -1218,7 +1241,9 @@ void portOn() {
 
 void port() {
   int portCC;
-  if (1 != vibControl)
+  if (pinkySetting == GLD){
+    portCC = levelVal;
+  } else if (1 != vibControl)
     portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
   else
     portCC = constrain((leverPortZero-leverPortThr-leverPortRead),0,127);

@@ -866,7 +866,7 @@ const MenuEntrySub deglitchMenu = {
 };
 
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 28, MenuEntryFlags::ENone,
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 29, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     if (pinkySetting == PBD)
       strncpy(textBuffer, "PBD", 4);
@@ -878,6 +878,8 @@ const MenuEntrySub pinkyMenu = {
       strncpy(textBuffer, "LVL", 4);
     else if (pinkySetting == LVLP)
       strncpy(textBuffer, "LVP", 4);
+      else if (pinkySetting == GLD)
+      strncpy(textBuffer, "GLD", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },

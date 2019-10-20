@@ -24,6 +24,7 @@
 #define ECSW 26
 #define LVL 27
 #define LVLP 28
+#define GLD 29
 
 //Vibrato direction
 #define UPWD 1

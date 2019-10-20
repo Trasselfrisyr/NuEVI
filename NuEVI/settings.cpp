@@ -133,7 +133,7 @@ void readEEPROM(const bool factoryReset) {
     curve           = readSettingBounded(BREATHCURVE_ADDR, 0, 12, BREATHCURVE_FACTORY);
     velSmpDl        = readSettingBounded(VEL_SMP_DL_ADDR, 0, 30, VEL_SMP_DL_FACTORY);
     velBias         = readSettingBounded(VEL_BIAS_ADDR, 0, 9, VEL_BIAS_FACTORY);
-    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 28, PINKY_KEY_FACTORY);
+    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 29, PINKY_KEY_FACTORY);
     fastPatch[0]    = readSettingBounded(FP1_ADDR, 0, 127, 0);
     fastPatch[1]    = readSettingBounded(FP2_ADDR, 0, 127, 0);
     fastPatch[2]    = readSettingBounded(FP3_ADDR, 0, 127, 0);
