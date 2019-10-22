@@ -242,7 +242,7 @@ byte specialKey;
 byte pinkyKey;
 byte lastSpecialKey = 0;
 byte lastPinkyKey = 0;
-byte pitchlatch;
+int pitchlatch;
 int reverb;
 
 byte pcCombo1 = 0;
@@ -412,21 +412,21 @@ void loop() {
 
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool brSuck = analogRead(breathSensorPin) < (breathCalZero - 850);
-
+      int pitchlatchForPatch = patchLimit(pitchlatch + 1);
       if (pcCombo1 && (pcCombo1 != lastpcc1)){ // latched note number to patch number, send with K1/K5 combo
-        if (patch != pitchlatch) {
-          patch = pitchlatch;
+        if (patch != pitchlatchForPatch) {
+          patch = pitchlatchForPatch;
           doPatchUpdate = 1;
         }
       } else if (pcCombo2 && (pcCombo2 != lastpcc2)) { // hi and lo patch numbers, send with K2/K6 combo
         if (pitchlatch > 75) {
-          if (patch != patchLimit(pitchlatch + 24)) {
-            patch = patchLimit(pitchlatch + 24); // add 24 to get high numbers 108 to 127
+          if (patch != patchLimit(pitchlatchForPatch + 24)) {
+            patch = patchLimit(pitchlatchForPatch + 24); // add 24 to get high numbers 108 to 127
             doPatchUpdate = 1;
           }
         } else {
-          if (patch != patchLimit(pitchlatch - 36)) {
-            patch = patchLimit(pitchlatch - 36); // subtract 36 to get low numbers 0 to 36
+          if (patch != patchLimit(pitchlatchForPatch - 36)) {
+            patch = patchLimit(pitchlatchForPatch - 36); // subtract 36 to get low numbers 0 to 36
             doPatchUpdate = 1;
           }
         }
@@ -439,26 +439,26 @@ void loop() {
           ) { // both pb pads touched or br suck
 
 
-        fingeredNoteUntransposed = patchLimit(fingeredNoteUntransposed + 1);
+        int fingeredNoteUntransposedForPatch = patchLimit(fingeredNoteUntransposed + 1);
         if (exSensor >= ((extracThrVal + extracMaxVal) / 2)) { // instant midi setting
-          if ((fingeredNoteUntransposed >= 73) && (fingeredNoteUntransposed <= 88)) {
-            MIDIchannel = fingeredNoteUntransposed - 72; // Mid C and up
+          if ((fingeredNoteUntransposedForPatch >= 73) && (fingeredNoteUntransposedForPatch <= 88)) {
+            MIDIchannel = fingeredNoteUntransposedForPatch - 72; // Mid C and up
           }
         } else {
           if (!pinkyKey) { // note number to patch number
-            if (patch != fingeredNoteUntransposed) {
-              patch = fingeredNoteUntransposed;
+            if (patch != fingeredNoteUntransposedForPatch) {
+              patch = fingeredNoteUntransposedForPatch;
               doPatchUpdate = 1;
             }
           } else { // hi and lo patch numbers
-            if (fingeredNoteUntransposed > 75) {
-              if (patch != patchLimit(fingeredNoteUntransposed + 24)) {
-                patch = patchLimit(fingeredNoteUntransposed + 24); // add 24 to get high numbers 108 to 127
+            if (fingeredNoteUntransposedForPatch > 75) {
+              if (patch != patchLimit(fingeredNoteUntransposedForPatch + 24)) {
+                patch = patchLimit(fingeredNoteUntransposedForPatch + 24); // add 24 to get high numbers 108 to 127
                 doPatchUpdate = 1;
               }
             } else {
-              if (patch != patchLimit(fingeredNoteUntransposed - 36)) {
-                patch = patchLimit(fingeredNoteUntransposed - 36); // subtract 36 to get low numbers 0 to 36
+              if (patch != patchLimit(fingeredNoteUntransposedForPatch - 36)) {
+                patch = patchLimit(fingeredNoteUntransposedForPatch - 36); // subtract 36 to get low numbers 0 to 36
                 doPatchUpdate = 1;
               }
             }
