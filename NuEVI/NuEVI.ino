@@ -465,7 +465,7 @@ void loop() {
           }
         }
       } else {
-        if (pbDn > (pitchbMaxVal + pitchbThrVal) / 2 && (analogRead(breathSensorPin) < (breathCalZero - 850)) && programonce == false) { // down bend for suck programming button
+        if ((pbDn > (pitchbMaxVal + pitchbThrVal) / 2) && legacyBrAct && brSuck && programonce == false) { // down bend for suck programming button
           programonce = true;
 
           if (octaveR == 0) { //lowest octave position
