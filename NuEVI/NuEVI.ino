@@ -411,6 +411,9 @@ void loop() {
     if (legacy || legacyBrAct) {
 
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
+      bool justPbDn = !(pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
+      bool justPbUp = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && !(pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
+      bool noPb = !(pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && !(pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool brSuck = analogRead(breathSensorPin) < (breathCalZero - 850);
       int pitchlatchForPatch = patchLimit(pitchlatch + 1);
       if (pcCombo1 && (pcCombo1 != lastpcc1)){ // latched note number to patch number, send with K1/K5 combo
@@ -435,7 +438,8 @@ void loop() {
       lastpcc2=pcCombo2;
       if (
           (bothPB && legacy) ||
-          (brSuck && legacyBrAct && (bothPB || bcasMode))
+          (brSuck && legacyBrAct && justPbUp) ||
+          (brSuck && legacyBrAct && bcasMode && noPb)
           ) { // both pb pads touched or br suck
 
 
@@ -465,7 +469,7 @@ void loop() {
           }
         }
       } else {
-        if ((pbDn > (pitchbMaxVal + pitchbThrVal) / 2) && legacyBrAct && brSuck && programonce == false) { // down bend for suck programming button
+        if (justPbDn && legacyBrAct && brSuck && programonce == false) { // down bend for suck programming button
           programonce = true;
 
           if (octaveR == 0) { //lowest octave position
