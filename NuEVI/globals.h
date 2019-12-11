@@ -34,6 +34,12 @@
 extern const unsigned short* const curves[];
 extern const unsigned short curveIn[];
 
+#if defined(NURAD)
+extern int calOffsetRollers[6];
+extern int calOffsetRH[12];
+extern int calOffsetLH[12];
+#endif
+
 extern unsigned short breathThrVal;
 extern unsigned short breathMaxVal;
 extern unsigned short portamThrVal;

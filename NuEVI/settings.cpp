@@ -28,6 +28,10 @@ void readEEPROM(const bool factoryReset) {
         if(settingsVersion < 24) { //Oldest version from which any settings are recognized
             writeSetting(BREATH_THR_ADDR, BREATH_THR_FACTORY);
             writeSetting(BREATH_MAX_ADDR, BREATH_MAX_FACTORY);
+            #if defined(NURAD)
+            writeSetting(PORTAM_THR_ADDR, PORTPR_THR_FACTORY);
+            writeSetting(PORTAM_MAX_ADDR, PORTPR_MAX_FACTORY);
+            #else
             if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
                 writeSetting(PORTAM_THR_ADDR, PORTAM_THR_FACTORY);
                 writeSetting(PORTAM_MAX_ADDR, PORTAM_MAX_FACTORY);
@@ -35,6 +39,7 @@ void readEEPROM(const bool factoryReset) {
                 writeSetting(PORTAM_THR_ADDR, PORTPR_THR_FACTORY);
                 writeSetting(PORTAM_MAX_ADDR, PORTPR_MAX_FACTORY);
             }
+            #endif
             writeSetting(PITCHB_THR_ADDR, PITCHB_THR_FACTORY);
             writeSetting(PITCHB_MAX_ADDR, PITCHB_MAX_FACTORY);
             writeSetting(EXTRAC_THR_ADDR, EXTRAC_THR_FACTORY);

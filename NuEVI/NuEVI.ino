@@ -24,6 +24,21 @@ PROGRAMME FUNCTION:   EVI Wind Controller using the Freescale MP3V5004GP breath 
 
 */
 
+/*
+but hey, it's also...
+
+NAME:                 NuRAD
+WRITTEN BY:           JOHAN BERGLUND
+DATE:                 2019-08-09
+FILE SAVED AS:        n/a
+FOR:                  PJRC Teensy 3.2 and three MPR121 capactive touch sensor boards.
+                      Uses an SSD1306 controlled OLED display communicating over I2C.
+PROGRAMME FUNCTION:   EWI Wind Controller using the Freescale MP3V5004GP breath sensor
+                      and capacitive touch keys. Output to both USB MIDI and DIN MIDI.
+                      
+...if you just uncomment the #define NURAD in hardware.h
+*/
+
 
 //Make sure compiler is set to the appropriate platform
 #ifndef __MK20DX256__
@@ -105,6 +120,11 @@ byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volu
 
 int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
+#if defined(NURAD)
+int calOffsetRollers[6] = {16,10,8,21,24,41};
+int calOffsetRH[12] = {-88,-68,-31,13,4,120,121,-68,-85,-34,23,87};
+int calOffsetLH[12] = {90,-13,-33,-93,-82,115,118,2,4,-40,-75,-94};
+#endif
 
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
@@ -150,7 +170,11 @@ byte velocitySend;   // remapped midi velocity from breath sensor (or set to sta
 int breathCalZero;
 
 int leverPortZero;
+#if defined(NURAD)
+int leverPortThr = 40;
+#else
 int leverPortThr = 50;
+#endif
 int leverPortRead;
 
 
@@ -175,6 +199,8 @@ int pbUp=0;
 int pbDn=0;
 byte vibLedOff = 0;
 byte oldpkey = 0;
+
+byte lap = 0;
 
 static const float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings
 static const short vibMaxBiteList[17] = {1600,1400,1200,1000,900,800,700,600,500,400,300,250,200,150,100,50,25};
@@ -219,6 +245,34 @@ int slurBase;        // first note in slur sustain chord
 int slurInterval[9] = {-5,0,0,0,0,0,0,0,0};
 byte addedIntervals = 1;
 
+#if defined(NURAD)
+            // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
+byte LHs;            
+byte LH1;   // Left Hand key 1 (pitch change -2)
+byte LHb;   // Left Hand bis key (pitch change -1 unless both LH1 and LH2 are pressed)
+byte LH2;   // Left Hand key 2  (with LH1 also pressed pitch change is -2, otherwise -1)
+byte LH3;   // Left Hand key 3 (pitch change -2)
+byte LHp1;  // Left Hand pinky key 1 (pitch change +1)
+byte LHp2;  // Left Hand pinky key 2 (pitch change -1)
+byte LHp3;
+byte RHs;   // Right Hand side key  (pitch change -2 unless LHp1 is pressed)
+byte RH1;   // Right Hand key 1 (with LH3 also pressed pitch change is -2, otherwise -1)
+byte RH2;   // Right Hand key 2 (pitch change -1)
+byte RH3;   // Right Hand key 3 (pitch change -2)
+byte RHp1;  // Right Hand pinky key 1 (pitch change +1)
+byte RHp2;  // Right Hand pinky key 2 (pitch change -1)
+byte RHp3;  // Right Hand pinky key 3 (pitch change -2)
+byte Tr1;  // Trill key 1 (pitch change +2) (EVI fingering)
+byte Tr2;  // Trill key 2 (pitch change +1)
+byte Tr3;  // Trill key 3 (pitch change +4)
+byte K1;   // Valve 1 (pitch change -2)
+byte K2;   // Valve 2 (pitch change -1)
+byte K3;   // Valve 3 (pitch change -3)
+byte K4;   // Left Hand index finger (pitch change -5)
+byte K5;   // Trill key 1 (pitch change +2)
+byte K6;   // Trill key 2 (pitch change +1)
+byte K7;   // Trill key 3 (pitch change +4)
+#else
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
 byte K1;   // Valve 1 (pitch change -2)
 byte K2;   // Valve 2 (pitch change -1)
@@ -227,7 +281,7 @@ byte K4;   // Left Hand index finger (pitch change -5)
 byte K5;   // Trill key 1 (pitch change +2)
 byte K6;   // Trill key 2 (pitch change +1)
 byte K7;   // Trill key 3 (pitch change +4)
-
+#endif
 byte R1;
 byte R2;
 byte R3;
@@ -254,7 +308,13 @@ byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
 
+#if defined(NURAD)
+Adafruit_MPR121 touchSensorRollers = Adafruit_MPR121();
+Adafruit_MPR121 touchSensorRH = Adafruit_MPR121();
+Adafruit_MPR121 touchSensorLH = Adafruit_MPR121();
+#else
 Adafruit_MPR121 touchSensor = Adafruit_MPR121(); // This is the 12-input touch sensor
+#endif
 FilterOnePole breathFilter;
 IntervalTimer cvTimer;
 
@@ -266,11 +326,18 @@ bool configManagementMode = false;
 //Update CV output pin, run from timer.
 void cvUpdate(){
   int cvPressure = analogRead(breathSensorPin);
+  #if defined(NURAD)
+  analogWrite(pwmDacPin,map(constrain(cvPressure,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095));
+  if(dacMode == DAC_MODE_BREATH){
+    analogWrite(dacPin,map(constrain(cvPressure,breathThrVal,4095),breathThrVal,4095,0,4095));
+  }
+  #else
   if(dacMode == DAC_MODE_PITCH){
     analogWrite(pwmDacPin,cvPressure);
   } else { //DAC_MODE_BREATH
     analogWrite(dacPin,map(constrain(cvPressure,breathThrVal,4095),breathThrVal,4095,0,4095));
   }
+  #endif
 }
 
 void setup() {
@@ -291,9 +358,14 @@ void setup() {
   pinMode(dacPin, OUTPUT);         //DAC output for analog signal
   pinMode(pwmDacPin, OUTPUT);      //PWMed DAC output for analog signal
 
+  #if defined(NURAD)
+  pinMode(eLedPin, OUTPUT);        // breath indicator LED
+  pinMode(sLedPin, OUTPUT);        // portam indicator LED
+  #else
   pinMode(biteJumperPin, INPUT_PULLUP); //PBITE
   pinMode(biteJumperGndPin, OUTPUT);    //PBITE
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
+  #endif
 
   bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
   configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
@@ -308,21 +380,39 @@ void setup() {
 
   //Read eeprom data into global vars
   readEEPROM(factoryReset);
-
-  activePatch = patch;
-
+  
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-
+  
+  activePatch = patch;
+  
+  #if defined(NURAD)
+    digitalWrite(statusLedPin,HIGH);
+  if (!touchSensorRollers.begin(0x5D)) {
+    while (1);  // Touch sensor initialization failed - stop doing stuff
+  }
+  if (!touchSensorLH.begin(0x5C)) {
+    while (1);  // Touch sensor initialization failed - stop doing stuff
+  }
+  if (!touchSensorRH.begin(0x5B)) {
+    while (1);  // Touch sensor initialization failed - stop doing stuff
+  }
+  digitalWrite(statusLedPin,LOW);
+  #else
   if (!touchSensor.begin(0x5A)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
+  #endif
 
   breathFilter.setFilter(LOWPASS, filterFreq, 0.0);   // create a one pole (RC) lowpass filter
 
+  #if defined(NURAD)
+  biteJumper = true;
+  #else
   biteJumper = !digitalRead(biteJumperPin);
   if (biteJumper){
     pinMode(bitePin, INPUT);
   }
+  #endif
 
   //auto-calibrate the vibrato threshold while showing splash screen
   vibZero = vibZeroBite = breathCalZero = 0;
@@ -330,7 +420,7 @@ void setup() {
   for(int i = 1 ; i <= sampleCount; ++i) {
     vibZero += touchRead(vibratoPin);
     breathCalZero += analogRead(breathSensorPin);
-    if (biteJumper) vibZeroBite += analogRead(A7); else vibZeroBite += touchRead(bitePin);
+    if (biteJumper) vibZeroBite += analogRead(bitePressurePin); else vibZeroBite += touchRead(bitePin);
     statusLed(i&1);
     delay(fastBoot?75:250); //Shorter delay for fastboot
   }
@@ -538,7 +628,10 @@ void loop() {
     }
 
     if (analogRead(breathSensorPin) > (breathCalZero - 850)) programonce = false;
+    #if defined(NURAD)
+    #else
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
+    #endif
     if (specialKeyEnable) {
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
@@ -800,7 +893,10 @@ void loop() {
     ccSendTime2 = currentTime;
   }
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
+    #if defined(NURAD)
+    #else
     if (gateOpenEnable || gateOpen) doorKnobCheck();
+    #endif
     if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey && (mainState == NOTE_OFF)){
       // show LVL indication
     } else updateSensorLEDs();
@@ -941,9 +1037,9 @@ void pitch_bend() {
   byte pbTouched = 0;
   int vibRead = 0;
   int vibReadBite = 0;
-  pbUp = touchRead(pbUpPin); // SENSOR PIN 23 - PCB PIN "Pu"
-  pbDn = touchRead(pbDnPin); // SENSOR PIN 22 - PCB PIN "Pd"
-  halfPitchBendKey = (pinkySetting == PBD) && (touchRead(halfPitchBendKeyPin) > touch_Thr); // SENSOR PIN 1  - PCB PIN "S1" - hold for 1/2 pitchbend value
+  pbUp = touchRead(pbUpPin); // PCB PIN "Pu"
+  pbDn = touchRead(pbDnPin); // PCB PIN "Pd"
+  halfPitchBendKey = (pinkySetting == PBD) && pinkyKey; // hold pinky key for 1/2 pitchbend value
 
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth * 0.5;
@@ -953,11 +1049,11 @@ void pitch_bend() {
   vibMaxBite = vibMaxBiteList[vibSensBite - 1];
 
   if (vibControl){ //bite vibrato
-    if (biteJumper){ //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
+    if (biteJumper){ //PBITE (if pulled low with jumper, or NuRAD compile, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
       vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
-    }
+    }  
     if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
         vibSignal = (vibSignal + map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
@@ -1189,7 +1285,6 @@ void extraController() {
 //***********************************************************
 
 void portamento_() {
-
   if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
   } else {
@@ -1274,6 +1369,90 @@ void portOff() {
 
 void readSwitches() {
 
+#if defined(NURAD)
+
+  switch (lap){
+    case 0:
+      // Octave rollers
+      int touchValueRollers[12]; 
+      for (byte i=0; i<6; i++){
+        touchValueRollers[i]=touchSensorRollers.filteredData(i) - calOffsetRollers[i];
+      }
+      // 6-pin version
+      octaveR = 0;
+      if      (touchValueRollers[rPin6] < ctouchThrVal) octaveR = 6; //R6
+      else if (touchValueRollers[rPin5] < ctouchThrVal) octaveR = 5;  //R5
+      else if (touchValueRollers[rPin4] < ctouchThrVal) octaveR = 4;  //R4
+      else if (touchValueRollers[rPin3] < ctouchThrVal) octaveR = 3;  //R3
+      else if (touchValueRollers[rPin2] < ctouchThrVal) octaveR = 2;  //R2
+      else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
+       /*
+      //5-pin version
+      octaveR = 0;
+      if      ((touchValueRollers[rPin5] < ctouchThrVal) && (touchValueRollers[rPin3] < ctouchThrVal)) octaveR = 6; //R6
+      else if (touchValueRollers[rPin5] < ctouchThrVal) octaveR = 5;  //R5
+      else if (touchValueRollers[rPin4] < ctouchThrVal) octaveR = 4;  //R4
+      else if (touchValueRollers[rPin3] < ctouchThrVal) octaveR = 3;  //R3
+      else if (touchValueRollers[rPin2] < ctouchThrVal) octaveR = 2;  //R2
+      else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
+      */
+      break;
+    case 1:       
+      // RH keys
+      int touchValueRH[12]; 
+      for (byte i=0; i<12; i++){
+        touchValueRH[i]=touchSensorRH.filteredData(i) - calOffsetRH[i];
+      }
+      RHs=(touchValueRH[RHsPin] < ctouchThrVal);
+      RH1=(touchValueRH[RH1Pin] < ctouchThrVal);
+      RH2=(touchValueRH[RH2Pin] < ctouchThrVal);
+      RH3=(touchValueRH[RH3Pin] < ctouchThrVal);
+      RHp1=(touchValueRH[RHp1Pin] < ctouchThrVal);
+      RHp2=(touchValueRH[RHp2Pin] < ctouchThrVal);
+      RHp3=(touchValueRH[RHp3Pin] < ctouchThrVal);
+      specialKey=(touchValueRH[spec1Pin] < ctouchThrVal) && (touchValueRH[spec2Pin] < ctouchThrVal); 
+      break;
+    case 2:
+      // LH keys
+      int touchValueLH[12]; 
+      for (byte i=0; i<12; i++){
+        touchValueLH[i]=touchSensorLH.filteredData(i) - calOffsetLH[i];
+      }
+      LHs=(touchValueLH[LHsPin] < ctouchThrVal);
+      LHb=(touchValueLH[LHbPin] < ctouchThrVal);
+      LH1=(touchValueLH[LH1Pin] < ctouchThrVal);
+      LH2=(touchValueLH[LH2Pin] < ctouchThrVal);
+      LH3=(touchValueLH[LH3Pin] < ctouchThrVal);
+      LHp1=(touchValueLH[LHp1Pin] < ctouchThrVal);
+      LHp2=(touchValueLH[LHp2Pin] < ctouchThrVal);
+      LHp3=(touchValueLH[LHp3Pin] < ctouchThrVal);
+  }
+  if (lap<2) lap++; else lap=0; 
+  
+  K1=RHp2;
+  K2=LHp2;
+  K3=LHp3;
+  K4=LHp1;
+  K5=RHp1;
+  K6=RHp2;
+  K7=RHp3;
+
+  pinkyKey = LHs;
+  
+  int qTransp = (pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0;
+
+
+  // Calculate midi note number from pressed keys  
+
+  //fingeredNote=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12+(octave-3)*12+transpose-12+qTransp;
+  
+  fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12;
+  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
+  
+  if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
+
+#else //NuEVI
+  
   // Read touch pads (MPR121), compare against threshold value
   bool touchKeys[12];
   for (byte i = 0; i < 12; i++) {
@@ -1295,6 +1474,9 @@ void readSwitches() {
   else if (R3 && lastOctaveR) octaveR = 3; //R3
   else if (R2) octaveR = 2; //R2
   else if (R1) octaveR = 1; //R1
+  else if (lastOctaveR > 1) octaveR = lastOctaveR; 
+  //if rollers are released and we are not coming down from roller 1, stay at the higher octave
+  //CV filter leak prevention when putting NuEVI aside
 
   lastOctaveR = octaveR;
 
@@ -1330,6 +1512,8 @@ void readSwitches() {
   pcCombo2 = (K2 && K6 && !K1 && !K3);
 
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed; //use pitchlatch to make settings based on note fingered
+
+#endif
 
   if (fingeredNoteRead != lastFingering) { //
     // reset the debouncing timer

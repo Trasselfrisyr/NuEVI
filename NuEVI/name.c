@@ -6,8 +6,11 @@
 
 // Edit these lines to create your own name.  The length must
 // match the number of characters in your custom name.
-
+#if defined(NURAD)
+#define MIDI_NAME   {'N','u','R','A','D',' ','M','I','D','I'}
+#else
 #define MIDI_NAME   {'N','u','E','V','I',' ','M','I','D','I'}
+#endif
 #define MIDI_NAME_LEN  10
 
 // Do not change this part.  This exact format is required by USB.

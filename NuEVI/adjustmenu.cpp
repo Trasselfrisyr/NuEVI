@@ -12,8 +12,19 @@
 //***********************************************************
 
 extern Adafruit_SSD1306 display;
+#if defined(NURAD)
+extern Adafruit_MPR121 touchSensorRH;
+extern Adafruit_MPR121 touchSensorLH;
+extern Adafruit_MPR121 touchSensorRollers;
+#else
 extern Adafruit_MPR121 touchSensor;
+#endif
 extern byte cursorNow;
+#if defined(NURAD)
+extern int calOffsetRollers[6];
+extern int calOffsetRH[12];
+extern int calOffsetLH[12];
+#endif
 
 //***********************************************************
 // Variables used for the adjust menu
@@ -225,6 +236,26 @@ void plotSensorPixels(){
     int pos = map(constrain(exSensor, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
     redraw = updateSensorPixel(pos, -1);
   }
+  #if defined(NURAD)
+  else if(adjustOption == 4) {
+        display.drawLine(28,37,118,37,BLACK);
+    for (byte i=0; i<12; i++){
+      int pos = map(constrain(touchSensorRH.filteredData(i) - calOffsetRH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      display.drawPixel(pos, 37, WHITE);
+    }
+    display.drawLine(28,38,118,38,BLACK);
+    for (byte i=0; i<12; i++){
+      int pos = map(constrain(touchSensorLH.filteredData(i) - calOffsetLH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      display.drawPixel(pos, 38, WHITE);
+    }
+    display.drawLine(28,39,118,39,BLACK);
+    for (byte i=0; i<6; i++){
+      int pos = map(constrain(touchSensorRollers.filteredData(i) - calOffsetRollers[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      display.drawPixel(pos, 39, WHITE);
+    }
+    redraw = 1;
+  }
+  #else //NuEVI
   else if(adjustOption == 4) {
     display.drawLine(28,39,118,39,BLACK);
     for (byte i=0; i<12; i++){
@@ -242,6 +273,7 @@ void plotSensorPixels(){
 
     redraw = 1;
   }
+  #endif
   if (redraw){
     display.display();
   }

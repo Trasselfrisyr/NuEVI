@@ -2,6 +2,81 @@
 #define __HARDWARE_H
 
 #define REVB
+//#define NURAD
+
+#if defined(NURAD) //NuRAD <<<<<<<<<<<<<<<<<<<<<<<
+
+// Pin definitions
+
+// Teensy pins
+
+//Capacitive sensor pins (on-board teensy)
+#define bitePin 17
+#define extraPin 16
+#define pbUpPin 1
+#define pbDnPin 0
+#define vibratoPin 15
+
+//Analog pressure sensors. Breath and optional bite
+#define breathSensorPin A0
+#define bitePressurePin A7
+
+//Digital pins for menu buttons
+#define dPin 3
+#define ePin 4
+#define uPin 5
+#define mPin 6
+
+//Output pins for LEDs (breath, power, status)
+#define bLedPin 10
+#define pLedPin 9
+#define eLedPin 22
+#define sLedPin 23
+#define statusLedPin 13
+
+//Analog input for measuring voltage
+#define vMeterPin A11
+
+//DAC outputs for analog and pwm
+#define dacPin A14
+#define pwmDacPin A6
+
+//Which serial port to use for MIDI
+#define MIDI_SERIAL Serial3
+
+// MPR121 Rollers 0x5D
+
+#define rPin1 0
+#define rPin2 1
+#define rPin3 2
+#define rPin4 3
+#define rPin5 4
+#define rPin6 5
+
+// MPR121 RH 0x5C
+
+#define RHsPin 3
+#define RH1Pin 4
+#define RH2Pin 2
+#define RH3Pin 1
+#define RHp1Pin 0
+#define RHp2Pin 8
+#define RHp3Pin 7
+#define spec1Pin 10
+#define spec2Pin 9
+
+// MPR121 LH 0x5B
+
+#define LHsPin 8
+#define LH1Pin 7
+#define LHbPin 1
+#define LH2Pin 9
+#define LH3Pin 10
+#define LHp1Pin 11
+#define LHp2Pin 3
+#define LHp3Pin 4
+
+#else //NuEVI <<<<<<<<<<<<<<<<<<<<<<<
 
 // Pin definitions
 
@@ -102,6 +177,7 @@
  */
 
 #endif //REVB
+#endif //NURAD
 
 
 #endif
