@@ -125,7 +125,7 @@ void readEEPROM(const bool factoryReset) {
     breathCC        = readSettingBounded(BREATH_CC_ADDR, 0, 10, BREATH_CC_FACTORY);
     breathAT        = readSettingBounded(BREATH_AT_ADDR, 0, 1, BREATH_AT_FACTORY);
     velocity        = readSettingBounded(VELOCITY_ADDR, 0, 127, VELOCITY_FACTORY);
-    portamento      = readSettingBounded(PORTAM_ADDR, 0, 2, PORTAM_FACTORY);
+    portamento      = readSettingBounded(PORTAM_ADDR, 0, 4, PORTAM_FACTORY);
     PBdepth         = readSettingBounded(PB_ADDR, 0, 12, PB_FACTORY);
     extraCT         = readSettingBounded(EXTRA_ADDR, 0, 4, EXTRA_FACTORY);
     vibrato         = readSettingBounded(VIBRATO_ADDR, 0, 9, VIBRATO_FACTORY);

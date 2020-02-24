@@ -891,9 +891,9 @@ const MenuPage breathMenuPage = {
 //***********************************************************
 // Control menu
 const MenuEntrySub portMenu = {
-  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 4, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "OFF", "ON", "SW" };
+    const char* labs[] = { "OFF", "ON", "SW", "SEL", "SEE" };
     strncpy(out, labs[portamento], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(PORTAM_ADDR,portamento); }

@@ -10,6 +10,7 @@
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
 #define CCN_PortOnOff 65// Controller number for portamento on/off
+#define CCN_PortSE02 9  // Controller number for portamento type on Roland SE-02
 
 // Send breath CC data no more than every CC_BREATH_INTERVAL 
 // milliseconds (due to timing errors, the value should be about half the actual wanted value)

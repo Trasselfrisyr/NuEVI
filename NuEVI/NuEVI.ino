@@ -1332,6 +1332,10 @@ void portamento_() {
 void portOn() {
   if (portamento == 2) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 127);
+  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
+    midiSendControlChange(CCN_PortSE02, 64);
+  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
+    midiSendControlChange(CCN_PortSE02, 127);
   }
   portIsOn = 1;
 }
@@ -1360,6 +1364,10 @@ void portOff() {
   }
   if (portamento == 2) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 0);
+  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
+    midiSendControlChange(CCN_PortSE02, 0);
+  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
+    midiSendControlChange(CCN_PortSE02, 0);
   }
   portIsOn = 0;
   oldport = 0;
