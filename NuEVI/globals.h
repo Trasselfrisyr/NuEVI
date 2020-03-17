@@ -26,6 +26,9 @@
 #define LVLP 28
 #define GLD 29
 
+#define MOD 13
+
+
 //Vibrato direction
 #define UPWD 1
 #define DNWD 0
@@ -80,6 +83,8 @@ extern unsigned short fastPatch[7];
 extern unsigned short extraCT2; // OFF:1-127
 extern unsigned short levelCC; // 0-127
 extern unsigned short levelVal; // 0-127
+extern unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
+extern unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
@@ -132,6 +137,28 @@ extern int vibThrBiteLo;
 extern int breathLevel;
 extern byte portIsOn;
 extern int oldport;
+
+#if defined(NURAD)
+            // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
+extern byte LHs;            
+extern byte LH1;   // Left Hand key 1 (pitch change -2)
+extern byte LHb;   // Left Hand bis key (pitch change -1 unless both LH1 and LH2 are pressed)
+extern byte LH2;   // Left Hand key 2  (with LH1 also pressed pitch change is -2, otherwise -1)
+extern byte LH3;   // Left Hand key 3 (pitch change -2)
+extern byte LHp1;  // Left Hand pinky key 1 (pitch change +1)
+extern byte LHp2;  // Left Hand pinky key 2 (pitch change -1)
+extern byte LHp3;
+extern byte RHs;   // Right Hand side key  (pitch change -2 unless LHp1 is pressed)
+extern byte RH1;   // Right Hand key 1 (with LH3 also pressed pitch change is -2, otherwise -1)
+extern byte RH2;   // Right Hand key 2 (pitch change -1)
+extern byte RH3;   // Right Hand key 3 (pitch change -2)
+extern byte RHp1;  // Right Hand pinky key 1 (pitch change +1)
+extern byte RHp2;  // Right Hand pinky key 2 (pitch change -1)
+extern byte RHp3;  // Right Hand pinky key 3 (pitch change -2)
+extern byte Tr1;  // Trill key 1 (pitch change +2) (EVI fingering)
+extern byte Tr2;  // Trill key 2 (pitch change +1)
+extern byte Tr3;  // Trill key 3 (pitch change +4)
+#endif
 
 // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
 extern byte K1;   // Valve 1 (pitch change -2)

@@ -109,6 +109,11 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(LEVEL_CC_ADDR, LEVEL_CC_FACTORY);
             writeSetting(LEVEL_VAL_ADDR, LEVEL_VAL_FACTORY);
         }
+        
+        if(settingsVersion < 34) {
+            writeSetting(FINGER_ADDR, FINGER_FACTORY);
+            writeSetting(LPINKY3_ADDR, LPINKY3_FACTORY);
+        }
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
@@ -167,6 +172,8 @@ void readEEPROM(const bool factoryReset) {
     extraCT2        = readSettingBounded(EXTRA2_ADDR, 0, 127, EXTRA2_FACTORY);
     levelCC         = readSettingBounded(LEVEL_CC_ADDR, 0, 127, LEVEL_CC_FACTORY);
     levelVal        = readSettingBounded(LEVEL_VAL_ADDR, 0, 127, LEVEL_VAL_FACTORY);
+    fingering       = readSettingBounded(FINGER_ADDR, 0, 4, FINGER_FACTORY);
+    lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
 
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

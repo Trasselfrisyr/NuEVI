@@ -387,11 +387,19 @@ static void mainTitleGetStr(char* out) {
   strncpy(out, menuTitle, 22);
 }
 
+#if defined(NURAD)
+static void drawTrills(){
+  if (LH1) display.fillRect(0,0,5,5,WHITE); else display.drawRect(0,0,5,5,WHITE);
+  if (LH2) display.fillRect(10,0,5,5,WHITE); else display.drawRect(10,0,5,5,WHITE);
+  if (LH3) display.fillRect(20,0,5,5,WHITE); else display.drawRect(20,0,5,5,WHITE);
+}
+#else
 static void drawTrills(){
   if (K5) display.fillRect(0,0,5,5,WHITE); else display.drawRect(0,0,5,5,WHITE);
   if (K6) display.fillRect(10,0,5,5,WHITE); else display.drawRect(10,0,5,5,WHITE);
   if (K7) display.fillRect(20,0,5,5,WHITE); else display.drawRect(20,0,5,5,WHITE);
 }
+#endif
 
 static void drawPatchView(){
   display.clearDisplay();
@@ -437,11 +445,17 @@ void drawMenuCursor(byte itemNo, byte color){
 
 //***********************************************************
 
+#if defined(NURAD)
 static int readTrills() {
   readSwitches();
-  return K5+2*K6+trill3_interval*K7;
+  return LH1+2*LH2+4*LH3;
 }
-
+#else
+static int readTrills() {
+  readSwitches();
+  return K5+2*K6+4*K7;
+}
+#endif
 //***********************************************************
 
 static void setFPS(int trills, uint16_t patchNum) {
@@ -458,7 +472,97 @@ static void clearFPS(int trills) {
   FPD = 3;
 }
 
+
 //***********************************************************
+// Rotator menu
+
+static void rotatorSave(const MenuEntrySub& __unused sub) {
+  int16_t stored;
+  for(int i = 0; i < 4; ++i) {
+    stored = readSetting(ROTN1_ADDR+2*i);
+    if(stored != rotations[i])
+      writeSetting(ROTN1_ADDR+2*i,(rotations[i]));
+  }
+}
+
+static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
+  numToString((*sub.valuePtr) - 24, out, true);
+}
+
+static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
+  numToString(parallel-24, out, true);
+}
+
+static void parallelSave(SubMenuRef __unused) {
+  writeSetting(PARAL_ADDR, parallel);
+}
+
+const MenuEntrySub rotatorParaMenu  = {
+  MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
+  parallelOptionGet, parallelSave, nullptr
+};
+
+const MenuEntrySub rotator1Menu  = {
+  MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator2Menu  = {
+  MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator3Menu  = {
+  MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+const MenuEntrySub rotator4Menu  = {
+  MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorSave, nullptr
+};
+
+static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (priority) strncpy(out, "ROT", 4);
+    else strncpy(out, "MEL", 4);
+}
+
+static void rotatorPrioSave(SubMenuRef __unused) {
+  writeSetting(PRIO_ADDR,priority);
+}
+
+const MenuEntrySub rotatorPrioMenu = {
+  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  rotatorPrioOptionGet, rotatorPrioSave, nullptr,
+};
+
+const MenuEntry* rotatorMenuEntries[] = {
+  (MenuEntry*)&rotatorParaMenu,
+  (MenuEntry*)&rotator1Menu,
+  (MenuEntry*)&rotator2Menu,
+  (MenuEntry*)&rotator3Menu,
+  (MenuEntry*)&rotator4Menu,
+  (MenuEntry*)&rotatorPrioMenu
+};
+/*
+const MenuPage rotatorMenuPage = {
+  "ROTATOR SETUP",
+  EMenuPageRoot,
+  CursorIdx::ERotator,
+  DISPLAYOFF_IDL,
+  ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
+};
+*/
+const MenuPage rotatorMenuPage = {
+  "ROTATOR SETUP",
+  0,
+  CursorIdx::ERotator,
+  MAIN_MENU,
+  ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
+}; 
+
+//***********************************************************
+
 // Main menu
 const MenuEntrySub transposeMenu = {
   MenuType::ESub, "TRANSPOSE", "TRANSPOSE", &transpose, 0, 24, MenuEntryFlags::ENone, 
@@ -655,6 +759,7 @@ const MenuEntrySub midiMenu = {
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
 const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
 const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
+const MenuEntryStateCh rotatorMenu    = { MenuType::EStateChange, "ROTATOR", ROTATOR_MENU };
 const MenuEntryStateCh extrasMenu     = { MenuType::EStateChange, "EXTRAS", EXTRAS_MENU };
 const MenuEntryStateCh aboutMenu      = { MenuType::EStateChange, "ABOUT", ABOUT_MENU };
 
@@ -665,6 +770,7 @@ const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&adjustMenu,
   (MenuEntry*)&breathMenu,
   (MenuEntry*)&controlMenu,
+  (MenuEntry*)&rotatorMenu,
   (MenuEntry*)&extrasMenu,
   (MenuEntry*)&aboutMenu,
 };
@@ -677,87 +783,7 @@ const MenuPage mainMenuPage = {
   ARR_LEN(mainMenuEntries), mainMenuEntries
 };
 
-//***********************************************************
-// Rotator menu
 
-static void rotatorSave(const MenuEntrySub& __unused sub) {
-  int16_t stored;
-  for(int i = 0; i < 4; ++i) {
-    stored = readSetting(ROTN1_ADDR+2*i);
-    if(stored != rotations[i])
-      writeSetting(ROTN1_ADDR+2*i,(rotations[i]));
-  }
-}
-
-static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
-  numToString((*sub.valuePtr) - 24, out, true);
-}
-
-static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
-  numToString(parallel-24, out, true);
-}
-
-static void parallelSave(SubMenuRef __unused) {
-  writeSetting(PARAL_ADDR, parallel);
-}
-
-const MenuEntrySub rotatorParaMenu  = {
-  MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
-  parallelOptionGet, parallelSave, nullptr
-};
-
-const MenuEntrySub rotator1Menu  = {
-  MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet, rotatorSave, nullptr
-};
-
-const MenuEntrySub rotator2Menu  = {
-  MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet, rotatorSave, nullptr
-};
-
-const MenuEntrySub rotator3Menu  = {
-  MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet, rotatorSave, nullptr
-};
-
-const MenuEntrySub rotator4Menu  = {
-  MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
-  rotatorOptionGet, rotatorSave, nullptr
-};
-
-static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
-    if (priority) strncpy(out, "ROT", 4);
-    else strncpy(out, "MEL", 4);
-}
-
-static void rotatorPrioSave(SubMenuRef __unused) {
-  writeSetting(PRIO_ADDR,priority);
-}
-
-const MenuEntrySub rotatorPrioMenu = {
-  MenuType::ESub, "PRIORITY", "MONO PRIO", &priority, 0,1, MenuEntryFlags::EMenuEntryWrap, 
-  rotatorPrioOptionGet, rotatorPrioSave, nullptr,
-};
-
-const MenuEntry* rotatorMenuEntries[] = {
-  (MenuEntry*)&rotatorParaMenu,
-  (MenuEntry*)&rotator1Menu,
-  (MenuEntry*)&rotator2Menu,
-  (MenuEntry*)&rotator3Menu,
-  (MenuEntry*)&rotator4Menu,
-  (MenuEntry*)&rotatorPrioMenu
-};
-
-const MenuPage rotatorMenuPage = {
-  "ROTATOR SETUP",
-  EMenuPageRoot,
-  CursorIdx::ERotator,
-  DISPLAYOFF_IDL,
-  ARR_LEN(rotatorMenuEntries), rotatorMenuEntries
-};
-
-//***********************************************************
 // Breath menu
 const MenuEntrySub breathCCMenu = {
   MenuType::ESub, "BRTH CC1", "BRTH CC1", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
@@ -986,16 +1012,55 @@ const MenuEntrySub lvlCtrlCCMenu = {
   , nullptr
 };
 
+const MenuEntrySub fingeringMenu = {
+  MenuType::ESub, "FINGERING", "FINGERING", &fingering, 0, 4, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "EWI", "EWX", "SAX", "EVI", "EVR" };
+    strncpy(out, labs[fingering], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }
+};
+
+const MenuEntrySub lpinky3Menu = {
+  MenuType::ESub, "EXTRA PKEY", "EXTRA PKEY", &lpinky3, 0, 25, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
+    if (lpinky3 == 0)
+      strncpy(textBuffer, "OFF", 4);
+    else if (lpinky3 == MOD)
+      strncpy(textBuffer, "MOD", 4);
+    else
+      numToString(lpinky3-13, textBuffer, true);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(LPINKY3_ADDR,lpinky3); }
+  , nullptr
+};
+
+#if defined(NURAD)
 const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
-  (MenuEntry*)&pitchBendMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
-  (MenuEntry*)&lvlCtrlCCMenu
+  (MenuEntry*)&lvlCtrlCCMenu,
+  (MenuEntry*)&lpinky3Menu,
+  (MenuEntry*)&fingeringMenu,
+  (MenuEntry*)&pitchBendMenu
 };
+#else
+const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&portMenu,
+  (MenuEntry*)&extraMenu,
+  (MenuEntry*)&extraCC2Menu,
+  (MenuEntry*)&vibratoSubMenu,
+  (MenuEntry*)&deglitchMenu,
+  (MenuEntry*)&pinkyMenu,
+  (MenuEntry*)&lvlCtrlCCMenu,
+  (MenuEntry*)&pitchBendMenu
+};
+#endif
+
 
 const MenuPage controlMenuPage = {
   "SETUP CTRLS",
@@ -1503,6 +1568,7 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
         break;
 
       case BTN_MENU:
+        /* REMOVE ALL MODIFIER ENTRIES
         if (pinkyKey && (exSensor >= ((extracThrVal+extracMaxVal)/2)) && !specialKey) { // switch breath activated legacy settings on/off
           legacyBrAct = !legacyBrAct;
           dipSwBits = dipSwBits ^ (1<<2);
@@ -1516,12 +1582,15 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
         } else if (pinkyKey && !specialKey){ //hold pinky key for rotator menu, and if too high touch sensing blocks regular menu, touching special key helps
           display.ssd1306_command(SSD1306_DISPLAYON);
           menuState= ROTATOR_MENU;
-          stateFirstRun = 1;
+          stateFirstRun = 1; 
         } else {
           display.ssd1306_command(SSD1306_DISPLAYON);
           menuState = MAIN_MENU;
           stateFirstRun = 1;
-        }
+        }*/
+        display.ssd1306_command(SSD1306_DISPLAYON);
+        menuState = MAIN_MENU;
+        stateFirstRun = 1;
         break;
 
       case BTN_UP | BTN_DOWN | BTN_ENTER | BTN_MENU:

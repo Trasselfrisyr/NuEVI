@@ -58,8 +58,11 @@
 #define EXTRA2_ADDR 102
 #define LEVEL_CC_ADDR 104
 #define LEVEL_VAL_ADDR 106
+#define FINGER_ADDR 108
+#define LPINKY3_ADDR 110
 
-#define EEPROM_SIZE 102
+
+#define EEPROM_SIZE 112
 
 
 //DAC output modes
@@ -76,7 +79,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 33
+#define EEPROM_VERSION 34
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -125,6 +128,8 @@
 #define EXTRA2_FACTORY 0
 #define LEVEL_CC_FACTORY 11
 #define LEVEL_VAL_FACTORY 127
+#define FINGER_FACTORY 0
+#define LPINKY3_FACTORY 0
 
 #define NO_CHECKSUM 0x7F007F00
 

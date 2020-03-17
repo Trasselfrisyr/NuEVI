@@ -88,6 +88,8 @@ unsigned short priority; // mono priority for rotator chords
 unsigned short extraCT2; // OFF:1-127
 unsigned short levelCC; // 0-127
 unsigned short levelVal; // 0-127
+unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
+unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
@@ -227,6 +229,36 @@ const unsigned short* const curves[] = {
    curveM4, curveM3, curveM2, curveM1, curveIn, curveP1, curveP2,
    curveP3, curveP4 , curveS1, curveS2, curveZ1, curveZ2
 };
+
+// NuRAD Sax fingering
+// LH1, LHb, LH2, LH3, LHp1, -LHp2-, -RHsx-, RH1, RH2, RH3, RHp1, RHp2, RHp3  -excluded- LHp2 always -1, RHs always +1
+// 0 = not touched, 1 = touched, 2 = whatever
+
+const byte saxFingerMatch[17][11] =
+{
+  {1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1}, // B (-14 semis)
+  {1, 2, 1, 1, 0, 1, 1, 1, 2, 0, 1}, // C (-13 semis)
+  {1, 2, 1, 1, 1, 1, 1, 1, 2, 0, 1}, // C# (-12 semis)
+  {1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 0}, // C# (-12 semis)
+  {1, 2, 1, 1, 2, 1, 1, 1, 0, 0, 0}, // D (-11 semis)
+  {1, 2, 1, 1, 2, 1, 1, 1, 1, 0, 0}, // D# (-10 semis)
+  {1, 2, 1, 1, 2, 1, 1, 0, 2, 2, 2}, // E (-9 semis)
+  {1, 2, 1, 1, 2, 1, 0, 2, 2, 2, 2}, // F (-8 semis)
+  {1, 2, 1, 1, 2, 0, 1, 2, 2, 2, 2}, // F# (-7 semis)
+  {1, 2, 1, 1, 0, 0, 0, 2, 2, 2, 2}, // G (-6 semis)
+  {1, 2, 1, 1, 1, 0, 0, 2, 2, 2, 2}, // G# (-5 semis)
+  {1, 2, 1, 0, 2, 2, 2, 2, 2, 2, 2}, // A (-4 semis)
+  {1, 2, 0, 2, 2, 1, 2, 2, 2, 2, 2}, // A# (-3 semis)
+  {1, 1, 0, 2, 2, 2, 2, 2, 2, 2, 2}, // A# (-3 semis)
+  {1, 0, 0, 2, 2, 0, 2, 2, 2, 2, 2}, // B (-2 semis)
+  {0, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2}, // C (-1 semis)
+  {0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2}, // C# (-0 semis)
+};
+
+const int saxFingerResult[17] = {-14, -13, -12, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -3, -2, -1, 0};
+
+byte saxFinger[11];
+
 
 int vibThr;          // this gets auto calibrated in setup
 int vibThrLo;
@@ -387,7 +419,7 @@ void setup() {
   
   #if defined(NURAD)
     digitalWrite(statusLedPin,HIGH);
-  if (!touchSensorRollers.begin(0x5D)) {
+  if (!touchSensorRollers.begin(0x5D)) {  //should be D
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
   if (!touchSensorLH.begin(0x5C)) {
@@ -748,10 +780,16 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
+          if (parallel-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
           if (currentRotation < 3) currentRotation++;
           else currentRotation = 0;
-          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
+          int allCheck=4;
+          while ((0 == rotations[currentRotation]-24) && allCheck){
+            if (currentRotation < 3) currentRotation++;
+            else currentRotation = 0;
+            allCheck--;
+          }
+          if (rotations[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
         }
         if (!priority) { // mono prio to base note
           midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
@@ -785,8 +823,8 @@ void loop() {
         }
       }
       if (rotatorOn) {
-        midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
-        midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
+        if (parallel - 24) midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
+        if (rotations[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
       }
       if (!priority) {
         midiSendNoteOff(activeNote); //  send Note Off message
@@ -826,8 +864,8 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
-          midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
+          if (parallel-24) midiSendNoteOff(noteValueCheck(activeNote + parallel-24)); // send Note Off message for old note
+          if (rotations[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
         }
         if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
           midiSendNoteOff(activeNote); // send Note Off message for old note
@@ -851,10 +889,16 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
+          if (parallel-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
           if (currentRotation < 3) currentRotation++;
           else currentRotation = 0;
-          midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
+          int allCheck=4;
+          while ((0 == rotations[currentRotation]-24) && allCheck){
+            if (currentRotation < 3) currentRotation++;
+            else currentRotation = 0;
+            allCheck--;
+          }
+          if (rotations[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
         }
 
         if (!priority) {
@@ -1445,16 +1489,61 @@ void readSwitches() {
   K6=RHp2;
   K7=RHp3;
 
-  pinkyKey = LHs;
+  pinkyKey = LHs || ((lpinky3==MOD) && LHp3);
   
-  int qTransp = (pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0;
+  int qTransp = ((pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0) + ((LHp3 && lpinky3) ? lpinky3-13 : 0);
 
 
   // Calculate midi note number from pressed keys  
-
-  //fingeredNote=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12+(octave-3)*12+transpose-12+qTransp;
   
-  fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12;
+  if (0==fingering){ //EWI standard fingering
+    //fingeredNote=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12+(octave-3)*12+transpose-12+qTransp;
+    
+    fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12;
+  } else if (1==fingering) { //EWX extended EWI fingering - lift LH1 for extended range up, touch RHp3 for extended range down
+    fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+9*(!LH1 && LH2 && LH3)-10*(!RH3 && RHp3)+octaveR*12;
+  } else if (2==fingering) { //Sax fingering
+    saxFinger[0] = LH1;
+    saxFinger[1] = LHb;
+    saxFinger[2] = LH2;
+    saxFinger[3] = LH3;
+    saxFinger[4] = LHp1;
+    saxFinger[5] = RH1;
+    saxFinger[6] = RH2;
+    saxFinger[7] = RH3;
+    saxFinger[8] = RHp1;
+    saxFinger[9] = RHp2;
+    saxFinger[10] = RHp3;
+    
+    byte matched = 0;
+    byte combo = 0;
+    
+    while (matched<11 && combo<17)
+    {
+      combo++;
+      matched = 0;
+      for (byte finger=0; finger < 11; finger++)
+      {
+        if ((saxFinger[finger] == saxFingerMatch[combo-1][finger]) || (saxFingerMatch[combo-1][finger] == 2)) matched++;
+      } 
+    }
+    if (matched<11 && combo==17) fingeredNoteUntransposed=lastFingering; else fingeredNoteUntransposed = startNote+1+saxFingerResult[combo-1]-LHp2+RHs+octaveR*12;
+  } else if (3==fingering) { // EVI fingering
+      fingeredNoteUntransposed = startNote
+      - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
+      - 5*LH1              //Fifth key
+      + 2*RHs + 4*RHp3  //Trill keys +2 and +4
+      + (!LH2 || !LH3 || LHp2) // Trill +1 achieved by lifting finger from LH2 or LH3, or touching LHp2
+      + octaveR*12;       //Octave rollers
+  } else { // EVI fingering with reversed octave rollers
+      fingeredNoteUntransposed = startNote
+      - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
+      - 5*LH1              //Fifth key
+      + 2*RHs + 4*RHp3  //Trill keys +2 and +4
+      + (!LH2 || !LH3 || LHp2) // Trill +1 achieved by lifting finger from LH2 or LH3, or touching LHp2
+      + (6-octaveR)*12;       //Octave rollers, reversed    
+  }
+  
   int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
   
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered

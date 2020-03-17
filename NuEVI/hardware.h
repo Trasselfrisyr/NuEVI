@@ -2,7 +2,7 @@
 #define __HARDWARE_H
 
 #define REVB
-//#define NURAD
+#define NURAD
 
 #if defined(NURAD) //NuRAD <<<<<<<<<<<<<<<<<<<<<<<
 
