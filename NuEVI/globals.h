@@ -25,6 +25,7 @@
 #define LVL 27
 #define LVLP 28
 #define GLD 29
+#define ECH 30
 
 #define MOD 13
 
@@ -85,6 +86,9 @@ extern unsigned short levelCC; // 0-127
 extern unsigned short levelVal; // 0-127
 extern unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
 extern unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
+extern unsigned short batteryType; // 0-2 ALK,NIM,LIP
+extern unsigned short harmSetting; // 0-7
+extern unsigned short harmSelect; // 0-4
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
@@ -133,6 +137,8 @@ extern int vibZero;
 extern int vibZeroBite;
 extern int vibThrBite;
 extern int vibThrBiteLo;
+
+extern int battAvg;
 
 extern int breathLevel;
 extern byte portIsOn;

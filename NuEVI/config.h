@@ -5,7 +5,7 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.4.5"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.4.6"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
@@ -38,6 +38,15 @@
 #define MIN_LED_BRIGHTNESS    5   // lowest PWM value that still is visible
 #define BREATH_LED_BRIGHTNESS 500 // up to 4095, PWM
 #define PORTAM_LED_BRIGHTNESS 500 // up to 4095, PWM
+#define EXTCON_LED_BRIGHTNESS 500 // up to 4095, PWM
+#define SPCKEY_LED_BRIGHTNESS 500 // up to 4095, PWM
+
+#define ALK_BAT_FULL 2800 // about 4.6V
+#define NMH_BAT_FULL 2350 // about 3.8V
+#define LIP_BAT_FULL 2550 // about 4.2V
+#define ALK_BAT_LOW 2300  // about 3.8V
+#define NMH_BAT_LOW 2200  // about 3.6V
+#define LIP_BAT_LOW 2250  // about 3.7V
 
 
 #endif

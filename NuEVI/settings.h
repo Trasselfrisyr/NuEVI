@@ -60,9 +60,11 @@
 #define LEVEL_VAL_ADDR 106
 #define FINGER_ADDR 108
 #define LPINKY3_ADDR 110
+#define BATTYPE_ADDR 112
+#define HARMSET_ADDR 114
+#define HARMSEL_ADDR 116
 
-
-#define EEPROM_SIZE 112
+#define EEPROM_SIZE 118
 
 
 //DAC output modes
@@ -79,7 +81,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 34
+#define EEPROM_VERSION 35
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -130,6 +132,9 @@
 #define LEVEL_VAL_FACTORY 127
 #define FINGER_FACTORY 0
 #define LPINKY3_FACTORY 0
+#define BATTYPE_FACTORY 0
+#define HARMSET_FACTORY 0
+#define HARMSEL_FACTORY 0
 
 #define NO_CHECKSUM 0x7F007F00
 

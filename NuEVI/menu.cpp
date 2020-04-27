@@ -202,6 +202,31 @@ extern const MenuPage mainMenuPage; // Forward declaration.
 #define OLED_RESET 4
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
+int drawBatt(int x,int y){
+  display.drawRect(x+1,y,3,3,WHITE);
+  display.drawRect(x,y+2,5,12,WHITE);
+  int bar=0;
+  int vMeterReading = battAvg;
+  switch (batteryType){
+    case 0:
+      bar = constrain((10 *(vMeterReading - ALK_BAT_LOW)) / (ALK_BAT_FULL - ALK_BAT_LOW),0,10);
+      break;
+    case 1:
+      bar = constrain((10 * (vMeterReading - NMH_BAT_LOW)) / (NMH_BAT_FULL - NMH_BAT_LOW),0,10);
+      break;
+    case 2:
+      bar = constrain((10 *(vMeterReading - LIP_BAT_LOW)) / (LIP_BAT_FULL - LIP_BAT_LOW),0,10);
+  }
+  display.fillRect(x+1,y+13-bar,3,constrain(bar,0,10),WHITE);
+  return bar;
+}
+
+void drawFlash(int x, int y){
+  display.drawLine(x+5,y,x,y+6,WHITE);
+  display.drawLine(x,y+6,x+5,y+6,WHITE);
+  display.drawLine(x,y+12,x+5,y+6,WHITE);
+}
+
 void initDisplay() {
 
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
@@ -375,12 +400,23 @@ static void mainTitleGetStr(char* out) {
   char* splice1 = menuTitle + 13;
   char* splice2 = menuTitle + 17;
 
-  int vMeterReading = analogRead(vMeterPin);
-  memcpy(splice1, (vMeterReading > 3000) ? "USB" : "BAT", 3);
-  if (vMeterReading < 2294) {
+  int vMeterReading = battAvg;
+  memcpy(splice1, (vMeterReading > 3020) ? "USB" : "BAT", 3);
+  int vLowLimit;
+  switch (batteryType){
+    case 0:
+      vLowLimit = ALK_BAT_LOW;
+      break;
+    case 1:
+      vLowLimit = NMH_BAT_LOW;
+      break;
+    case 2:
+      vLowLimit = LIP_BAT_LOW;
+  }
+  if (vMeterReading < vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh 
     memcpy(splice2, "LOW ", 4);
   } else {
-    int voltage = map(vMeterReading,0,3030,0,50);
+    int voltage = map(vMeterReading,2200,3060,36,50);
     splice2[0] = (voltage/10)+'0';
     splice2[2] = (voltage%10)+'0';
   }
@@ -705,12 +741,28 @@ const MenuEntrySub wlChannelMenu = {
   , nullptr
 };
 
+// Battery type menu
+const MenuEntrySub batteryTypeMenu = {
+  MenuType::ESub, "BAT TYPE", "BAT TYPE", &batteryType, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* breathCCMenuLabels[] = { "ALK", "NMH", "LIP" };
+    strncpy(out, breathCCMenuLabels[batteryType], 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(BATTYPE_ADDR) != batteryType) {
+      writeSetting(BATTYPE_ADDR,batteryType);
+    }
+  }
+  , nullptr
+};
+
 #if defined(NURAD)
 const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
   (MenuEntry*)&legacyBRMenu,
   (MenuEntry*)&specialKeyMenu,
   (MenuEntry*)&dacModeMenu,
+  (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
   (MenuEntry*)&wlPowerMenu,
   (MenuEntry*)&wlChannelMenu,
@@ -724,6 +776,7 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&trill3Menu,
   (MenuEntry*)&bcasModeMenu,
   (MenuEntry*)&dacModeMenu,
+  (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
   (MenuEntry*)&wlPowerMenu,
   (MenuEntry*)&wlChannelMenu,
@@ -786,7 +839,7 @@ const MenuPage mainMenuPage = {
 
 // Breath menu
 const MenuEntrySub breathCCMenu = {
-  MenuType::ESub, "BRTH CC1", "BRTH CC1", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BRTH CC A", "BRTH CC A", &breathCC, 0, 10, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     const char* breathCCMenuLabels[] = { "OFF", "MW", "BR", "VL", "EX", "MW+",
                                             "BR+", "VL+", "EX+", "CF", "UNO" };
@@ -802,7 +855,7 @@ const MenuEntrySub breathCCMenu = {
 };
 
 const MenuEntrySub breathCC2Menu = {
-  MenuType::ESub, "BRTH CC2",  "BRTH CC2", &breathCC2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BRTH CC B",  "BRTH CC B", &breathCC2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(breathCC2) numToString(breathCC2, out);
     else strncpy(out, "OFF", 4);
@@ -817,7 +870,7 @@ const MenuEntrySub breathCC2Menu = {
 };
 
 const MenuEntrySub breathCC2RiseMenu = {
-  MenuType::ESub, "CC2 RISE", "CC2 RISE", &breathCC2Rise, 1, 10, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "CC B RISE", "CC B RISE", &breathCC2Rise, 1, 10, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char *out, const char** label) {
     numToString(breathCC2Rise, out);
     *label = "X";
@@ -940,7 +993,7 @@ const MenuEntrySub pitchBendMenu = {
 };
 
 const MenuEntrySub extraMenu = {
-  MenuType::ESub, "EXTRA CTR", "EXTRA CTR", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "EXCT CC A", "EXCT CC A", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char** __unused unit) {
     const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
     strncpy(out, extraMenuLabels[extraCT], 12);
@@ -950,12 +1003,36 @@ const MenuEntrySub extraMenu = {
 };
 
 const MenuEntrySub extraCC2Menu = {
-  MenuType::ESub, "EXCTR CC2",  "EXCTR CC2", &extraCT2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "EXCT CC B",  "EXCT CC B", &extraCT2, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     if(extraCT2) numToString(extraCT2, out);
     else strncpy(out, "OFF", 4);
   },
 [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA2_ADDR,extraCT2); }
+  , nullptr
+};
+
+const MenuEntrySub harmonicsMenu = {
+  MenuType::ESub, "EXCT HARM",  "HARM RANGE", &harmSetting, 0, 6, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(harmSetting) numToString(harmSetting, out);
+    else strncpy(out, "OFF", 4);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(HARMSET_ADDR,harmSetting); }
+  , nullptr
+};
+
+const MenuEntrySub harmSelectMenu = {
+  MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 4, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* harmSelectMenuLabels[] = { "HMS", "5TH", "OCT", "5DN", "ODN" };
+    strncpy(out, harmSelectMenuLabels[harmSelect], 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(HARMSEL_ADDR) != harmSelect) {
+      writeSetting(HARMSEL_ADDR,harmSelect);
+    }
+  }
   , nullptr
 };
 
@@ -976,25 +1053,27 @@ const MenuEntrySub deglitchMenu = {
 
 #if defined(NURAD)
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 29, MenuEntryFlags::ENone,
+  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 30, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #else
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 29, MenuEntryFlags::ENone,
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 30, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #endif
     if (pinkySetting == PBD)
       strncpy(textBuffer, "PBD", 4);
     else if (pinkySetting == EC2)
-      strncpy(textBuffer, "EC2", 4);
+      strncpy(textBuffer, "ECB", 4);
     else if (pinkySetting == ECSW)
       strncpy(textBuffer, "ECS", 4);
     else if (pinkySetting == LVL)
       strncpy(textBuffer, "LVL", 4);
     else if (pinkySetting == LVLP)
       strncpy(textBuffer, "LVP", 4);
-      else if (pinkySetting == GLD)
+    else if (pinkySetting == GLD)
       strncpy(textBuffer, "GLD", 4);
+    else if (pinkySetting == ECH)
+      strncpy(textBuffer, "ECH", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },
@@ -1040,6 +1119,8 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
+  (MenuEntry*)&harmonicsMenu,
+  (MenuEntry*)&harmSelectMenu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
@@ -1053,6 +1134,8 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
+  (MenuEntry*)&harmonicsMenu,
+  (MenuEntry*)&harmSelectMenu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
@@ -1193,7 +1276,7 @@ const MenuPageCustom aboutMenuPage =  { nullptr, EMenuPageCustom,
     static uint32_t timer = 0;
     if(stateFirstRun) {
       display.clearDisplay();
-      timer = timeNow + 3000;
+      timer = timeNow + 3500;
       stateFirstRun = 0;
       display.setCursor(49,0);
       display.setTextColor(WHITE);
@@ -1206,6 +1289,49 @@ const MenuPageCustom aboutMenuPage =  { nullptr, EMenuPageCustom,
       display.setCursor(16,12);
       display.print("firmware v.");
       display.println(FIRMWARE_VERSION);
+      int vMeterReading = battAvg;
+      int voltage = map(vMeterReading,2200,3060,36,50);
+      display.setCursor(16,32);
+      if (vMeterReading > 3020){
+        drawFlash(4,34);
+        display.print("USB power");
+        display.setCursor(16,42);
+        display.print(voltage/10);
+        display.print(".");
+        display.print(voltage%10);
+        display.print("v");
+      } else {
+        int bar = drawBatt(4,34);
+        if (0 == batteryType) {
+          display.println("Alkaline battery");
+          display.setCursor(16,42);
+          display.print(bar);
+          display.print("0 % at ");
+          display.print(voltage/10);
+          display.print(".");
+          display.print(voltage%10);
+          display.print("v");
+        } else if (1 == batteryType) {
+          display.println("NiMH battery");
+          display.setCursor(16,42);
+          display.print(bar);
+          display.print("0 % at ");
+          display.print(voltage/10);
+          display.print(".");
+          display.print(voltage%10);
+          display.print("v");
+        } else if (2 == batteryType) {
+          display.println("LiPo battery");
+          display.setCursor(16,42);
+          display.print(bar);
+          display.print("0 % at ");
+          display.print(voltage/10);
+          display.print(".");
+          display.print(voltage%10);
+          display.print("v");
+        }
+      }
+      
 
       return true;
     } else {
@@ -1653,6 +1779,8 @@ static KeyState readInput(uint32_t timeNow) {
 
   return keys;
 }
+
+
 
 void menu() {
   unsigned long timeNow = millis();

@@ -90,6 +90,9 @@ unsigned short levelCC; // 0-127
 unsigned short levelVal; // 0-127
 unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
 unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
+unsigned short batteryType; // 0-2 ALK,NIM,LIP
+unsigned short harmSetting; // 0-7
+unsigned short harmSelect; // 0-4
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
@@ -127,6 +130,10 @@ int calOffsetRollers[6] = {16,10,8,21,24,41};
 int calOffsetRH[12] = {-88,-68,-31,13,4,120,121,-68,-85,-34,23,87};
 int calOffsetLH[12] = {90,-13,-33,-93,-82,115,118,2,4,-40,-75,-94};
 #endif
+
+int battMeasured[50];
+int battAvg = 0;
+byte battCheckPos = 0;
 
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
@@ -194,6 +201,8 @@ byte extracIsOn=0;
 int oldextrac=0;
 int oldextrac2=0;
 
+int harmonics = 0;
+
 int pitchBend=8192;
 int oldpb=8192;
 int vibSignal=0;
@@ -254,6 +263,12 @@ const byte saxFingerMatch[17][11] =
   {0, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2}, // C (-1 semis)
   {0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2}, // C# (-0 semis)
 };
+
+const int harmonicResult[5][7] = {{ 0,   7,  12,  16,  19,  22,  24 },  //HRM
+                                  { 0,   7,  12,  19,  24,  31,  36 },  //5TH
+                                  { 0,  12,  24,  36,  48,  60,  72 },  //OCT
+                                  { 0,  -5, -12, -17, -24, -29, -36 },  //5DN
+                                  { 0, -12, -24, -36, -48, -60, -72 }}; //ODN
 
 const int saxFingerResult[17] = {-14, -13, -12, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -3, -2, -1, 0};
 
@@ -472,7 +487,7 @@ void setup() {
 
     showVersion();
 
-    delay(1500);
+    delay(1400);
   }
 
   mainState = NOTE_OFF;       // initialize main state machine
@@ -486,6 +501,10 @@ void setup() {
     midiSendControlChange(levelCC, levelVal);
   }
 
+  for (int i=0; i<50; i++){
+    battMeasured[i] = analogRead(vMeterPin);
+    delay(1);
+  }
   activeMIDIchannel = MIDIchannel;
   midiInitialize(MIDIchannel);
 
@@ -941,6 +960,7 @@ void loop() {
     #else
     if (gateOpenEnable || gateOpen) doorKnobCheck();
     #endif
+    battCheck();
     if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey && (mainState == NOTE_OFF)){
       // show LVL indication
     } else updateSensorLEDs();
@@ -1225,6 +1245,17 @@ void doorKnobCheck() {
 
 //***********************************************************
 
+void battCheck(){
+    battMeasured[battCheckPos] = analogRead(vMeterPin);
+    battAvg = 0;
+    for (int i=0; i<50; i++){
+      battAvg += battMeasured[i];
+    }
+    battAvg /= 50;
+    battCheckPos++;
+    if (battCheckPos == 50) battCheckPos = 0;    
+}
+
 void extraController() {
   bool CC2sw = false;
   bool CC1sw = false;
@@ -1254,11 +1285,28 @@ void extraController() {
       CC2sw = false;
       CC1sw = true;
     }
+  } else if (pinkySetting == ECH){
+    if (pinkyKey){
+      //extra controller harmonics only
+      CC2sw = false;
+      CC1sw = false;
+    } else {
+      //send extra controller primary CC only
+      CC2sw = false;
+      CC1sw = true;
+    }
   } else {
     //send both primary CC and CC2
     CC2sw = true;
     CC1sw = true;
   }
+
+  if ((harmSetting && (pinkySetting != ECH)) || ((pinkySetting == ECH) && pinkyKey)){
+    harmonics = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, harmSetting);
+  } else if ((pinkySetting == ECH) && !pinkyKey) {
+    harmonics = 0;
+  }
+  
   if ((extraCT || extraCT2) && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
       extracIsOn = 1;
@@ -1544,7 +1592,7 @@ void readSwitches() {
       + (6-octaveR)*12;       //Octave rollers, reversed    
   }
   
-  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp;
+  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
   
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 
@@ -1603,7 +1651,7 @@ void readSwitches() {
     if (4 == trill3_interval) fingeredNoteUntransposed+=2; else fingeredNoteUntransposed+=4;
   }
   
-  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp;
+  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
 
   pcCombo1 = (K1 && K5 && !K2 && !K3);
   pcCombo2 = (K2 && K6 && !K1 && !K3);
