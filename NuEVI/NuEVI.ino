@@ -1592,7 +1592,7 @@ void readSwitches() {
       + (6-octaveR)*12;       //Octave rollers, reversed    
   }
   
-  int fingeredNoteRead = fingeredNoteUntransposed + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
+  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
   
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 
