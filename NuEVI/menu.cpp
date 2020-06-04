@@ -1025,7 +1025,7 @@ const MenuEntrySub harmonicsMenu = {
 const MenuEntrySub harmSelectMenu = {
   MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 4, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* harmSelectMenuLabels[] = { "HMS", "5TH", "OCT", "5DN", "ODN" };
+    const char* harmSelectMenuLabels[] = { "HRM", "5TH", "OCT", "5DN", "ODN" };
     strncpy(out, harmSelectMenuLabels[harmSelect], 4);
   },
   [](const MenuEntrySub & __unused sub){
@@ -1091,6 +1091,7 @@ const MenuEntrySub lvlCtrlCCMenu = {
   , nullptr
 };
 
+#if defined(NURAD)
 const MenuEntrySub fingeringMenu = {
   MenuType::ESub, "FINGERING", "FINGERING", &fingering, 0, 4, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
@@ -1099,6 +1100,18 @@ const MenuEntrySub fingeringMenu = {
   },
   [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }
 };
+#else
+const MenuEntrySub fingeringMenu = {
+  MenuType::ESub, "FINGERING", "FINGERING", &fingering, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "EVI", "TPT", "HRN" };
+    strncpy(out, labs[fingering], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }
+};
+#endif
+
+
 
 const MenuEntrySub lpinky3Menu = {
   MenuType::ESub, "EXTRA PKEY", "EXTRA PKEY", &lpinky3, 0, 25, MenuEntryFlags::ENone,
@@ -1140,6 +1153,7 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
+  (MenuEntry*)&fingeringMenu,
   (MenuEntry*)&pitchBendMenu
 };
 #endif

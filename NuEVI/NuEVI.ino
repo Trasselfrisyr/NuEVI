@@ -197,6 +197,7 @@ int cvPitch;
 int targetPitch;
 
 int exSensor=0;
+int exSensorIndicator=0;
 byte extracIsOn=0;
 int oldextrac=0;
 int oldextrac2=0;
@@ -243,36 +244,42 @@ const unsigned short* const curves[] = {
 // LH1, LHb, LH2, LH3, LHp1, -LHp2-, -RHsx-, RH1, RH2, RH3, RHp1, RHp2, RHp3  -excluded- LHp2 always -1, RHs always +1
 // 0 = not touched, 1 = touched, 2 = whatever
 
-const byte saxFingerMatch[17][11] =
+const byte saxFingerMatch[15][10] =
 {
-  {1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1}, // B (-14 semis)
-  {1, 2, 1, 1, 0, 1, 1, 1, 2, 0, 1}, // C (-13 semis)
-  {1, 2, 1, 1, 1, 1, 1, 1, 2, 0, 1}, // C# (-12 semis)
-  {1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 0}, // C# (-12 semis)
-  {1, 2, 1, 1, 2, 1, 1, 1, 0, 0, 0}, // D (-11 semis)
-  {1, 2, 1, 1, 2, 1, 1, 1, 1, 0, 0}, // D# (-10 semis)
-  {1, 2, 1, 1, 2, 1, 1, 0, 2, 2, 2}, // E (-9 semis)
-  {1, 2, 1, 1, 2, 1, 0, 2, 2, 2, 2}, // F (-8 semis)
-  {1, 2, 1, 1, 2, 0, 1, 2, 2, 2, 2}, // F# (-7 semis)
-  {1, 2, 1, 1, 0, 0, 0, 2, 2, 2, 2}, // G (-6 semis)
-  {1, 2, 1, 1, 1, 0, 0, 2, 2, 2, 2}, // G# (-5 semis)
-  {1, 2, 1, 0, 2, 2, 2, 2, 2, 2, 2}, // A (-4 semis)
-  {1, 2, 0, 2, 2, 1, 2, 2, 2, 2, 2}, // A# (-3 semis)
-  {1, 1, 0, 2, 2, 2, 2, 2, 2, 2, 2}, // A# (-3 semis)
-  {1, 0, 0, 2, 2, 0, 2, 2, 2, 2, 2}, // B (-2 semis)
-  {0, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2}, // C (-1 semis)
-  {0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2}, // C# (-0 semis)
+  {1, 2, 1, 1, 0, 1, 1, 1, 2, 1}, // C (-13 semis)
+  {1, 2, 1, 1, 1, 1, 1, 1, 2, 1}, // C# (-12 semis)
+  {1, 2, 1, 1, 2, 1, 1, 1, 0, 0}, // D (-11 semis)
+  {1, 2, 1, 1, 2, 1, 1, 1, 1, 0}, // D# (-10 semis)
+  {1, 2, 1, 1, 2, 1, 1, 0, 2, 2}, // E (-9 semis)
+  {1, 2, 1, 1, 2, 1, 0, 2, 2, 2}, // F (-8 semis)
+  {1, 2, 1, 1, 2, 0, 1, 2, 2, 2}, // F# (-7 semis)
+  {1, 2, 1, 1, 0, 0, 0, 2, 2, 2}, // G (-6 semis)
+  {1, 2, 1, 1, 1, 0, 0, 2, 2, 2}, // G# (-5 semis)
+  {1, 2, 1, 0, 2, 2, 2, 2, 2, 2}, // A (-4 semis)
+  {1, 2, 0, 2, 2, 1, 2, 2, 2, 2}, // A# (-3 semis)
+  {1, 1, 0, 2, 2, 2, 2, 2, 2, 2}, // A# (-3 semis)
+  {1, 0, 0, 2, 2, 0, 2, 2, 2, 2}, // B (-2 semis)
+  {0, 2, 1, 2, 2, 2, 2, 2, 2, 2}, // C (-1 semis)
+  {0, 2, 0, 2, 2, 2, 2, 2, 2, 2}, // C# (-0 semis)
 };
 
-const int harmonicResult[5][7] = {{ 0,   7,  12,  16,  19,  22,  24 },  //HRM
+
+const int harmonicResult[5][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HRM
                                   { 0,   7,  12,  19,  24,  31,  36 },  //5TH
                                   { 0,  12,  24,  36,  48,  60,  72 },  //OCT
                                   { 0,  -5, -12, -17, -24, -29, -36 },  //5DN
                                   { 0, -12, -24, -36, -48, -60, -72 }}; //ODN
+                                  
+const int rollerHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  24,  26 },  //F horn 2,3,4,5,6,8,9 hrm
+                                  { 7,  12,  16,  19,  24,  26,  31 }}; //Bb horn 3,4,5,6,8,9,12 hrm
 
-const int saxFingerResult[17] = {-14, -13, -12, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -3, -2, -1, 0};
+const int trumpetHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  26,  31 },  //!K4: hrm 8->9, 10->12       
+                                   { 0,   7,  12,  16,  19,  24,  28 }}; //trumpet 2,3,4,5,6,8,10 hrm                        
 
-byte saxFinger[11];
+int saxFingerResult[15] =
+{-13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -3, -2, -1, 0};
+
+byte saxFinger[10];
 
 
 int vibThr;          // this gets auto calibrated in setup
@@ -433,16 +440,30 @@ void setup() {
   activePatch = patch;
   
   #if defined(NURAD)
-    digitalWrite(statusLedPin,HIGH);
+  digitalWrite(statusLedPin,HIGH);
+  delay(100);
+  analogWrite(bLedPin, BREATH_LED_BRIGHTNESS);
   if (!touchSensorRollers.begin(0x5D)) {  //should be D
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
+  delay(100);
+  analogWrite(bLedPin, 0);
+  analogWrite(pLedPin, PORTAM_LED_BRIGHTNESS);
   if (!touchSensorLH.begin(0x5C)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
+  delay(100);
+  analogWrite(pLedPin, 0);
+  analogWrite(eLedPin, PORTAM_LED_BRIGHTNESS);
   if (!touchSensorRH.begin(0x5B)) {
     while (1);  // Touch sensor initialization failed - stop doing stuff
   }
+  delay(100);
+  analogWrite(eLedPin, 0);
+  analogWrite(sLedPin, PORTAM_LED_BRIGHTNESS);
+  delay(100);
+  analogWrite(sLedPin, 0);
+  delay(100);
   digitalWrite(statusLedPin,LOW);
   #else
   if (!touchSensor.begin(0x5A)) {
@@ -469,7 +490,7 @@ void setup() {
     breathCalZero += analogRead(breathSensorPin);
     if (biteJumper) vibZeroBite += analogRead(bitePressurePin); else vibZeroBite += touchRead(bitePin);
     statusLed(i&1);
-    delay(fastBoot?75:250); //Shorter delay for fastboot
+    delay(fastBoot?75:220); //Shorter delay for fastboot
   }
 
   vibZero /= sampleCount;
@@ -1262,6 +1283,7 @@ void extraController() {
   int extracCC;
   // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
+  exSensorIndicator = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
   if (pinkySetting == EC2){
     //send 0 or 127 on extra controller CC2 depending on pinky key touch
     if (pinkyKey && extraCT2) {
@@ -1560,22 +1582,21 @@ void readSwitches() {
     saxFinger[6] = RH2;
     saxFinger[7] = RH3;
     saxFinger[8] = RHp1;
-    saxFinger[9] = RHp2;
-    saxFinger[10] = RHp3;
+    saxFinger[9] = RHp3;
     
     byte matched = 0;
     byte combo = 0;
     
-    while (matched<11 && combo<17)
+    while (matched<10 && combo<15)
     {
       combo++;
       matched = 0;
-      for (byte finger=0; finger < 11; finger++)
+      for (byte finger=0; finger < 10; finger++)
       {
         if ((saxFinger[finger] == saxFingerMatch[combo-1][finger]) || (saxFingerMatch[combo-1][finger] == 2)) matched++;
       } 
     }
-    if (matched<11 && combo==17) fingeredNoteUntransposed=lastFingering; else fingeredNoteUntransposed = startNote+1+saxFingerResult[combo-1]-LHp2+RHs+octaveR*12;
+    if (matched<11 && combo==17) fingeredNoteUntransposed=lastFingering; else fingeredNoteUntransposed = startNote+1+saxFingerResult[combo-1]-LHp2+RHs-(RHp2 && (1 == combo) && LHp2)+octaveR*12;
   } else if (3==fingering) { // EVI fingering
       fingeredNoteUntransposed = startNote
       - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
@@ -1640,12 +1661,28 @@ void readSwitches() {
   int qTransp = (pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0;
 
   // Calculate midi note number from pressed keys
+  if (0 == fingering){ //EVI fingering
+    fingeredNoteUntransposed = startNote
+      - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+      - 5*K4              //Fifth key
+      + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
+      + octaveR*12;       //Octave rollers
+  } else if (1 == fingering){ //TPT fingering
+        fingeredNoteUntransposed = startNote
+      - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+      - 2                 //Trumpet in B flat
+      + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
+      + 24 + trumpetHarmonic[K4][octaveR]; // roller harmonics
+  } else if (2 == fingering){ //HRN fingering
+        fingeredNoteUntransposed = startNote
+      - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+      + 5*K4              //Switch to Bb horn
+      + 5                 //Horn in F
+      + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
+      + 12 + rollerHarmonic[K4][octaveR]; // roller harmonics
+  }
 
-  fingeredNoteUntransposed = startNote
-    - 2*K1 - K2 - 3*K3  //"Trumpet valves"
-    - 5*K4              //Fifth key
-    + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
-    + octaveR*12;       //Octave rollers
+
     
   if (K3 && K7){
     if (4 == trill3_interval) fingeredNoteUntransposed+=2; else fingeredNoteUntransposed+=4;

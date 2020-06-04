@@ -178,7 +178,11 @@ void readEEPROM(const bool factoryReset) {
     extraCT2        = readSettingBounded(EXTRA2_ADDR, 0, 127, EXTRA2_FACTORY);
     levelCC         = readSettingBounded(LEVEL_CC_ADDR, 0, 127, LEVEL_CC_FACTORY);
     levelVal        = readSettingBounded(LEVEL_VAL_ADDR, 0, 127, LEVEL_VAL_FACTORY);
+    #if defined(NURAD)
     fingering       = readSettingBounded(FINGER_ADDR, 0, 4, FINGER_FACTORY);
+    #else
+    fingering       = readSettingBounded(FINGER_ADDR, 0, 2, FINGER_FACTORY);
+    #endif
     lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);

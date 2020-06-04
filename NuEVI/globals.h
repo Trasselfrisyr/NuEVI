@@ -122,6 +122,7 @@ extern int lastBite;
 extern byte biteJumper;
 
 extern int exSensor;
+extern int exSensorIndicator;
 
 extern int pitchBend;
 
