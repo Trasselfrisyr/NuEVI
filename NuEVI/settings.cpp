@@ -120,6 +120,33 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(HARMSET_ADDR, HARMSET_FACTORY);
             writeSetting(HARMSEL_ADDR, HARMSEL_FACTORY);
         }
+        
+        if(settingsVersion < 36) {
+            writeSetting(PARAB_ADDR, PARAB_FACTORY);
+            writeSetting(ROTB1_ADDR, ROTB1_FACTORY);
+            writeSetting(ROTB2_ADDR, ROTB2_FACTORY);
+            writeSetting(ROTB3_ADDR, ROTB3_FACTORY);
+            writeSetting(ROTB4_ADDR, ROTB4_FACTORY);
+            writeSetting(PARAC_ADDR, PARAC_FACTORY);
+            writeSetting(ROTC1_ADDR, ROTC1_FACTORY);
+            writeSetting(ROTC2_ADDR, ROTC2_FACTORY);
+            writeSetting(ROTC3_ADDR, ROTC3_FACTORY);
+            writeSetting(ROTC4_ADDR, ROTC4_FACTORY);
+            writeSetting(POLYSEL_ADDR, POLYSEL_FACTORY);
+            writeSetting(FWCTYPE_ADDR, FWCTYPE_FACTORY);
+            writeSetting(HMZKEY_ADDR, HMZKEY_FACTORY);
+        }
+
+        if(settingsVersion < 37) {
+            writeSetting(FWCLCH_ADDR, FWCLCH_FACTORY);
+            writeSetting(FWCDP2_ADDR, FWCDP2_FACTORY);
+        }
+
+        
+        if(settingsVersion < 38) {
+            writeSetting(HMZLIMIT_ADDR, HMZLIMIT_FACTORY);
+        }
+        
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
@@ -187,6 +214,22 @@ void readEEPROM(const bool factoryReset) {
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);
     harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 4, HARMSEL_FACTORY);
+    polySelect      = readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
+    fwcType         = readSettingBounded(FWCTYPE_ADDR, 0, 4, FWCTYPE_FACTORY);
+    fwcLockH        = readSettingBounded(FWCLCH_ADDR, 0, 1, FWCLCH_FACTORY);
+    fwcDrop2        = readSettingBounded(FWCDP2_ADDR, 0, 1, FWCDP2_FACTORY);
+    hmzKey          = readSettingBounded(HMZKEY_ADDR, 0, 11, HMZKEY_FACTORY);
+    hmzLimit        = readSettingBounded(HMZLIMIT_ADDR, 2, 5, HMZLIMIT_FACTORY);
+    parallelb       = readSettingBounded(PARAB_ADDR, 0, 48, PARAB_FACTORY);
+    rotationsb[0]   = readSettingBounded(ROTB1_ADDR, 0, 48, ROTB1_FACTORY);
+    rotationsb[1]   = readSettingBounded(ROTB2_ADDR, 0, 48, ROTB2_FACTORY);
+    rotationsb[2]   = readSettingBounded(ROTB3_ADDR, 0, 48, ROTB3_FACTORY);
+    rotationsb[3]   = readSettingBounded(ROTB4_ADDR, 0, 48, ROTB4_FACTORY);
+    parallelc       = readSettingBounded(PARAC_ADDR, 0, 48, PARAC_FACTORY);
+    rotationsc[0]   = readSettingBounded(ROTC1_ADDR, 0, 48, ROTC1_FACTORY);
+    rotationsc[1]   = readSettingBounded(ROTC2_ADDR, 0, 48, ROTC2_FACTORY);
+    rotationsc[2]   = readSettingBounded(ROTC3_ADDR, 0, 48, ROTC3_FACTORY);
+    rotationsc[3]   = readSettingBounded(ROTC4_ADDR, 0, 48, ROTC4_FACTORY);
 
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

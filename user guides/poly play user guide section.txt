@@ -1,0 +1,64 @@
+POLY PLAY
+
+In the Poly Play menu you configure everything having to do with polyphonic playing functions. 
+
+POLY PLAY – POLY MODE
+
+Here you select which type of harmonization or which rotator setup will be activated by touching/holding MOD key (NuRAD) or Pinky Key (NuEVI) and then touching Special Key(s). Deactivate by just touching Special Key(s).
+
+OFF – disables all Special Key functionality, including the Parallel Chord, Slur Sustain and Sub Octave functions
+MGR – Major Gospel Root – a gospel type triad voicing
+MGD – Major Gospel Dominant – same as MGR, but with a dominant on V instead of an inversion of the root
+MA9 – Major add9 – pop style add9 harmonization
+MND – minor Dorian – jazz type minor
+MNA – minor Aeolian – classical minor
+MNH – minor 4-voice Hip – a more hip dorian minor
+FWC – Four Way Close – old school block chord harmony (with additional options further down in the Poly Play menu)
+RTA – Rotator A
+RTB – Rotator B
+RTC - Rotator C
+
+POLY PLAY – HMZ KEY
+
+Selects the key you are playing in for the key based harmonizations.
+
+POLY PLAY – HMZ LIMIT
+
+Limits the number of voices to be played, starting elimination from lowest note and up. Applies to the key based harmonizations only, not Rotator, Parallel Chord or Slur Sustain.
+
+POLY PLAY – FWC TYPE
+
+Type of block chord for the Four Way Close harmonization. (6, m6, 7 or m7)
+
+POLY PLAY – FWC LOCKH
+
+"Lock Hands" (double melody) adds another melody note one octave down for the Four Way Close harmonizations. (OFF/ON)
+
+POLY PLAY – FWC DROP2
+
+"Drop 2" moves the second note (the one below melody note) one octave down for the FWC. (OFF/ON)
+
+POLY PLAY – PRIORITY
+
+Sets which note will get priority when playing mono patches (sounds really great to layer a mono patch with a poly patch for use with with the Poly Play functions). MEL will play the melody note as the mono lead and ROT will play the rotated note or last note of other poly modes.
+
+POLY PLAY – RTA PARAL
+POLY PLAY – RTA ROT 1
+POLY PLAY – RTA ROT 2
+POLY PLAY – RTA ROT 3
+POLY PLAY – RTA ROT 4
+
+POLY PLAY – RTB PARAL
+POLY PLAY – RTB ROT 1
+POLY PLAY – RTB ROT 2
+POLY PLAY – RTB ROT 3
+POLY PLAY – RTB ROT 4
+
+POLY PLAY – RTC PARAL
+POLY PLAY – RTC ROT 1
+POLY PLAY – RTC ROT 2
+POLY PLAY – RTC ROT 3
+POLY PLAY – RTC ROT 4
+
+This last section of settings is for the three rotators. They create a three note chord using the melody note, a fixed interval parallel note and a third note taken from a rotating selection of four notes. For every new note triggered, the rotation is advanced one step, and a new combination of notes is played. For each uf the three selectable rotator setups you can configure the fixed interval with RTx PARAL and the four intervals to be rotated for the third note with RTx ROT 1 to RTx ROT4, where x represents rotators A through C.
+

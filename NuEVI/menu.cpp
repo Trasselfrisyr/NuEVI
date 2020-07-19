@@ -510,7 +510,7 @@ static void clearFPS(int trills) {
 
 
 //***********************************************************
-// Rotator menu
+// Poly Play menu
 
 static void rotatorSave(const MenuEntrySub& __unused sub) {
   int16_t stored;
@@ -521,6 +521,25 @@ static void rotatorSave(const MenuEntrySub& __unused sub) {
   }
 }
 
+static void rotatorBSave(const MenuEntrySub& __unused sub) {
+  int16_t stored;
+  for(int i = 0; i < 4; ++i) {
+    stored = readSetting(ROTB1_ADDR+2*i);
+    if(stored != rotationsb[i])
+      writeSetting(ROTB1_ADDR+2*i,(rotationsb[i]));
+  }
+}
+
+static void rotatorCSave(const MenuEntrySub& __unused sub) {
+  int16_t stored;
+  for(int i = 0; i < 4; ++i) {
+    stored = readSetting(ROTC1_ADDR+2*i);
+    if(stored != rotationsc[i])
+      writeSetting(ROTC1_ADDR+2*i,(rotationsc[i]));
+  }
+}
+
+
 static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
   numToString((*sub.valuePtr) - 24, out, true);
 }
@@ -529,38 +548,104 @@ static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unu
   numToString(parallel-24, out, true);
 }
 
+static void parallelBOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
+  numToString(parallelb-24, out, true);
+}
+
+static void parallelCOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
+  numToString(parallelc-24, out, true);
+}
+
 static void parallelSave(SubMenuRef __unused) {
   writeSetting(PARAL_ADDR, parallel);
 }
 
+static void parallelBSave(SubMenuRef __unused) {
+  writeSetting(PARAB_ADDR, parallelb);
+}
+
+static void parallelCSave(SubMenuRef __unused) {
+  writeSetting(PARAC_ADDR, parallelc);
+}
+
 const MenuEntrySub rotatorParaMenu  = {
-  MenuType::ESub, "PARALLEL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA PARAL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
   parallelOptionGet, parallelSave, nullptr
 };
 
 const MenuEntrySub rotator1Menu  = {
-  MenuType::ESub, "ROTATE 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator2Menu  = {
-  MenuType::ESub, "ROTATE 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator3Menu  = {
-  MenuType::ESub, "ROTATE 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator4Menu  = {
-  MenuType::ESub, "ROTATE 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
+const MenuEntrySub rotatorParaBMenu  = {
+  MenuType::ESub, "RTB PARAL", "SEMITONES", &parallelb, 0, 48, MenuEntryFlags::ENone,
+  parallelBOptionGet, parallelBSave, nullptr
+};
+
+const MenuEntrySub rotatorB1Menu  = {
+  MenuType::ESub, "RTB ROT 1", "SEMITONES", &rotationsb[0], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorBSave, nullptr
+};
+
+const MenuEntrySub rotatorB2Menu  = {
+  MenuType::ESub, "RTB ROT 2", "SEMITONES", &rotationsb[1], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorBSave, nullptr
+};
+
+const MenuEntrySub rotatorB3Menu  = {
+  MenuType::ESub, "RTB ROT 3", "SEMITONES", &rotationsb[2], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorBSave, nullptr
+};
+
+const MenuEntrySub rotatorB4Menu  = {
+  MenuType::ESub, "RTB ROT 4", "SEMITONES", &rotationsb[3], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorBSave, nullptr
+};
+const MenuEntrySub rotatorParaCMenu  = {
+  MenuType::ESub, "RTC PARAL", "SEMITONES", &parallelc, 0, 48, MenuEntryFlags::ENone,
+  parallelCOptionGet, parallelCSave, nullptr
+};
+
+const MenuEntrySub rotatorC1Menu  = {
+  MenuType::ESub, "RTC ROT 1", "SEMITONES", &rotationsc[0], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorCSave, nullptr
+};
+
+const MenuEntrySub rotatorC2Menu  = {
+  MenuType::ESub, "RTC ROT 2", "SEMITONES", &rotationsc[1], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorCSave, nullptr
+};
+
+const MenuEntrySub rotatorC3Menu  = {
+  MenuType::ESub, "RTC ROT 3", "SEMITONES", &rotationsc[2], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorCSave, nullptr
+};
+
+const MenuEntrySub rotatorC4Menu  = {
+  MenuType::ESub, "RTC ROT 4", "SEMITONES", &rotationsc[3], 0, 48, MenuEntryFlags::ENone,
+  rotatorOptionGet, rotatorCSave, nullptr
+};
+
+
 static void rotatorPrioOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
-    if (priority) strncpy(out, "ROT", 4);
-    else strncpy(out, "MEL", 4);
+    if (priority) strncpy(out, "LO", 4);
+    else strncpy(out, "HI", 4);
 }
 
 static void rotatorPrioSave(SubMenuRef __unused) {
@@ -572,13 +657,194 @@ const MenuEntrySub rotatorPrioMenu = {
   rotatorPrioOptionGet, rotatorPrioSave, nullptr,
 };
 
+
+static void fwcTypeOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    switch (fwcType){
+    case 0:
+      strncpy(out, "6", 4);
+      break;
+    case 1:
+      strncpy(out, "m6", 4);
+      break;
+    case 2:
+      strncpy(out, "7", 4);
+      break;
+    case 3:
+      strncpy(out, "m7", 4);
+    }
+}
+
+static void fwcTypeSave(SubMenuRef __unused) {
+  writeSetting(FWCTYPE_ADDR,fwcType);
+}
+
+const MenuEntrySub fwcTypeMenu = {
+  MenuType::ESub, "FWC TYPE", "CHORD", &fwcType, 0,3, MenuEntryFlags::EMenuEntryWrap, 
+  fwcTypeOptionGet, fwcTypeSave, nullptr,
+};
+
+static void fwcLockHOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (fwcLockH) strncpy(out, "ON", 4);
+    else strncpy(out, "OFF", 4);
+}
+
+static void fwcLockHSave(SubMenuRef __unused) {
+  writeSetting(FWCLCH_ADDR,fwcLockH);
+}
+
+const MenuEntrySub fwcLockHMenu = {
+  MenuType::ESub, "FWC LOCKH", "LH MELODY", &fwcLockH, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  fwcLockHOptionGet, fwcLockHSave, nullptr,
+};
+
+static void fwcDrop2OptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (fwcDrop2) strncpy(out, "ON", 4);
+    else strncpy(out, "OFF", 4);
+}
+
+static void fwcDrop2Save(SubMenuRef __unused) {
+  writeSetting(FWCDP2_ADDR,fwcDrop2);
+}
+
+const MenuEntrySub fwcDrop2Menu = {
+  MenuType::ESub, "FWC DROP2", "DROP 2", &fwcDrop2, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  fwcDrop2OptionGet, fwcDrop2Save, nullptr,
+};
+
+static void hmzKeyOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+  switch (hmzKey){
+    case 0:
+      strncpy(out, "C", 4);
+      break;
+    case 1:
+      strncpy(out, "C#", 4);
+      break;
+    case 2:
+      strncpy(out, "D", 4);
+      break;
+    case 3:
+      strncpy(out, "D#", 4);
+      break;
+    case 4:
+      strncpy(out, "E", 4);
+      break;
+    case 5:
+      strncpy(out, "F", 4);
+      break;
+    case 6:
+      strncpy(out, "F#", 4);
+      break;
+    case 7:
+      strncpy(out, "G", 4);
+      break;
+    case 8:
+      strncpy(out, "G#", 4);
+      break;
+    case 9:
+      strncpy(out, "A", 4);
+      break;
+    case 10:
+      strncpy(out, "Bb", 4);
+      break;
+    case 11:
+      strncpy(out, "B", 4);
+      break;
+  }
+}
+
+static void hmzKeySave(SubMenuRef __unused) {
+  writeSetting(HMZKEY_ADDR,hmzKey);
+}
+
+const MenuEntrySub hmzKeyMenu = {
+  MenuType::ESub, "HMZ KEY", "KEY PLAYED", &hmzKey, 0,11, MenuEntryFlags::EMenuEntryWrap, 
+  hmzKeyOptionGet, hmzKeySave, nullptr,
+};
+
+
+static void polySelectOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+  switch (polySelect){
+    case 0:
+      strncpy(out, "OFF", 4);
+      break;
+    case 1:
+      strncpy(out, "MGR", 4);
+      break;
+    case 2:
+      strncpy(out, "MGD", 4);
+      break;
+    case 3:
+      strncpy(out, "MA9", 4);
+      break;
+    case 4:
+      strncpy(out, "MND", 4);
+      break;
+    case 5:
+      strncpy(out, "MNA", 4);
+      break;
+    case 6:
+      strncpy(out, "MNH", 4);
+      break;
+    case 7:
+      strncpy(out, "FWC", 4);
+      break;
+    case 8:
+      strncpy(out, "RTA", 4);
+      break;
+    case 9:
+      strncpy(out, "RTB", 4);
+      break;
+    case 10:
+      strncpy(out, "RTC", 4);
+      break;
+  }
+}
+
+static void polySelectSave(SubMenuRef __unused) {
+  writeSetting(POLYSEL_ADDR,polySelect);
+}
+
+const MenuEntrySub polySelectMenu = {
+  MenuType::ESub, "POLY MODE", "SELECT", &polySelect, 0,10, MenuEntryFlags::EMenuEntryWrap, 
+  polySelectOptionGet, polySelectSave, nullptr,
+};
+
+static void hmzLimitOptionGet(SubMenuRef sub, char *out, const char** __unused unit) {
+  numToString((*sub.valuePtr), out, false);
+}
+
+static void hmzLimitSave(SubMenuRef __unused) {
+  writeSetting(HMZLIMIT_ADDR,hmzLimit);
+}
+
+const MenuEntrySub hmzLimitMenu = {
+  MenuType::ESub, "HMZ LIMIT", "VOICES", &hmzLimit, 2,5, MenuEntryFlags::EMenuEntryWrap, 
+  hmzLimitOptionGet, hmzLimitSave, nullptr,
+};
+
 const MenuEntry* rotatorMenuEntries[] = {
+  (MenuEntry*)&polySelectMenu,
+  (MenuEntry*)&hmzKeyMenu,
+  (MenuEntry*)&hmzLimitMenu,
+  (MenuEntry*)&fwcTypeMenu,
+  (MenuEntry*)&fwcLockHMenu,
+  (MenuEntry*)&fwcDrop2Menu,
+  (MenuEntry*)&rotatorPrioMenu,
   (MenuEntry*)&rotatorParaMenu,
   (MenuEntry*)&rotator1Menu,
   (MenuEntry*)&rotator2Menu,
   (MenuEntry*)&rotator3Menu,
   (MenuEntry*)&rotator4Menu,
-  (MenuEntry*)&rotatorPrioMenu
+  (MenuEntry*)&rotatorParaBMenu,
+  (MenuEntry*)&rotatorB1Menu,
+  (MenuEntry*)&rotatorB2Menu,
+  (MenuEntry*)&rotatorB3Menu,
+  (MenuEntry*)&rotatorB4Menu,
+  (MenuEntry*)&rotatorParaCMenu,
+  (MenuEntry*)&rotatorC1Menu,
+  (MenuEntry*)&rotatorC2Menu,
+  (MenuEntry*)&rotatorC3Menu,
+  (MenuEntry*)&rotatorC4Menu  
 };
 /*
 const MenuPage rotatorMenuPage = {
@@ -590,7 +856,7 @@ const MenuPage rotatorMenuPage = {
 };
 */
 const MenuPage rotatorMenuPage = {
-  "ROTATOR SETUP",
+  "POLY PLAY SETUP",
   0,
   CursorIdx::ERotator,
   MAIN_MENU,
@@ -760,7 +1026,7 @@ const MenuEntrySub batteryTypeMenu = {
 const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
   (MenuEntry*)&legacyBRMenu,
-  (MenuEntry*)&specialKeyMenu,
+  (MenuEntry*)&gateOpenMenu,
   (MenuEntry*)&dacModeMenu,
   (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
@@ -772,7 +1038,6 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&legacyPBMenu,
   (MenuEntry*)&legacyBRMenu,
   (MenuEntry*)&gateOpenMenu,
-  (MenuEntry*)&specialKeyMenu,
   (MenuEntry*)&trill3Menu,
   (MenuEntry*)&bcasModeMenu,
   (MenuEntry*)&dacModeMenu,
@@ -812,7 +1077,7 @@ const MenuEntrySub midiMenu = {
 const MenuEntryStateCh adjustMenu     = { MenuType::EStateChange, "ADJUST", ADJUST_MENU };
 const MenuEntryStateCh breathMenu     = { MenuType::EStateChange, "SETUP BR", SETUP_BR_MENU };
 const MenuEntryStateCh controlMenu    = { MenuType::EStateChange, "SETUP CTL", SETUP_CT_MENU };
-const MenuEntryStateCh rotatorMenu    = { MenuType::EStateChange, "ROTATOR", ROTATOR_MENU };
+const MenuEntryStateCh rotatorMenu    = { MenuType::EStateChange, "POLY PLAY", ROTATOR_MENU };
 const MenuEntryStateCh extrasMenu     = { MenuType::EStateChange, "EXTRAS", EXTRAS_MENU };
 const MenuEntryStateCh aboutMenu      = { MenuType::EStateChange, "ABOUT", ABOUT_MENU };
 
@@ -820,10 +1085,10 @@ const MenuEntry* mainMenuEntries[] = {
   (MenuEntry*)&transposeMenu,
   (MenuEntry*)&octaveMenu,
   (MenuEntry*)&midiMenu,
-  (MenuEntry*)&adjustMenu,
+  (MenuEntry*)&rotatorMenu,
   (MenuEntry*)&breathMenu,
   (MenuEntry*)&controlMenu,
-  (MenuEntry*)&rotatorMenu,
+  (MenuEntry*)&adjustMenu,
   (MenuEntry*)&extrasMenu,
   (MenuEntry*)&aboutMenu,
 };

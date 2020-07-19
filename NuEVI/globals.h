@@ -27,6 +27,18 @@
 #define GLD 29
 #define ECH 30
 
+#define HOF 0
+#define MGR 1
+#define MGD 2
+#define MA9 3
+#define MND 4
+#define MNA 5
+#define MNH 6
+#define FWC 7
+#define RT1 8
+#define RT2 9
+#define RT3 10
+
 #define MOD 13
 
 
@@ -89,12 +101,22 @@ extern unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
 extern unsigned short batteryType; // 0-2 ALK,NIM,LIP
 extern unsigned short harmSetting; // 0-7
 extern unsigned short harmSelect; // 0-4
+extern unsigned short polySelect;  // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
+extern unsigned short fwcType; // 6, m6, 7, m7
+extern unsigned short fwcLockH; // OFF:ON
+extern unsigned short fwcDrop2; // OFF:ON
+extern unsigned short hmzKey; // 0-11 (0 is C) 
+extern unsigned short hmzLimit; // 2-5
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
 extern byte currentRotation;
 extern uint16_t rotations[4];
 extern uint16_t parallel; // semitones
+extern uint16_t rotationsb[4];
+extern uint16_t parallelb; // semitones
+extern uint16_t rotationsc[4];
+extern uint16_t parallelc; // semitones
 
 extern uint16_t bcasMode; //Legacy CASSIDY compile flag
 extern uint16_t trill3_interval;

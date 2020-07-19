@@ -63,8 +63,24 @@
 #define BATTYPE_ADDR 112
 #define HARMSET_ADDR 114
 #define HARMSEL_ADDR 116
+#define PARAB_ADDR 118
+#define ROTB1_ADDR 120
+#define ROTB2_ADDR 122
+#define ROTB3_ADDR 124
+#define ROTB4_ADDR 126
+#define PARAC_ADDR 128
+#define ROTC1_ADDR 130
+#define ROTC2_ADDR 132
+#define ROTC3_ADDR 134
+#define ROTC4_ADDR 136
+#define POLYSEL_ADDR 138
+#define FWCTYPE_ADDR 140
+#define HMZKEY_ADDR 150
+#define FWCLCH_ADDR 152
+#define FWCDP2_ADDR 154
+#define HMZLIMIT_ADDR 156
 
-#define EEPROM_SIZE 118
+#define EEPROM_SIZE 158 //Last address +2
 
 
 //DAC output modes
@@ -81,7 +97,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 35
+#define EEPROM_VERSION 38
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -135,6 +151,22 @@
 #define BATTYPE_FACTORY 0
 #define HARMSET_FACTORY 0
 #define HARMSEL_FACTORY 0
+#define PARAB_FACTORY 31 // 7 (+ 24) Rotator parallel
+#define ROTB1_FACTORY 19 // -5 (+24) Rotation 1
+#define ROTB2_FACTORY 14 // -10 (+24) Rotation 2
+#define ROTB3_FACTORY 17 // -7 (+24) Rotation 3
+#define ROTB4_FACTORY 10 // -14 (+24) Rotation 4
+#define PARAC_FACTORY 31 // 7 (+ 24) Rotator parallel
+#define ROTC1_FACTORY 19 // -5 (+24) Rotation 1
+#define ROTC2_FACTORY 14 // -10 (+24) Rotation 2
+#define ROTC3_FACTORY 17 // -7 (+24) Rotation 3
+#define ROTC4_FACTORY 10 // -14 (+24) Rotation 4
+#define POLYSEL_FACTORY 0
+#define FWCTYPE_FACTORY 1
+#define HMZKEY_FACTORY 0
+#define FWCLCH_FACTORY 0
+#define FWCDP2_FACTORY 0
+#define HMZLIMIT_FACTORY 5
 
 #define NO_CHECKSUM 0x7F007F00
 
