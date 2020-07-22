@@ -18,6 +18,16 @@ added directly via the Library Manager in the Arduino IDE:
 * Adafruit SSD1306 (version 1.2.9 or above)
 * NuEVI also includes on the [Filters](https://github.com/JonHub/Filters) library by Jonathan Driscoll, but that is no longer an external dependency.
 
+For the SSD1306 library, the Adafruit_SSD1306.h file needs to be edited to prevent it from lowering the I2C speed.
+
+Change this:
+  Adafruit_SSD1306(uint8_t w, uint8_t h, TwoWire *twi=&Wire, int8_t rst_pin=-1,
+    uint32_t clkDuring=400000UL, uint32_t clkAfter=100000UL);
+
+To this:
+  Adafruit_SSD1306(uint8_t w, uint8_t h, TwoWire *twi=&Wire, int8_t rst_pin=-1,
+    uint32_t clkDuring=1000000UL, uint32_t clkAfter=1000000UL);
+
 
 ### Compile options
 
@@ -31,6 +41,5 @@ option is selected (the green round icon). In Arduino IDE, select "Sketch -> Ver
 once that is complete press the reset button on the Teensy chip (you have to remove the top cover
 on the NuEVI to access this). Upon resetting, it should upload the new firmware onto the NuEVI.
 
-After uploading new firmware, you may need to reset the config memory of the NuEVI. It's a good idea
-to do between version upgrades, since the config parameter format often changes. To do this, press
-and hold the MENU and ENTER buttons while turning on the NuEVI.
+After uploading new firmware, you may need to reset the config memory of the NuEVI. To do this, press
+and hold the MENU and ENTER buttons while turning on the NuEVI. Note that this resets all sensor calibrations too. For new versions this should not be neccessary, as value and version checks are in place.
