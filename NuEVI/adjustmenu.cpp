@@ -240,17 +240,20 @@ void plotSensorPixels(){
   else if(adjustOption == 4) {
         display.drawLine(28,37,118,37,BLACK);
     for (byte i=0; i<12; i++){
-      int pos = map(constrain(touchSensorRH.filteredData(i) - calOffsetRH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      //int pos = map(constrain(touchSensorRH.filteredData(i) - calOffsetRH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      int pos = map(constrain(touchSensorRH.filteredData(i) * (300-calOffsetRH[i])/300, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
       display.drawPixel(pos, 37, WHITE);
     }
     display.drawLine(28,38,118,38,BLACK);
     for (byte i=0; i<12; i++){
-      int pos = map(constrain(touchSensorLH.filteredData(i) - calOffsetLH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      //int pos = map(constrain(touchSensorLH.filteredData(i) - calOffsetLH[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      int pos = map(constrain(touchSensorLH.filteredData(i) * (300-calOffsetLH[i])/300, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
       display.drawPixel(pos, 38, WHITE);
     }
     display.drawLine(28,39,118,39,BLACK);
     for (byte i=0; i<6; i++){
-      int pos = map(constrain(touchSensorRollers.filteredData(i) - calOffsetRollers[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      //int pos = map(constrain(touchSensorRollers.filteredData(i) - calOffsetRollers[i], ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
+      int pos = map(constrain(touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300, ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, 28, 118);
       display.drawPixel(pos, 39, WHITE);
     }
     redraw = 1;

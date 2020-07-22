@@ -107,6 +107,8 @@ extern unsigned short fwcLockH; // OFF:ON
 extern unsigned short fwcDrop2; // OFF:ON
 extern unsigned short hmzKey; // 0-11 (0 is C) 
 extern unsigned short hmzLimit; // 2-5
+extern unsigned short otfKey; //OFF:ON
+extern unsigned short breathInterval; // 3-15
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;

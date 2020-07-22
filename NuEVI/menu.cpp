@@ -822,9 +822,26 @@ const MenuEntrySub hmzLimitMenu = {
   hmzLimitOptionGet, hmzLimitSave, nullptr,
 };
 
+static void otfKeyOptionGet(SubMenuRef __unused, char* out, const char** __unused) {
+    if (otfKey) strncpy(out, "ON", 4);
+    else strncpy(out, "OFF", 4);
+}
+
+static void otfKeySave(SubMenuRef __unused) {
+  writeSetting(OTFKEY_ADDR,otfKey);
+}
+
+const MenuEntrySub otfKeyMenu = {
+  MenuType::ESub, "OTF KEY", "OTF KEYSW", &otfKey, 0,1, MenuEntryFlags::EMenuEntryWrap, 
+  otfKeyOptionGet, otfKeySave, nullptr,
+};
+
+
+
 const MenuEntry* rotatorMenuEntries[] = {
   (MenuEntry*)&polySelectMenu,
   (MenuEntry*)&hmzKeyMenu,
+  (MenuEntry*)&otfKeyMenu,
   (MenuEntry*)&hmzLimitMenu,
   (MenuEntry*)&fwcTypeMenu,
   (MenuEntry*)&fwcLockHMenu,
@@ -885,14 +902,16 @@ const MenuEntrySub octaveMenu = {
 };
 
 static void midiSaveFunc(const MenuEntrySub & __unused sub) { writeSetting(MIDI_ADDR, MIDIchannel); }
+
 static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char** __unused) {
   char buff[7];
   numToString(MIDIchannel, buff);
   plotSubOption(buff);
   if (slowMidi) {
-    display.setTextSize(1);
-    display.setCursor(116,51);
-    display.print("S");
+    //replaced with breathInterval setting and not used anymore.. do cleanup later removing all slowMidi related stuff
+    //display.setTextSize(1);
+    //display.setCursor(116,51);
+    //display.print("S");
   }
 }
 
@@ -1057,6 +1076,8 @@ const MenuPage extrasMenuPage = {
 }; 
 
 static bool midiEnterHandlerFunc() {
+  /*
+  //this switching is removed due to new breathInterval setting
   readSwitches();
   if (pinkyKey){
     slowMidi = !slowMidi;
@@ -1067,6 +1088,9 @@ static bool midiEnterHandlerFunc() {
     writeSetting(MIDI_ADDR, MIDIchannel);
     return true;
   }
+  */
+  writeSetting(MIDI_ADDR, MIDIchannel);
+  return true;
 }
 
 const MenuEntrySub midiMenu = {
@@ -1196,7 +1220,7 @@ const MenuEntrySub velSmpDlMenu = {
   [](SubMenuRef __unused, char *out, const char** label) {
     if (velSmpDl) {
       numToString(velSmpDl, out);
-      *label = "";
+      *label = "ms";
     } else strncpy(out, "OFF", 4);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(VEL_SMP_DL_ADDR,velSmpDl); }
@@ -1213,6 +1237,15 @@ const MenuEntrySub velBiasMenu = {
   , nullptr
 };
 
+const MenuEntrySub breathIntervalMenu = {
+  MenuType::ESub, "BR INTERV", "CC INTERV", &breathInterval, 3, 15, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(breathInterval, out, false);
+  },
+  [](SubMenuRef __unused) { writeSetting(BRINTERV_ADDR, breathInterval); }
+  , nullptr
+};
+
 const MenuEntry* breathMenuEntries[] = {
   (MenuEntry*)&breathCCMenu,
   (MenuEntry*)&breathCC2Menu,
@@ -1221,7 +1254,8 @@ const MenuEntry* breathMenuEntries[] = {
   (MenuEntry*)&velocityMenu,
   (MenuEntry*)&curveMenu,
   (MenuEntry*)&velSmpDlMenu,
-  (MenuEntry*)&velBiasMenu
+  (MenuEntry*)&velBiasMenu,
+  (MenuEntry*)&breathIntervalMenu
 };
 
 const MenuPage breathMenuPage = {

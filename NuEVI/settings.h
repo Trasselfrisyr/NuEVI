@@ -79,8 +79,10 @@
 #define FWCLCH_ADDR 152
 #define FWCDP2_ADDR 154
 #define HMZLIMIT_ADDR 156
+#define BRINTERV_ADDR 158
+#define OTFKEY_ADDR 160
 
-#define EEPROM_SIZE 158 //Last address +2
+#define EEPROM_SIZE 162 //Last address +2
 
 
 //DAC output modes
@@ -97,7 +99,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 38
+#define EEPROM_VERSION 39
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
@@ -122,7 +124,7 @@
 #define OCTAVE_FACTORY 3    // 3 is 0 octave change
 #define CTOUCH_THR_FACTORY 125  // MPR121 touch threshold
 #define BREATHCURVE_FACTORY 4 // 0 to 12 (-4 to +4, S1 to S4)
-#define VEL_SMP_DL_FACTORY 15 // 0 to 30
+#define VEL_SMP_DL_FACTORY 20 // 0 to 30
 #define VEL_BIAS_FACTORY 0  // 0 to 9
 #define PINKY_KEY_FACTORY 12 // 0 - 11 (QuickTranspose -12 to -1), 12 (pb/2), 13 - 22 (QuickTranspose +1 to +12)
 #define DIPSW_BITS_FACTORY 0 // virtual dip switch settings for special modes (work in progress)
@@ -167,6 +169,8 @@
 #define FWCLCH_FACTORY 0
 #define FWCDP2_FACTORY 0
 #define HMZLIMIT_FACTORY 5
+#define BRINTERV_FACTORY 6
+#define OTFKEY_FACTORY 0
 
 #define NO_CHECKSUM 0x7F007F00
 

@@ -5,7 +5,7 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.4.7"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.4.8"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
@@ -13,12 +13,13 @@
 #define CCN_PortSE02 9  // Controller number for portamento type on Roland SE-02
 
 // Send breath CC data no more than every CC_BREATH_INTERVAL 
-// milliseconds (due to timing errors, the value should be about half the actual wanted value)
-#define CC_BREATH_INTERVAL 1
+// milliseconds
+#define CC_BREATH_INTERVAL 5
 #define SLOW_MIDI_ADD 7
 #define CC_INTERVAL 13
 #define CC_INTERVAL2 19
 #define CC_INTERVAL3 37
+#define CVPORTATUNE 2
 
 
 #define breathLoLimit   0

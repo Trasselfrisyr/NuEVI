@@ -146,6 +146,11 @@ void readEEPROM(const bool factoryReset) {
         if(settingsVersion < 38) {
             writeSetting(HMZLIMIT_ADDR, HMZLIMIT_FACTORY);
         }
+
+        if(settingsVersion < 39) {
+            writeSetting(BRINTERV_ADDR, BRINTERV_FACTORY);
+            writeSetting(OTFKEY_ADDR, OTFKEY_FACTORY);
+        }
         
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
@@ -230,6 +235,8 @@ void readEEPROM(const bool factoryReset) {
     rotationsc[1]   = readSettingBounded(ROTC2_ADDR, 0, 48, ROTC2_FACTORY);
     rotationsc[2]   = readSettingBounded(ROTC3_ADDR, 0, 48, ROTC3_FACTORY);
     rotationsc[3]   = readSettingBounded(ROTC4_ADDR, 0, 48, ROTC4_FACTORY);
+    otfKey          = readSettingBounded(OTFKEY_ADDR, 0, 1, OTFKEY_FACTORY);
+    breathInterval  = readSettingBounded(BRINTERV_ADDR, 3, 15, BRINTERV_FACTORY);
 
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

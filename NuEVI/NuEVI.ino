@@ -98,7 +98,9 @@ unsigned short fwcType; // 6, m6, 7, m7
 unsigned short fwcLockH; // OFF:ON
 unsigned short fwcDrop2; // OFF:ON
 unsigned short hmzKey; // 0-11 (0 is C) 
-unsigned short hmzLimit; // 2-5:
+unsigned short hmzLimit; // 2-5
+unsigned short otfKey; //OFF:ON
+unsigned short breathInterval = 6; // 3-15
 
 unsigned short vibSens = 2; // vibrato sensitivity
 unsigned short vibRetn = 2; // vibrato return speed
@@ -169,6 +171,8 @@ byte activeMIDIchannel;          // MIDI channel
 byte activePatch=0;
 byte doPatchUpdate=0;
 
+byte cvPortaTuneCount = 0;
+
 uint16_t legacy = 0;
 uint16_t legacyBrAct = 0;
 byte halfTime = 0;
@@ -190,7 +194,7 @@ int breathCalZero;
 
 int leverPortZero;
 #if defined(NURAD)
-int leverPortThr = 40;
+int leverPortThr = 50;
 #else
 int leverPortThr = 50;
 #endif
@@ -550,7 +554,7 @@ void setup() {
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
   analogWriteResolution(12);
   analogWriteFrequency(pwmDacPin,11718.75);
-  Wire.setClock(400000);
+  Wire.setClock(1000000);
 
   pinMode(dPin, INPUT_PULLUP);
   pinMode(ePin, INPUT_PULLUP);
@@ -1293,7 +1297,8 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL+slowMidi*SLOW_MIDI_ADD)){
+  //if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL+slowMidi*SLOW_MIDI_ADD)){
+  if (currentTime - ccBreathSendTime > (breathInterval-1)){
     breath();
     ccBreathSendTime = currentTime;
   }
@@ -1331,10 +1336,22 @@ void loop() {
     targetPitch = (fingeredNote-24)*42;
     if (portIsOn){
       if (targetPitch > cvPitch){
-        cvPitch += 1+(127-oldport)/4;
+        if (!cvPortaTuneCount) {
+          cvPitch += 1+(127-oldport)/4;
+        }
+        else {
+          cvPortaTuneCount++;
+          if (cvPortaTuneCount > CVPORTATUNE) cvPortaTuneCount=0;
+        }
         if (cvPitch > targetPitch) cvPitch = targetPitch;
       } else if (targetPitch < cvPitch){
-        cvPitch -= 1+(127-oldport)/4;
+        if (!cvPortaTuneCount) {
+          cvPitch -= 1+(127-oldport)/4;
+        }
+        else {
+          cvPortaTuneCount++;
+          if (cvPortaTuneCount > CVPORTATUNE) cvPortaTuneCount=0;
+        }
         if (cvPitch < targetPitch) cvPitch = targetPitch;
       } else {
         cvPitch = targetPitch;
@@ -1842,7 +1859,8 @@ void readSwitches() {
       // Octave rollers
       int touchValueRollers[12]; 
       for (byte i=0; i<6; i++){
-        touchValueRollers[i]=touchSensorRollers.filteredData(i) - calOffsetRollers[i];
+        //touchValueRollers[i]=touchSensorRollers.filteredData(i) - calOffsetRollers[i];
+        touchValueRollers[i]=touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300;
       }
       // 6-pin version
       octaveR = 0;
@@ -1852,6 +1870,13 @@ void readSwitches() {
       else if (R3=(touchValueRollers[rPin3] < ctouchThrVal)) octaveR = 3;  //R3 (store for combo check)
       else if (R2=(touchValueRollers[rPin2] < ctouchThrVal)) octaveR = 2;  //R2 (store for combo check)
       else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
+      else if (lastOctaveR > 1) {
+        octaveR = lastOctaveR; 
+        if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+      }
+      //if rollers are released and we are not coming down from roller 1, stay at the higher octave
+
+      lastOctaveR = octaveR;
        /*
       //5-pin version
       octaveR = 0;
@@ -1867,7 +1892,8 @@ void readSwitches() {
       // RH keys
       int touchValueRH[12]; 
       for (byte i=0; i<12; i++){
-        touchValueRH[i]=touchSensorRH.filteredData(i) - calOffsetRH[i];
+        //touchValueRH[i]=touchSensorRH.filteredData(i) - calOffsetRH[i];
+        touchValueRH[i]=touchSensorRH.filteredData(i) * (300-calOffsetRH[i])/300;
       }
       RHs=(touchValueRH[RHsPin] < ctouchThrVal);
       RH1=(touchValueRH[RH1Pin] < ctouchThrVal);
@@ -1882,7 +1908,8 @@ void readSwitches() {
       // LH keys
       int touchValueLH[12]; 
       for (byte i=0; i<12; i++){
-        touchValueLH[i]=touchSensorLH.filteredData(i) - calOffsetLH[i];
+        //touchValueLH[i]=touchSensorLH.filteredData(i) - calOffsetLH[i];
+        touchValueLH[i]=touchSensorLH.filteredData(i) * (300-calOffsetLH[i])/300;
       }
       LHs=(touchValueLH[LHsPin] < ctouchThrVal);
       LHb=(touchValueLH[LHbPin] < ctouchThrVal);
@@ -1984,7 +2011,10 @@ void readSwitches() {
   else if (R3 && lastOctaveR) octaveR = 3; //R3
   else if (R2) octaveR = 2; //R2
   else if (R1) octaveR = 1; //R1
-  else if (lastOctaveR > 1) octaveR = lastOctaveR; 
+  else if (lastOctaveR > 1) {
+    octaveR = lastOctaveR; 
+    if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+  }
   //if rollers are released and we are not coming down from roller 1, stay at the higher octave
   //CV filter leak prevention when putting NuEVI aside
 
