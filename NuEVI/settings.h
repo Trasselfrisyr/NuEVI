@@ -100,16 +100,17 @@
 
 //"factory" values for settings
 #define EEPROM_VERSION 39
+
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
 #define PORTAM_THR_FACTORY 2600
 #define PORTAM_MAX_FACTORY 3300
 #define PORTPR_THR_FACTORY 1200
 #define PORTPR_MAX_FACTORY 2000
-#define PITCHB_THR_FACTORY 1400
-#define PITCHB_MAX_FACTORY 2300
-#define EXTRAC_THR_FACTORY 1200
-#define EXTRAC_MAX_FACTORY 2400
+#define PITCHB_THR_FACTORY 2000
+#define PITCHB_MAX_FACTORY 3000
+#define EXTRAC_THR_FACTORY 2800
+#define EXTRAC_MAX_FACTORY 3500
 #define TRANSP_FACTORY 12   // 12 is 0 transpose
 #define MIDI_FACTORY 1      // 1-16
 #define BREATH_CC_FACTORY 2 //thats CC#2, see ccList
@@ -117,7 +118,7 @@
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 2     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
+#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
 #define VIBRATO_FACTORY 4   // 0 - OFF, 1 - 9 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
@@ -140,7 +141,7 @@
 #define VIB_DIRECTION_FACTORY 0
 #define BREATH_CC2_FACTORY 0  //OFF,1-127
 #define BREATH_CC2_RISE_FACTORY 1
-#define VIB_SENS_BITE_FACTORY 3
+#define VIB_SENS_BITE_FACTORY 8
 #define VIB_SQUELCH_BITE_FACTORY 10
 #define VIB_CONTROL_FACTORY 0
 #define TRILL3_INTERVAL_FACTORY 4
@@ -164,7 +165,7 @@
 #define ROTC3_FACTORY 17 // -7 (+24) Rotation 3
 #define ROTC4_FACTORY 10 // -14 (+24) Rotation 4
 #define POLYSEL_FACTORY 0
-#define FWCTYPE_FACTORY 1
+#define FWCTYPE_FACTORY 0
 #define HMZKEY_FACTORY 0
 #define FWCLCH_FACTORY 0
 #define FWCDP2_FACTORY 0

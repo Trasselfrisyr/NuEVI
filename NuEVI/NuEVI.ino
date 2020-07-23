@@ -657,6 +657,8 @@ void setup() {
   vibThrBite = vibZeroBite - vibSquelchBite;
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
+  if (factoryReset) autoCal();
+
   if(!fastBoot) {
     statusLedFlash(500);
     statusLedOff();
@@ -1847,6 +1849,90 @@ void portOff() {
   portIsOn = 0;
   oldport = 0;
 }
+
+//***********************************************************
+
+void autoCal() {
+  int calRead;
+  int calReadNext;
+// NuRAD/NuEVI sensor calibration
+  // Extra Controller
+  calRead = touchRead(extraPin);
+  extracThrVal = constrain(calRead+200, extracLoLimit, extracHiLimit);
+  extracMaxVal = constrain(extracThrVal+600, extracLoLimit, extracHiLimit);
+  writeSetting(EXTRAC_THR_ADDR, extracThrVal);
+  writeSetting(EXTRAC_MAX_ADDR, extracMaxVal);
+  // Breath sensor
+  calRead = analogRead(breathSensorPin);
+  breathThrVal = constrain(calRead+200, breathLoLimit, breathHiLimit);
+  breathMaxVal = constrain(breathThrVal+2000, breathLoLimit, breathHiLimit);
+  writeSetting(BREATH_THR_ADDR, breathThrVal);
+  writeSetting(BREATH_MAX_ADDR, breathMaxVal);
+  // Pitch Bend
+  calRead = touchRead(pbUpPin);
+  calReadNext = touchRead(pbDnPin);
+  if (calReadNext > calRead) calRead = calReadNext; //use highest value
+  pitchbThrVal = constrain(calRead+200, pitchbLoLimit, pitchbHiLimit);
+  pitchbMaxVal = constrain(pitchbThrVal+800, pitchbLoLimit, pitchbHiLimit);
+  writeSetting(PITCHB_THR_ADDR, pitchbThrVal);
+  writeSetting(PITCHB_MAX_ADDR, pitchbMaxVal);
+#if defined(NURAD) // NuRAD sensor calibration
+  // Pressure sensor
+  calRead = analogRead(bitePressurePin);
+  portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
+  portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+  writeSetting(PORTAM_THR_ADDR, portamThrVal);
+  writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+  // Touch sensors
+  calRead = ctouchHiLimit;  
+  for (byte i = 0; i < 6; i++) {
+    calReadNext = touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300;
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  }
+  for (byte i = 0; i < 12; i++) {
+    calReadNext = touchSensorRH.filteredData(i) * (300-calOffsetRH[i])/300;
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  }
+  for (byte i = 0; i < 12; i++) {
+    calReadNext = touchSensorLH.filteredData(i) * (300-calOffsetLH[i])/300;
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  }
+  ctouchThrVal = constrain(calRead-20, ctouchLoLimit, ctouchHiLimit);
+  touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+  writeSetting(CTOUCH_THR_ADDR, ctouchThrVal);
+#else // NuEVI sensor calibration
+  // Bite sensor
+  if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
+    // Capacitive sensor
+    calRead = touchRead(bitePin);
+    portamThrVal = constrain(calRead+200, portamLoLimit, portamHiLimit);
+    portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+    writeSetting(PORTAM_THR_ADDR, portamThrVal);
+    writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+  } else {
+    // Pressure sensor
+    calRead = analogRead(bitePressurePin);
+    portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
+    portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+    writeSetting(PORTAM_THR_ADDR, portamThrVal);
+    writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+  }
+  // Touch sensors
+  calRead = ctouchHiLimit;  
+  for (byte i = 0; i < 12; i++) {
+    calReadNext = touchSensor.filteredData(i);
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  }
+  calReadNext=map(touchRead(halfPitchBendKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+  if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  calReadNext=map(touchRead(specialKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+  if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+  ctouchThrVal = constrain(calRead-20, ctouchLoLimit, ctouchHiLimit);
+  touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+  writeSetting(CTOUCH_THR_ADDR, ctouchThrVal);
+#endif
+}
+
 
 //***********************************************************
 
