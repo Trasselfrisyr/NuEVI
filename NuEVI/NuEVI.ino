@@ -64,6 +64,8 @@ unsigned short pitchbMaxVal;// = 2400;
 unsigned short extracThrVal;// = 1200;
 unsigned short extracMaxVal;// = 2400;
 unsigned short ctouchThrVal;// = 120;
+unsigned short leverThrVal;
+unsigned short leverMaxVal;
 unsigned short transpose;
 unsigned short MIDIchannel;
 unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF
@@ -72,6 +74,7 @@ unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
+unsigned short portLimit; // 1-127
 unsigned short PBdepth;   // OFF:1-12 divider
 unsigned short extraCT;   // OFF:MW:FP:CF:SP
 unsigned short vibrato;   // OFF:1-9
@@ -157,6 +160,7 @@ unsigned long lastDeglitchTime = 0;         // The last time the fingering was c
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
 unsigned long ccSendTime2 = 0L;             // The last time we sent CC values 2 (slower)
 unsigned long ccSendTime3 = 0L;             // The last time we sent CC values 3 (and slower)
+unsigned long lvlTime = 0L;
 unsigned long ccBreathSendTime = 0L;        // The last time we sent breath CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
 unsigned long currentTime;
@@ -194,9 +198,9 @@ int breathCalZero;
 
 int leverPortZero;
 #if defined(NURAD)
-int leverPortThr = 50;
+int leverPortThr = 70;
 #else
-int leverPortThr = 50;
+int leverPortThr = 70;
 #endif
 int leverPortRead;
 
@@ -909,33 +913,45 @@ void loop() {
       subOctaveDouble = 0;
     }
     if ((pinkySetting == LVL) || (pinkySetting == LVLP)){
-      if (pinkyKey){
+      if (pinkyKey && K7){
         ledMeter(levelVal);
         if (K6 && (levelVal < 127)){
-          levelVal++;
-          if (levelCC) midiSendControlChange(levelCC, levelVal);
-          else midiSendAfterTouch(levelVal);
+          if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
+            levelVal++;
+            if (levelCC) midiSendControlChange(levelCC, levelVal);
+            else midiSendAfterTouch(levelVal);
+            lvlTime = currentTime;
+          }
         } else if (K5 && (levelVal > 0)){
-          levelVal--;
-          if (levelCC) midiSendControlChange(levelCC, levelVal);
-          else midiSendAfterTouch(levelVal);
+          if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
+            levelVal--;
+            if (levelCC) midiSendControlChange(levelCC, levelVal);
+            else midiSendAfterTouch(levelVal);
+            lvlTime = currentTime;
+          }
        }
-      } else if (lastPinkyKey){
+      } else if (!pinkyKey && lastPinkyKey){
         writeSetting(LEVEL_VAL_ADDR,levelVal);
       }
       lastPinkyKey = pinkyKey;
     } else if (pinkySetting == GLD){
-      if (pinkyKey){
-        ledMeter(levelVal);
-        if (K6 && (levelVal < 127)){
-          levelVal++;
-          midiSendControlChange(CCN_Port, levelVal);
-        } else if (K5 && (levelVal > 0)){
-          levelVal--;
-          midiSendControlChange(CCN_Port, levelVal);
+      if (pinkyKey && K7){
+        ledMeter(portLimit);
+        if (K6 && (portLimit < 127)){
+          if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
+            portLimit++;
+            if (portamento && (portamento != 5)) midiSendControlChange(CCN_Port, portLimit);
+            lvlTime = currentTime;
+          }
+        } else if (K5 && (portLimit > 0)){
+          if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
+            portLimit--;
+            if (portamento && (portamento != 5)) midiSendControlChange(CCN_Port, portLimit);
+            lvlTime = currentTime;
+          }
         }
-      } else if (lastPinkyKey){
-        writeSetting(LEVEL_VAL_ADDR,levelVal);
+      } else if (!pinkyKey && lastPinkyKey){
+        writeSetting(PORTLIMIT_ADDR,portLimit);
       }
       lastPinkyKey = pinkyKey;
     }
@@ -1283,6 +1299,7 @@ void loop() {
         }
 
         if (!parallelChord && !subOctaveDouble && !rotatorOn) { // mono playing, send old note off after new note on
+          delayMicroseconds(2000); //delay for midi recording fix
           midiSendNoteOff(activeNote); //  send Note Off message
         }
 
@@ -1317,7 +1334,7 @@ void loop() {
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
     if (gateOpenEnable || gateOpen) doorKnobCheck();
     battCheck();
-    if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey && (mainState == NOTE_OFF)){
+    if (((pinkySetting == LVL) || (pinkySetting == LVLP) || (pinkySetting == GLD)) && pinkyKey && K7 && (mainState == NOTE_OFF)){
       // show LVL indication
     } else updateSensorLEDs();
     ccSendTime3 = currentTime;
@@ -1768,7 +1785,7 @@ void portamento_() {
     biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
   }
   if (pinkySetting == GLD){
-    if (pinkyKey){
+    if (portamento && pinkyKey){
       if (!portIsOn) {
         portOn();
       }
@@ -1789,7 +1806,7 @@ void portamento_() {
   } else if (1 == vibControl) {
     // Portamento is switched to lever control
     leverPortRead = touchRead(vibratoPin);
-    if (portamento && (leverPortRead <= (leverPortZero-leverPortThr))) { // if we are enabled and over the threshold, send portamento
+    if (portamento && ((3000-leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
       if (!portIsOn) {
        portOn();
       }
@@ -1807,7 +1824,7 @@ void portamento_() {
 //***********************************************************
 
 void portOn() {
-  if (portamento == 2) { // if portamento midi switching is enabled
+  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 127);
   } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
     midiSendControlChange(CCN_PortSE02, 64);
@@ -1822,12 +1839,12 @@ void portOn() {
 void port() {
   int portCC;
   if (pinkySetting == GLD){
-    portCC = levelVal;
-  } else if (1 != vibControl)
-    portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
-  else
-    portCC = constrain((leverPortZero-leverPortThr-leverPortRead),0,127);
-  if (portCC != oldport) {
+    portCC = portLimit;
+  } else if (1 == vibControl)
+    portCC = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
+  else  
+    portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, portLimit);
+  if ((portamento != 5) && (portCC != oldport)) { // portamento setting 5 is switch only, do not transmit glide rate
     midiSendControlChange(CCN_Port, portCC);
   }
   oldport = portCC;
@@ -1836,10 +1853,10 @@ void port() {
 //***********************************************************
 
 void portOff() {
-  if (oldport != 0) { //did a zero get sent? if not, then send one
+  if ((portamento != 5) && (oldport != 0)) { //did a zero get sent? if not, then send one (unless portamento is switch only)
     midiSendControlChange(CCN_Port, 0);
   }
-  if (portamento == 2) { // if portamento midi switching is enabled
+  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 0);
   } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
     midiSendControlChange(CCN_PortSE02, 0);
@@ -1876,6 +1893,12 @@ void autoCal() {
   pitchbMaxVal = constrain(pitchbThrVal+800, pitchbLoLimit, pitchbHiLimit);
   writeSetting(PITCHB_THR_ADDR, pitchbThrVal);
   writeSetting(PITCHB_MAX_ADDR, pitchbMaxVal);
+  // Lever
+  calRead = 3000-touchRead(vibratoPin);
+  leverThrVal = constrain(calRead+70, leverLoLimit, leverHiLimit);
+  leverMaxVal = constrain(calRead+150, leverLoLimit, leverHiLimit);
+  writeSetting(LEVER_THR_ADDR, leverThrVal);
+  writeSetting(LEVER_MAX_ADDR, leverMaxVal);
 #if defined(NURAD) // NuRAD sensor calibration
   // Pressure sensor
   calRead = analogRead(bitePressurePin);

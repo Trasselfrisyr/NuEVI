@@ -413,7 +413,7 @@ static void mainTitleGetStr(char* out) {
     case 2:
       vLowLimit = LIP_BAT_LOW;
   }
-  if (vMeterReading < vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh 
+  if (vMeterReading <= vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh 
     memcpy(splice2, "LOW ", 4);
   } else {
     int voltage = map(vMeterReading,2200,3060,36,50);
@@ -1269,14 +1269,26 @@ const MenuPage breathMenuPage = {
 //***********************************************************
 // Control menu
 const MenuEntrySub portMenu = {
-  MenuType::ESub, "PORT/GLD", "PORT/GLD", &portamento, 0, 4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "GLIDE CTL", "PORT/GLD", &portamento, 0, 5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "OFF", "ON", "SW", "SEL", "SEE" };
+    const char* labs[] = { "OFF", "ON", "SW", "SEL", "SEE", "SWO" };
     strncpy(out, labs[portamento], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(PORTAM_ADDR,portamento); }
   , nullptr
 };
+
+
+const MenuEntrySub portLimitMenu = {
+  MenuType::ESub, "GLIDE LMT",  "MAX LEVEL", &portLimit, 1, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(portLimit, out);
+  },
+[](const SubMenuRef & __unused sub) { writeSetting(PORTLIMIT_ADDR,portLimit); }
+  , nullptr
+};
+
+
 
 const MenuEntrySub pitchBendMenu = {
   MenuType::ESub, "PITCHBEND", "PITCHBEND", &PBdepth, 0, 12, MenuEntryFlags::ENone,
@@ -1429,6 +1441,7 @@ const MenuEntrySub lpinky3Menu = {
 #if defined(NURAD)
 const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
+  (MenuEntry*)&portLimitMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
@@ -1444,6 +1457,7 @@ const MenuEntry* controlMenuEntries[] = {
 #else
 const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portMenu,
+  (MenuEntry*)&portLimitMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,

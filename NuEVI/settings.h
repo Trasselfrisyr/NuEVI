@@ -81,8 +81,11 @@
 #define HMZLIMIT_ADDR 156
 #define BRINTERV_ADDR 158
 #define OTFKEY_ADDR 160
+#define PORTLIMIT_ADDR 162
+#define LEVER_THR_ADDR 164
+#define LEVER_MAX_ADDR 166
 
-#define EEPROM_SIZE 162 //Last address +2
+#define EEPROM_SIZE 168 //Last address +2
 
 
 //DAC output modes
@@ -99,7 +102,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 39
+#define EEPROM_VERSION 40
 
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
@@ -111,6 +114,8 @@
 #define PITCHB_MAX_FACTORY 3000
 #define EXTRAC_THR_FACTORY 2800
 #define EXTRAC_MAX_FACTORY 3500
+#define LEVER_THR_FACTORY 1700
+#define LEVER_MAX_FACTORY 1800
 #define TRANSP_FACTORY 12   // 12 is 0 transpose
 #define MIDI_FACTORY 1      // 1-16
 #define BREATH_CC_FACTORY 2 //thats CC#2, see ccList
@@ -172,6 +177,7 @@
 #define HMZLIMIT_FACTORY 5
 #define BRINTERV_FACTORY 6
 #define OTFKEY_FACTORY 0
+#define PORTLIMIT_FACTORY 127
 
 #define NO_CHECKSUM 0x7F007F00
 

@@ -113,12 +113,29 @@ const AdjustMenuEntry ctouchAdjustMenu = {
   ctouchThrSave
 };
 
+
+static void leverSave(const AdjustMenuEntry& e) {
+  writeSetting(LEVER_THR_ADDR, *e.entries[0].value);
+  writeSetting(LEVER_MAX_ADDR, *e.entries[1].value);
+}
+
+const AdjustMenuEntry leverAdjustMenu = {
+  "THUMB LEVER", 
+  {
+    { &leverThrVal, leverLoLimit, leverHiLimit },
+    { &leverMaxVal, leverLoLimit, leverHiLimit }
+  }, 
+  leverSave
+};
+
+
 const AdjustMenuEntry* adjustMenuEntries[] = {
   &breathAdjustMenu,
   &portamentoAdjustMenu,
   &pitchBendAdjustMenu,
   &extraSensorAdjustMenu,
   &ctouchAdjustMenu,
+  &leverAdjustMenu,
 };
 
 static const int numAdjustEntries = ARR_LEN(adjustMenuEntries);
@@ -277,6 +294,12 @@ void plotSensorPixels(){
     redraw = 1;
   }
   #endif
+  else if(adjustOption == 5) {
+    int pos = map(constrain(3000-touchRead(vibratoPin), leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);
+    redraw = updateSensorPixel(pos, -1);
+  }
+
+  
   if (redraw){
     display.display();
   }

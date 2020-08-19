@@ -65,6 +65,8 @@ extern unsigned short pitchbMaxVal;
 extern unsigned short extracThrVal;
 extern unsigned short extracMaxVal;
 extern unsigned short ctouchThrVal;
+extern unsigned short leverThrVal;
+extern unsigned short leverMaxVal;
 extern unsigned short transpose;
 extern unsigned short MIDIchannel;
 extern unsigned short breathCC;  // OFF:MW:BR:VL:EX:MW+:BR+:VL+:EX+:CF:UNO
@@ -73,6 +75,7 @@ extern unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 extern unsigned short breathAT;
 extern unsigned short velocity;
 extern unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
+extern unsigned short portLimit; // 1-127
 extern unsigned short PBdepth;   // OFF:1-12 divider
 extern unsigned short extraCT;   // OFF:MW:FP:CF:SP
 extern unsigned short vibrato;   // OFF:1-9
@@ -127,6 +130,8 @@ extern uint16_t dacMode;
 
 
 extern int touch_Thr;
+
+extern int leverPortZero;
 
 extern unsigned long cursorBlinkTime;          // the last time the cursor was toggled
 
