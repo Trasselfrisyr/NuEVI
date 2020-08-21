@@ -1182,6 +1182,30 @@ const MenuEntrySub breathATMenu = {
   , nullptr
 };
 
+const MenuEntrySub brHarmonicsMenu = {
+  MenuType::ESub, "BRTH HARM",  "HARM RANGE", &brHarmSetting, 0, 6, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(brHarmSetting) numToString(brHarmSetting, out);
+    else strncpy(out, "OFF", 4);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(BRHARMSET_ADDR,brHarmSetting); }
+  , nullptr
+};
+
+const MenuEntrySub brHarmSelectMenu = {
+  MenuType::ESub, "BR HM SEL", "SERIES", &brHarmSelect, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    const char* brHarmSelectMenuLabels[] = { "HM1", "HM2", "5TH", "OCT" };
+    strncpy(out, brHarmSelectMenuLabels[brHarmSelect], 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(BRHARMSEL_ADDR) != brHarmSelect) {
+      writeSetting(BRHARMSEL_ADDR,brHarmSelect);
+    }
+  }
+  , nullptr
+};
+
 const MenuEntrySub velocityMenu = {
   MenuType::ESub, "VELOCITY",  "VELOCITY", &velocity, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
@@ -1254,7 +1278,9 @@ const MenuEntry* breathMenuEntries[] = {
   (MenuEntry*)&velocityMenu,
   (MenuEntry*)&curveMenu,
   (MenuEntry*)&velSmpDlMenu,
-  (MenuEntry*)&velBiasMenu,
+  (MenuEntry*)&velBiasMenu,  
+  //(MenuEntry*)&brHarmonicsMenu,
+  //(MenuEntry*)&brHarmSelectMenu,
   (MenuEntry*)&breathIntervalMenu
 };
 
@@ -1334,9 +1360,9 @@ const MenuEntrySub harmonicsMenu = {
 };
 
 const MenuEntrySub harmSelectMenu = {
-  MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* harmSelectMenuLabels[] = { "HRM", "5TH", "OCT", "5DN", "ODN" };
+    const char* harmSelectMenuLabels[] = { "HM1", "HM2", "5TH", "OCT", "5DN", "ODN" };
     strncpy(out, harmSelectMenuLabels[harmSelect], 4);
   },
   [](const MenuEntrySub & __unused sub){

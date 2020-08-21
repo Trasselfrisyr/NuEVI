@@ -142,6 +142,114 @@ static const int numAdjustEntries = ARR_LEN(adjustMenuEntries);
 
 //***********************************************************
 
+
+
+void autoCalSelected() {
+  int calRead;
+  int calReadNext;
+// NuRAD/NuEVI sensor calibration
+  // Extra Controller
+  if(adjustOption == 3) {
+    calRead = touchRead(extraPin);
+    extracThrVal = constrain(calRead+200, extracLoLimit, extracHiLimit);
+    extracMaxVal = constrain(extracThrVal+600, extracLoLimit, extracHiLimit);
+    writeSetting(EXTRAC_THR_ADDR, extracThrVal);
+    writeSetting(EXTRAC_MAX_ADDR, extracMaxVal);
+  }
+  // Breath sensor
+  if(adjustOption == 0) {
+    calRead = analogRead(breathSensorPin);
+    breathThrVal = constrain(calRead+200, breathLoLimit, breathHiLimit);
+    breathMaxVal = constrain(breathThrVal+2000, breathLoLimit, breathHiLimit);
+    writeSetting(BREATH_THR_ADDR, breathThrVal);
+    writeSetting(BREATH_MAX_ADDR, breathMaxVal);
+  }
+  // Pitch Bend
+  if(adjustOption == 2) {
+    calRead = touchRead(pbUpPin);
+    calReadNext = touchRead(pbDnPin);
+    if (calReadNext > calRead) calRead = calReadNext; //use highest value
+    pitchbThrVal = constrain(calRead+200, pitchbLoLimit, pitchbHiLimit);
+    pitchbMaxVal = constrain(pitchbThrVal+800, pitchbLoLimit, pitchbHiLimit);
+    writeSetting(PITCHB_THR_ADDR, pitchbThrVal);
+    writeSetting(PITCHB_MAX_ADDR, pitchbMaxVal);
+  }
+  // Lever
+  if(adjustOption == 5) {
+    calRead = 3000-touchRead(vibratoPin);
+    leverThrVal = constrain(calRead+60, leverLoLimit, leverHiLimit);
+    leverMaxVal = constrain(calRead+120, leverLoLimit, leverHiLimit);
+    writeSetting(LEVER_THR_ADDR, leverThrVal);
+    writeSetting(LEVER_MAX_ADDR, leverMaxVal);
+  }
+#if defined(NURAD) // NuRAD sensor calibration
+  // Bite Pressure sensor
+  if(adjustOption == 1) {
+    calRead = analogRead(bitePressurePin);
+    portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
+    portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+    writeSetting(PORTAM_THR_ADDR, portamThrVal);
+    writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+  }
+  // Touch sensors
+  if(adjustOption == 4) {
+    calRead = ctouchHiLimit;  
+    for (byte i = 0; i < 6; i++) {
+      calReadNext = touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300;
+      if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    }
+    for (byte i = 0; i < 12; i++) {
+      calReadNext = touchSensorRH.filteredData(i) * (300-calOffsetRH[i])/300;
+      if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    }
+    for (byte i = 0; i < 12; i++) {
+      calReadNext = touchSensorLH.filteredData(i) * (300-calOffsetLH[i])/300;
+      if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    }
+    ctouchThrVal = constrain(calRead-20, ctouchLoLimit, ctouchHiLimit);
+    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+    writeSetting(CTOUCH_THR_ADDR, ctouchThrVal);
+  }
+#else // NuEVI sensor calibration
+  // Bite sensor
+  if(adjustOption == 1) {
+    if (digitalRead(biteJumperPin)){ //PBITE (if pulled low with jumper, pressure sensor is used instead of capacitive bite sensing)
+      // Capacitive sensor
+      calRead = touchRead(bitePin);
+      portamThrVal = constrain(calRead+200, portamLoLimit, portamHiLimit);
+      portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+      writeSetting(PORTAM_THR_ADDR, portamThrVal);
+      writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+    } else {
+      // Pressure sensor
+      calRead = analogRead(bitePressurePin);
+      portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
+      portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+      writeSetting(PORTAM_THR_ADDR, portamThrVal);
+      writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
+    }
+  }
+  // Touch sensors
+  if(adjustOption == 4) {
+    calRead = ctouchHiLimit;  
+    for (byte i = 0; i < 12; i++) {
+      calReadNext = touchSensor.filteredData(i);
+      if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    }
+    calReadNext=map(touchRead(halfPitchBendKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    calReadNext=map(touchRead(specialKeyPin),ttouchLoLimit,ttouchHiLimit,ctouchHiLimit,ctouchLoLimit);
+    if (calReadNext < calRead) calRead = calReadNext; //use lowest value
+    ctouchThrVal = constrain(calRead-20, ctouchLoLimit, ctouchHiLimit);
+    touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
+    writeSetting(CTOUCH_THR_ADDR, ctouchThrVal);
+  }
+#endif
+}
+
+
+//***********************************************************
+
 static void drawAdjCursor(byte color) {
   display.drawTriangle(16,4,20,4,18,1,color);
   display.drawTriangle(16,6,20,6,18,9,color);
@@ -322,6 +430,7 @@ static bool drawAdjustBar(uint16_t buttons, int row, const AdjustValue* entry, u
       val -= step;
       updated = true;
     break;
+    
   }
   if(updated) {
     *entry->value = constrain(val, entry->limitLow, entry->limitHigh);
@@ -346,7 +455,23 @@ static bool updateAdjustCursor(uint32_t timeNow) {
 
 static bool handleInput(const AdjustMenuEntry *currentMenu, uint32_t timeNow, uint8_t buttons, uint16_t *xpos, int ypos, int index) {
   if (buttons) {
+    if (buttons == BTN_DOWN+BTN_UP){
+      display.fillRect(26,35,90,7,BLACK);
+      display.setTextSize(1);
+      display.setTextColor(WHITE);
+      display.setCursor(53,35);
+      display.println("AUTOCAL");
+      display.display();
+      delay(2000);
+      autoCalSelected();
+      display.fillRect(26,35,90,7,BLACK);
+      display.display();
+      drawAdjustMenu(currentMenu);
+      forcePix = 1;
+      plotSensorPixels();
+    } else 
     drawAdjustBar( buttons, ypos, &currentMenu->entries[index], xpos );
+    
     int last = adjustCurrent;
     if(buttons == BTN_ENTER)      adjustCurrent += 1;
     else if( buttons == BTN_MENU) adjustCurrent = 0;

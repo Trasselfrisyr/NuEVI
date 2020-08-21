@@ -95,7 +95,9 @@ unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
 unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
 unsigned short batteryType; // 0-2 ALK,NIM,LIP
 unsigned short harmSetting; // 0-7
-unsigned short harmSelect; // 0-4
+unsigned short harmSelect; // 0-5
+unsigned short brHarmSetting; // 0-7
+unsigned short brHarmSelect; // 0-3
 unsigned short polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
 unsigned short fwcType; // 6, m6, 7, m7 
 unsigned short fwcLockH; // OFF:ON
@@ -221,6 +223,7 @@ int oldextrac=0;
 int oldextrac2=0;
 
 int harmonics = 0;
+int brHarmonics = 0;
 
 int pitchBend=8192;
 int oldpb=8192;
@@ -428,11 +431,18 @@ const int minHipHmz[12][3] =     {{ -5, -9, -10 },   // C or key base
                                   { -4, -6, -9 }};  // B or base +11
 
 
-const int harmonicResult[5][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HRM
+const int harmonicResult[6][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HM1
+                                  { 0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
                                   { 0,   7,  12,  19,  24,  31,  36 },  //5TH
                                   { 0,  12,  24,  36,  48,  60,  72 },  //OCT
                                   { 0,  -5, -12, -17, -24, -29, -36 },  //5DN
                                   { 0, -12, -24, -36, -48, -60, -72 }}; //ODN
+
+
+const int brHarmonicResult[4][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HM1
+                                    { 0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
+                                    { 0,   7,  12,  19,  24,  31,  36 },  //5TH
+                                    { 0,  12,  24,  36,  48,  60,  72 }}; //OCT                                 
                                   
 const int rollerHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  24,  26 },  //F horn 2,3,4,5,6,8,9 hrm
                                   { 7,  12,  16,  19,  24,  26,  31 }}; //Bb horn 3,4,5,6,8,9,12 hrm
@@ -1448,11 +1458,11 @@ void breath() {
   breathCCval = (breathCCvalHires >> 7) & 0x007F;
   breathCCvalFine = breathCCvalHires & 0x007F;
   breathCC2val = constrain(breathCCval*breathCC2Rise,0,127);
-
+  if (brHarmSetting) brHarmonics = map(constrain(breathLevel, breathThrVal, breathMaxVal), breathThrVal, breathMaxVal, 0, brHarmSetting); else brHarmonics = 0;
   if (breathCCval != oldbreath) { // only send midi data if breath has changed from previous value
     if (breathCC) {
       // send midi cc
-      midiSendControlChange(ccList[breathCC], breathCCval);
+      midiSendControlChange(ccList[breathCC], breathCCval);    
     }
     if (breathAT) {
       // send aftertouch
@@ -1895,12 +1905,12 @@ void autoCal() {
   writeSetting(PITCHB_MAX_ADDR, pitchbMaxVal);
   // Lever
   calRead = 3000-touchRead(vibratoPin);
-  leverThrVal = constrain(calRead+70, leverLoLimit, leverHiLimit);
-  leverMaxVal = constrain(calRead+150, leverLoLimit, leverHiLimit);
+  leverThrVal = constrain(calRead+60, leverLoLimit, leverHiLimit);
+  leverMaxVal = constrain(calRead+120, leverLoLimit, leverHiLimit);
   writeSetting(LEVER_THR_ADDR, leverThrVal);
   writeSetting(LEVER_MAX_ADDR, leverMaxVal);
 #if defined(NURAD) // NuRAD sensor calibration
-  // Pressure sensor
+  // Bite Pressure sensor
   calRead = analogRead(bitePressurePin);
   portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
   portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
@@ -2093,7 +2103,7 @@ void readSwitches() {
       + (6-octaveR)*12;       //Octave rollers, reversed    
   }
   
-  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
+  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics] + brHarmonicResult[brHarmSelect][brHarmonics]; //lip sensor and breath harmonics
   
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 
@@ -2171,7 +2181,7 @@ void readSwitches() {
     if (4 == trill3_interval) fingeredNoteUntransposed+=2; else fingeredNoteUntransposed+=4;
   }
   
-  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics]; //lip sensor harmonics
+  int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics] + brHarmonicResult[brHarmSelect][brHarmonics]; //lip sensor harmonics
 
   pcCombo1 = (K1 && K5 && !K2 && !K3);
   pcCombo2 = (K2 && K6 && !K1 && !K3);

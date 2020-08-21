@@ -157,6 +157,11 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(LEVER_THR_ADDR, LEVER_THR_FACTORY);
             writeSetting(LEVER_MAX_ADDR, LEVER_MAX_FACTORY);
         }
+
+        if(settingsVersion < 41) {
+            writeSetting(BRHARMSET_ADDR, BRHARMSET_FACTORY);
+            writeSetting(BRHARMSEL_ADDR, BRHARMSEL_FACTORY);
+        }
         
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
@@ -224,7 +229,7 @@ void readEEPROM(const bool factoryReset) {
     lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);
-    harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 4, HARMSEL_FACTORY);
+    harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 5, HARMSEL_FACTORY);
     polySelect      = readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
     fwcType         = readSettingBounded(FWCTYPE_ADDR, 0, 4, FWCTYPE_FACTORY);
     fwcLockH        = readSettingBounded(FWCLCH_ADDR, 0, 1, FWCLCH_FACTORY);
@@ -246,7 +251,9 @@ void readEEPROM(const bool factoryReset) {
     portLimit       = readSettingBounded(PORTLIMIT_ADDR, 1, 127, PORTLIMIT_FACTORY);
     leverThrVal     = readSettingBounded(LEVER_THR_ADDR, leverLoLimit, leverHiLimit, LEVER_THR_FACTORY);
     leverMaxVal     = readSettingBounded(LEVER_MAX_ADDR, leverLoLimit, leverHiLimit, LEVER_MAX_FACTORY);
-
+    brHarmSetting   = readSettingBounded(BRHARMSET_ADDR, 0, 6, BRHARMSET_FACTORY);
+    brHarmSelect    = readSettingBounded(BRHARMSEL_ADDR, 0, 3, BRHARMSEL_FACTORY);
+    
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
     legacy           = (dipSwBits & (1<<DIPSW_LEGACY))?1:0;
