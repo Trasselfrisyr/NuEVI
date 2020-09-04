@@ -18,7 +18,7 @@
 #define NOTE_ON 3
 
 
-//Magic value where pinky button means "pitch bend"
+//Magic values
 #define PBD 12
 #define EC2 25
 #define ECSW 26
@@ -40,7 +40,6 @@
 #define RT3 10
 
 #define MOD 13
-
 
 //Vibrato direction
 #define UPWD 1
@@ -114,6 +113,10 @@ extern unsigned short hmzKey; // 0-11 (0 is C)
 extern unsigned short hmzLimit; // 2-5
 extern unsigned short otfKey; //OFF:ON
 extern unsigned short breathInterval; // 3-15
+extern unsigned short biteControl; // OFF, VIB, GLD, CC
+extern unsigned short leverControl; // OFF, VIB, GLD, CC
+extern unsigned short biteCC; // 0 - 127
+extern unsigned short leverCC; // 0 -127
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;

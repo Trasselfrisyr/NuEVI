@@ -1,0 +1,50 @@
+NuEVI and NuRAD Firmware 1.5b4 Notes
+
+1.5b1:
+
+* Improved polyphonic play functions. Rotator menu is now replaced with a Poly Play menu where you find a variety of harmonization options, including three rotator setups. (Se separate manual page).
+
+* Automatic sensor calibration when performing factory restore (so do mind that you don’t touch sensors when you do the reset).
+
+* I2C communications speed issue solved.
+
+* Adjustable MIDI CC time intervals for the breath messages, from 3ms to 15ms. For wireless play, lower setting than the default 6ms is not recommended. (BR INTERV setting in SETUP BR menu).
+
+* Improved touch sensor reading equalization for NuRAD, for more coherent sensitivity between keys.
+
+* Minor fix for NuRAD SAX fingering (LH2+RH2 now plays Bb).
+
+* Gate hold function now works on NuRAD too.
+
+1.5b2:
+
+* Adjustment setting for thumb lever (for optimizing thumb portamento control). By setting THR (level of push force to activate) and MAX (level of push force to achieve maximum set portamento) values close to eachother at the desired point of activation, the new glide limit setting to desired rate will create a switching type set rate controller (similar to Crumar EVI glide key). With THR and MAX setup with separation to taste, a continous control up to level set by glide limit is achieved.
+
+* Glide setting SWO, SWitching Only, sending only Glide on/off (CC#65) for use with synths where glide rate CC#5 is used in non standard ways, for example some DSI/Sequential synths like the Prophet REV2 or Prophet 12 where glide rates are set individually for each oscillator.
+
+* Glide limit setting for portamento. Doubles as setting for portamento level sent using pinky key/mod key in GLD mode. (Can be changed both in menu and in GLD mode.)
+
+* Setting of level for LVL, LVP and GLD now reqires touching both pinky/mod and third trill/RHp3 for setting mode activation, this to avoid accidental change of setting when pinky/mod key is touched.
+
+* Rate of setting movement up and down for LVL, LVP and GLD has been adjusted. Became very much too fast after the timing issues were solved in 1.5b1
+
+* A short delay before note offs in legato transitions is added to make playback of recorded midi behave correctly (keeping note on and note off from being registered on the same timestamp).
+
+1.5b3:
+
+* AUTOCAL is available for each ADJUST menu page. With cursor on THR or MAX bar, press UP and DOWN buttons at the same time (and keep off the sensors being calibrated). AUTOCAL will be displayed for two seconds, then updated settings will be shown.
+
+[removed for now - needs work] * Experimental breath controlled harmonic series (BRTH HARM and BR HM SEL settings). Like the lip sensor harmonics function, this shifts the fingered note up the harmonic series. For improved switching speed, try turning down the key deglitch time. (If this function is to be kept, I will probably need to tweak it quite a bit. Tongueing into higher notes and releasing them does not work well currently.)
+
+1.5b4:
+
+* Changed the destination setup for bite and lever to be less confusing and more powerful (custom CCs now possible). The VIB CTL item in the VIBRATO menu is now removed, and in SETUP CTL menu you will find BITE CTL, BITE CC, LEVER CTL and LEVER CC. 
+
+BITE CTL and LEVER CTL can both be set to any of these destinations:
+	OFF - no destination active for this controller
+	VIB - vibrato
+	GLD - glide/portamento (defined by GLIDE MOD and GLIDE LMT settings)
+	CC  - custom CC output (defined in GLIDE CC and LEVER CC settings)
+
+Settings in GLIDE CC and LEVER CC are only used when corresponding control is set to CC in its CTL setting as described above.
+

@@ -114,6 +114,10 @@ unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DN
 unsigned short vibSensBite = 2; // vibrato sensitivity (bite)
 unsigned short vibSquelchBite = 12; //vibrato signal squelch (bite)
 unsigned short vibControl = 0;
+unsigned short biteControl = 0; // OFF, VIB, GLD, CC
+unsigned short leverControl = 0; // OFF, VIB, GLD, CC
+unsigned short biteCC = 0; // 0 - 127
+unsigned short leverCC = 0; // 0 -127
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
@@ -209,9 +213,13 @@ int leverPortRead;
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
+byte biteIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
+byte leverIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 int oldport=0;
 int lastBite=0;
 byte biteJumper=0;
+int oldbitecc=0;
+int oldlevercc=0;
 
 int cvPitch;
 int targetPitch;
@@ -542,6 +550,7 @@ FilterOnePole breathFilter;
 IntervalTimer cvTimer;
 
 bool configManagementMode = false;
+bool i2cScan = false;
 
 
 //_______________________________________________________________________________________________ SETUP
@@ -562,6 +571,8 @@ void cvUpdate(){
   }
   #endif
 }
+
+
 
 void setup() {
 
@@ -592,7 +603,8 @@ void setup() {
 
   bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
   configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
-
+  i2cScan = !factoryReset && !digitalRead(mPin);
+  
   initDisplay(); //Start up display and show logo
 
   //If going into config management mode, stop here before we even touch the EEPROM.
@@ -600,6 +612,14 @@ void setup() {
     configModeSetup();
     return;
   }
+
+  #if defined(I2CSCANNER)
+  if(i2cScan){
+    delay(2000);
+    i2cScanDisplay();
+  }
+  #endif
+  
 
   //Read eeprom data into global vars
   readEEPROM(factoryReset);
@@ -1335,6 +1355,8 @@ void loop() {
     // deal with Pitch Bend, Modulation, etc.
     pitch_bend();
     extraController();
+    biteCC_();
+    leverCC_();
     ccSendTime = currentTime;
   }
   if (currentTime - ccSendTime2 > CC_INTERVAL2) {
@@ -1507,7 +1529,7 @@ void pitch_bend() {
   vibMax = vibMaxList[vibSens - 1];
   vibMaxBite = vibMaxBiteList[vibSensBite - 1];
 
-  if (vibControl){ //bite vibrato
+  if (1 == biteControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, or NuRAD compile, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
@@ -1529,7 +1551,7 @@ void pitch_bend() {
       vibSignal = vibSignal / 2;
     }
   }
-  if (vibControl != 1) { //lever vibrato
+  if (1 == leverControl) { //lever vibrato
     vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
@@ -1788,7 +1810,8 @@ void extraController() {
 
 //***********************************************************
 
-void portamento_() {
+/*
+void portamento_() { //old version
   if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
     biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
   } else {
@@ -1830,6 +1853,7 @@ void portamento_() {
       portOff();
   }
 }
+
 
 //***********************************************************
 
@@ -1878,6 +1902,135 @@ void portOff() {
 }
 
 //***********************************************************
+*/
+
+ 
+void portamento_() {
+  int portSumCC = 0;
+  if (pinkySetting == GLD){
+    if (portamento && pinkyKey){
+      portSumCC += portLimit;
+    }
+  }
+  if (2 == biteControl) {
+    // Portamento is controlled with the bite sensor in the mouthpiece
+    if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
+      biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+    } else {
+      biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+    }
+    if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
+      portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, portLimit);
+    }
+  }
+  if (2 == leverControl) {
+    // Portamento is controlled with thumb lever
+    leverPortRead = touchRead(vibratoPin);
+    if (portamento && ((3000-leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
+      portSumCC += map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
+    }
+  }
+  portSumCC = constrain(portSumCC, 0, portLimit); // Total output glide rate limited to glide max setting 
+  if (portSumCC) { // there is a portamento level, so go for it
+    if (!portIsOn) {
+      portOn();
+    }
+    port(portSumCC);
+  }else if (portIsOn) {
+    portOff();
+  }
+}
+
+//***********************************************************
+
+void portOn() {
+  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
+    midiSendControlChange(CCN_PortOnOff, 127);
+  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
+    midiSendControlChange(CCN_PortSE02, 64);
+  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
+    midiSendControlChange(CCN_PortSE02, 127);
+  }
+  portIsOn = 1;
+}
+
+//***********************************************************
+
+void port(int portCC) {
+  if ((portamento != 5) && (portCC != oldport)) { // portamento setting 5 is switch only, do not transmit glide rate
+    midiSendControlChange(CCN_Port, portCC);
+  }
+  oldport = portCC;
+}
+
+//***********************************************************
+
+void portOff() {
+  if ((portamento != 5) && (oldport != 0)) { //did a zero get sent? if not, then send one (unless portamento is switch only)
+    midiSendControlChange(CCN_Port, 0);
+  }
+  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
+    midiSendControlChange(CCN_PortOnOff, 0);
+  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
+    midiSendControlChange(CCN_PortSE02, 0);
+  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
+    midiSendControlChange(CCN_PortSE02, 0);
+  }
+  portIsOn = 0;
+  oldport = 0;
+}
+
+//***********************************************************
+
+void biteCC_() {
+  int biteCClevel = 0;
+  if (3 == biteControl){
+    if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
+      biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+    } else {
+      biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+    }
+    if (biteSensor >= portamThrVal) { // we are over the threshold, calculate CC value
+      biteCClevel = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
+    }
+    if (biteCClevel) { // there is a bite CC level, so go for it
+      if (!biteIsOn) {
+        biteIsOn = 1;
+      }
+      if (biteCClevel != oldbitecc) { 
+        midiSendControlChange(biteCC, biteCClevel);
+      }
+      oldbitecc = biteCClevel;
+    } else if (biteIsOn) {
+      midiSendControlChange(biteCC, 0);
+      biteIsOn = 0;
+      oldbitecc = 0;
+    }
+  }
+}
+
+void leverCC_() {
+  int leverCClevel = 0;
+  if (3 == leverControl){
+    leverPortRead = touchRead(vibratoPin);
+    if (((3000-leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
+      leverCClevel = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
+    }
+    if (leverCClevel) { // there is a lever CC level, so go for it
+      if (!leverIsOn) {
+        leverIsOn = 1;
+      }
+      if (leverCClevel != oldlevercc) { 
+        midiSendControlChange(leverCC, leverCClevel);
+      }
+      oldlevercc = leverCClevel;
+    } else if (leverIsOn) {
+      midiSendControlChange(leverCC, 0);
+      leverIsOn = 0;
+      oldlevercc = 0;
+    }
+  }
+}
 
 void autoCal() {
   int calRead;

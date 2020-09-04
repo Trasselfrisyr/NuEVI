@@ -86,8 +86,12 @@
 #define LEVER_MAX_ADDR 166
 #define BRHARMSET_ADDR 168
 #define BRHARMSEL_ADDR 170
+#define BITECTL_ADDR 172
+#define BITECC_ADDR 174
+#define LEVERCTL_ADDR 176
+#define LEVERCC_ADDR 178
 
-#define EEPROM_SIZE 172 //Last address +2
+#define EEPROM_SIZE 180 //Last address +2
 
 
 //DAC output modes
@@ -104,7 +108,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 41
+#define EEPROM_VERSION 42
 
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
@@ -182,6 +186,10 @@
 #define PORTLIMIT_FACTORY 127
 #define BRHARMSET_FACTORY 0
 #define BRHARMSEL_FACTORY 0
+#define BITECTL_FACTORY 2 // GLD
+#define LEVERCTL_FACTORY 1 // VIB
+#define BITECC_FACTORY 1 //Mod Wheel
+#define LEVERCC_FACTORY 11 //Expression
 
 #define NO_CHECKSUM 0x7F007F00
 

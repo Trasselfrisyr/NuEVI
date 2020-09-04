@@ -258,6 +258,40 @@ void showVersion() {
   display.display();
 }
 
+void i2cScanDisplay(){
+  uint8_t target; // slave addr
+  byte error;
+  while(1){
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.println("MPR121 board scan");
+    display.display();
+    for(target = 0x5A; target <= 0x5D; target++) // sweep addr
+    {
+        Wire.beginTransmission(target);       // slave addr
+        error = Wire.endTransmission();
+        delay(500);             
+        display.print("Addr 0x");
+        display.print(target,HEX);
+        if (error)
+          display.print(" N\n");
+        else
+          display.print(" Y\n");
+        display.display();
+    }
+    delay(1000);
+    display.println();
+    display.println("MENU to rescan");
+    display.println("Power off to exit");
+    display.display();
+    while (digitalRead(mPin)){
+      delay(100);
+    }
+  }
+}
+
 // Assumes dest points to a buffer of atleast 7 bytes.
 static const char* numToString(int16_t value, char* dest, bool plusSign = false) {
   char* ptr = dest;
@@ -1294,8 +1328,47 @@ const MenuPage breathMenuPage = {
 
 //***********************************************************
 // Control menu
+
+const MenuEntrySub biteCtlMenu = {
+  MenuType::ESub, "BITE CTL", "BITE DEST", &biteControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
+    strncpy(out, labs[biteControl], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(BITECTL_ADDR,biteControl); }
+  , nullptr
+};
+
+const MenuEntrySub biteCCMenu = {
+  MenuType::ESub, "BITE CC",  "CC NUMBER", &biteCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(biteCC, out);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(BITECC_ADDR,biteCC); }
+  , nullptr
+};
+
+const MenuEntrySub leverCtlMenu = {
+  MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
+    strncpy(out, labs[leverControl], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(LEVERCTL_ADDR,leverControl); }
+  , nullptr
+};
+
+const MenuEntrySub leverCCMenu = {
+  MenuType::ESub, "LEVER CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(leverCC, out);
+  },
+[](const MenuEntrySub & __unused sub) { writeSetting(LEVERCC_ADDR,leverCC); }
+  , nullptr
+};
+
 const MenuEntrySub portMenu = {
-  MenuType::ESub, "GLIDE CTL", "PORT/GLD", &portamento, 0, 5, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "GLIDE MOD", "PORT/GLD", &portamento, 0, 5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
     const char* labs[] = { "OFF", "ON", "SW", "SEL", "SEE", "SWO" };
     strncpy(out, labs[portamento], 4);
@@ -1451,7 +1524,7 @@ const MenuEntrySub fingeringMenu = {
 
 
 const MenuEntrySub lpinky3Menu = {
-  MenuType::ESub, "EXTRA PKEY", "EXTRA PKEY", &lpinky3, 0, 25, MenuEntryFlags::ENone,
+  MenuType::ESub, "EXTRA KEY", "EXTRA PKEY", &lpinky3, 0, 25, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     if (lpinky3 == 0)
       strncpy(textBuffer, "OFF", 4);
@@ -1466,13 +1539,17 @@ const MenuEntrySub lpinky3Menu = {
 
 #if defined(NURAD)
 const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&biteCtlMenu,
+  (MenuEntry*)&biteCCMenu,
+  (MenuEntry*)&leverCtlMenu,
+  (MenuEntry*)&leverCCMenu,
   (MenuEntry*)&portMenu,
   (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
   (MenuEntry*)&harmSelectMenu,
-  (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
@@ -1482,13 +1559,17 @@ const MenuEntry* controlMenuEntries[] = {
 };
 #else
 const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&biteCtlMenu,
+  (MenuEntry*)&biteCCMenu,
+  (MenuEntry*)&leverCtlMenu,
+  (MenuEntry*)&leverCCMenu,
   (MenuEntry*)&portMenu,
   (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
   (MenuEntry*)&harmSelectMenu,
-  (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
@@ -1600,7 +1681,7 @@ const MenuEntrySub vibDirMenu = {
 };
 
 const MenuEntry* vibratorMenuEntries[] = {
-    (MenuEntry*)&vibControlMenu,
+    //(MenuEntry*)&vibControlMenu,
     (MenuEntry*)&vibDepthMenu,
     (MenuEntry*)&vibRetnMenu,
     (MenuEntry*)&vibDirMenu,

@@ -20,7 +20,11 @@ RTC - Rotator C
 
 POLY PLAY – HMZ KEY
 
-Selects the key you are playing in for the key based harmonizations.
+Selects the key you are playing in for the key based harmonizations. 
+
+POLY PLAY – OTF KEY
+
+Enables on the fly key change for the key based harmonizers. To change key on the fly while playing, finger the key (not blowing) and briefly lift your thumb off the rollers (when in octave two or higher). Key change on the fly will not be stored when powered off. 
 
 POLY PLAY – HMZ LIMIT
 

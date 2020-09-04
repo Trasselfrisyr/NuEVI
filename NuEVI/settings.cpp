@@ -162,6 +162,13 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(BRHARMSET_ADDR, BRHARMSET_FACTORY);
             writeSetting(BRHARMSEL_ADDR, BRHARMSEL_FACTORY);
         }
+
+        if(settingsVersion < 42) {
+            writeSetting(BITECTL_ADDR, BITECTL_FACTORY);
+            writeSetting(BITECC_ADDR, BITECC_FACTORY);
+            writeSetting(LEVERCTL_ADDR, LEVERCTL_FACTORY);
+            writeSetting(LEVERCC_ADDR, LEVERCC_FACTORY);
+        }
         
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
@@ -253,6 +260,10 @@ void readEEPROM(const bool factoryReset) {
     leverMaxVal     = readSettingBounded(LEVER_MAX_ADDR, leverLoLimit, leverHiLimit, LEVER_MAX_FACTORY);
     brHarmSetting   = readSettingBounded(BRHARMSET_ADDR, 0, 6, BRHARMSET_FACTORY);
     brHarmSelect    = readSettingBounded(BRHARMSEL_ADDR, 0, 3, BRHARMSEL_FACTORY);
+    biteControl     = readSettingBounded(BITECTL_ADDR, 0, 3, BITECTL_FACTORY);
+    leverControl    = readSettingBounded(LEVERCTL_ADDR, 0, 3, LEVERCTL_FACTORY);
+    biteCC          = readSettingBounded(BITECC_ADDR, 0, 127, BITECC_FACTORY);
+    leverCC         = readSettingBounded(LEVERCC_ADDR, 0, 127, LEVERCC_FACTORY);
     
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

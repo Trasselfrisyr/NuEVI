@@ -4,6 +4,8 @@
 #define REVB
 //#define NURAD
 
+#define I2CSCANNER
+
 #if defined(NURAD) //NuRAD <<<<<<<<<<<<<<<<<<<<<<<
 
 // Pin definitions
