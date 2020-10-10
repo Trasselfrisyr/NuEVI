@@ -127,7 +127,7 @@ uint16_t fastBoot;
 uint16_t dacMode;
 
 byte rotatorOn = 0;
-byte currentRotation = 0;
+byte currentRotation = 3;
 uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
 uint16_t parallel; // = 7; // semitones
 uint16_t rotationsb[4];
@@ -928,6 +928,7 @@ void loop() {
           if (pinkyKey) {
             if (!rotatorOn) {
               rotatorOn = 1;
+              currentRotation = 3;
               slurSustain = 0;
               parallelChord = 0;
               subOctaveDouble = 0;
@@ -973,7 +974,7 @@ void loop() {
             if (portamento && (portamento != 5)) midiSendControlChange(CCN_Port, portLimit);
             lvlTime = currentTime;
           }
-        } else if (K5 && (portLimit > 0)){
+        } else if (K5 && (portLimit > 1)){
           if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
             portLimit--;
             if (portamento && (portamento != 5)) midiSendControlChange(CCN_Port, portLimit);
@@ -2144,7 +2145,8 @@ void readSwitches() {
       else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
       else if (lastOctaveR > 1) {
         octaveR = lastOctaveR; 
-        if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+        if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
       }
       //if rollers are released and we are not coming down from roller 1, stay at the higher octave
 
@@ -2286,6 +2288,7 @@ void readSwitches() {
   else if (lastOctaveR > 1) {
     octaveR = lastOctaveR; 
     if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+    if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
   }
   //if rollers are released and we are not coming down from roller 1, stay at the higher octave
   //CV filter leak prevention when putting NuEVI aside

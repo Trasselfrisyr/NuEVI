@@ -77,7 +77,7 @@ static void pbSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry pitchBendAdjustMenu = {
-  "PITCH BEND", 
+  "BEND", 
   {
     { &pitchbThrVal, pitchbLoLimit, pitchbHiLimit },
     { &pitchbMaxVal, pitchbLoLimit, pitchbHiLimit }
@@ -91,7 +91,7 @@ static void extracSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry extraSensorAdjustMenu = {
-  "EXTRA CONTROLLER", 
+  "LIP/EC", 
   {
     { &extracThrVal, extracLoLimit, extracHiLimit },
     { &extracMaxVal, extracLoLimit, extracHiLimit }
@@ -105,7 +105,7 @@ static void ctouchThrSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry ctouchAdjustMenu = {
-  "TOUCH SENSE", 
+  "TOUCH", 
   {
     { &ctouchThrVal, ctouchLoLimit, ctouchHiLimit },
     { nullptr, 0, 0 }
@@ -120,7 +120,7 @@ static void leverSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry leverAdjustMenu = {
-  "THUMB LEVER", 
+  "LEVER", 
   {
     { &leverThrVal, leverLoLimit, leverHiLimit },
     { &leverMaxVal, leverLoLimit, leverHiLimit }
@@ -320,6 +320,17 @@ static void drawAdjustMenu(const AdjustMenuEntry *menu) {
     pos2 = map( *menu->entries[1].value, menu->entries[1].limitLow, menu->entries[1].limitHigh, 27, 119);
     display.drawLine( pos2, 50, pos2, 56, WHITE );
   }
+  display.fillRect(64,0,64,9,BLACK);
+  display.setTextSize(1);
+  if(haveSecondValue) {
+    display.setCursor(68,2);
+    display.print(*menu->entries[0].value);
+    display.print("|");
+    display.print(*menu->entries[1].value);
+  } else {
+    display.setCursor(104,2);
+    display.print(*menu->entries[0].value);
+  }
 }
 
 //***********************************************************
@@ -349,6 +360,11 @@ void plotSensorPixels(){
     redraw = updateSensorPixel(pos, -1);
   }
   else if(adjustOption == 1) {
+    if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
+      biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
+    } else {
+      biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+    }
     int pos = map(constrain(biteSensor,portamLoLimit,portamHiLimit), portamLoLimit, portamHiLimit, 28, 118);
     redraw = updateSensorPixel(pos, -1);
   }
@@ -454,6 +470,7 @@ static bool updateAdjustCursor(uint32_t timeNow) {
 }
 
 static bool handleInput(const AdjustMenuEntry *currentMenu, uint32_t timeNow, uint8_t buttons, uint16_t *xpos, int ypos, int index) {
+  bool haveSecondValue = currentMenu->entries[1].value != nullptr;
   if (buttons) {
     if (buttons == BTN_DOWN+BTN_UP){
       display.fillRect(26,35,90,7,BLACK);
@@ -471,6 +488,18 @@ static bool handleInput(const AdjustMenuEntry *currentMenu, uint32_t timeNow, ui
       plotSensorPixels();
     } else 
     drawAdjustBar( buttons, ypos, &currentMenu->entries[index], xpos );
+
+    display.fillRect(64,0,64,9,BLACK);
+    display.setTextSize(1);
+    if(haveSecondValue) {
+      display.setCursor(68,2);
+      display.print(*currentMenu->entries[0].value);
+      display.print("|");
+      display.print(*currentMenu->entries[1].value);
+    } else {
+      display.setCursor(104,2);
+      display.print(*currentMenu->entries[0].value);
+    }
     
     int last = adjustCurrent;
     if(buttons == BTN_ENTER)      adjustCurrent += 1;

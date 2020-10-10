@@ -1,4 +1,4 @@
-NuEVI and NuRAD Firmware 1.5b4 Notes
+NuEVI and NuRAD Firmware 1.5b5 Notes
 
 1.5b1:
 
@@ -34,8 +34,6 @@ NuEVI and NuRAD Firmware 1.5b4 Notes
 
 * AUTOCAL is available for each ADJUST menu page. With cursor on THR or MAX bar, press UP and DOWN buttons at the same time (and keep off the sensors being calibrated). AUTOCAL will be displayed for two seconds, then updated settings will be shown.
 
-[removed for now - needs work] * Experimental breath controlled harmonic series (BRTH HARM and BR HM SEL settings). Like the lip sensor harmonics function, this shifts the fingered note up the harmonic series. For improved switching speed, try turning down the key deglitch time. (If this function is to be kept, I will probably need to tweak it quite a bit. Tongueing into higher notes and releasing them does not work well currently.)
-
 1.5b4:
 
 * Changed the destination setup for bite and lever to be less confusing and more powerful (custom CCs now possible). The VIB CTL item in the VIBRATO menu is now removed, and in SETUP CTL menu you will find BITE CTL, BITE CC, LEVER CTL and LEVER CC. 
@@ -47,4 +45,10 @@ BITE CTL and LEVER CTL can both be set to any of these destinations:
 	CC  - custom CC output (defined in GLIDE CC and LEVER CC settings)
 
 Settings in GLIDE CC and LEVER CC are only used when corresponding control is set to CC in its CTL setting as described above.
+
+1.5b5:
+
+* Changed names for ADJUST page titles (to shorten) and added numerical value readouts for THR and MAX settings.
+
+* Corrected start position for rotators and added reset to first position when activated and on roller release (from top five octaves like for the otf key change).
 
