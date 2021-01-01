@@ -52,3 +52,13 @@ Settings in GLIDE CC and LEVER CC are only used when corresponding control is se
 
 * Corrected start position for rotators and added reset to first position when activated and on roller release (from top five octaves like for the otf key change).
 
+1.5b6
+
+* Added EVR to NuEVI fingering menu, for reversed roller action.
+
+* Rebooting to program mode now possible when stuck at boot due to wrong version of firmware installed (NuEVI vs NuRAD version).
+
+* Removed possibility to change portamento limit using pinky/mod key when in GLD setting (it was always getting altered in play or handling). This might come back if I find a better way to do it.
+
+* Support for a CME WIDI Master Bluetooth MIDI board connected to Teensy underside pads. With this mod, if present it will be powered up by touching pinky/mod key and pressing enter in MIDI meny (what previously controlled the "slow midi" function that now is replaced by the CC interval menu item). "WIDI" will be indicated in the display below the MIDI channel number and the WIDI board will be powered up. Teensy pad connections: GND to GND (blue) of WIDI, 31 (TX2) via 47 ohm resistor to signal (green) of WIDI, 33 via 47 ohm resistor to power (red) of WIDI. 27 and 28 jumpered to indicate that the WIDI is connected.  
+
