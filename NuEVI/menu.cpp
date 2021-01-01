@@ -200,7 +200,7 @@ extern const MenuPage mainMenuPage; // Forward declaration.
 
 
 #define OLED_RESET 4
-Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET,1000000,1000000);
 
 int drawBatt(int x,int y){
   display.drawRect(x+1,y,3,3,WHITE);

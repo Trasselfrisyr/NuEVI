@@ -18,16 +18,6 @@ added directly via the Library Manager in the Arduino IDE:
 * Adafruit SSD1306 (version 1.2.9 or above)
 * NuEVI also includes on the [Filters](https://github.com/JonHub/Filters) library by Jonathan Driscoll, but that is no longer an external dependency.
 
-For the SSD1306 library, the Adafruit_SSD1306.h file needs to be edited to prevent it from lowering the I2C speed.
-
-Change this:
-  Adafruit_SSD1306(uint8_t w, uint8_t h, TwoWire *twi=&Wire, int8_t rst_pin=-1,
-    uint32_t clkDuring=400000UL, uint32_t clkAfter=100000UL);
-
-To this:
-  Adafruit_SSD1306(uint8_t w, uint8_t h, TwoWire *twi=&Wire, int8_t rst_pin=-1,
-    uint32_t clkDuring=1000000UL, uint32_t clkAfter=1000000UL);
-
 
 ### Compile options
 
