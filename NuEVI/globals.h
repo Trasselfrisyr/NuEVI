@@ -146,7 +146,7 @@ extern byte doPatchUpdate;
 extern uint16_t legacy;
 extern uint16_t legacyBrAct;
 
-extern byte slowMidi;
+extern byte widiOn;
 
 extern int pressureSensor;  // pressure data from breath sensor, for midi breath cc and breath threshold checks
 extern int lastPressure;
@@ -154,7 +154,7 @@ extern int lastPressure;
 extern int biteSensor;    // capacitance data from bite sensor, for midi cc and threshold checks
 extern int lastBite;
 extern byte biteJumper;
-
+extern byte widiJumper;
 extern int exSensor;
 extern int exSensorIndicator;
 

@@ -231,7 +231,7 @@ void readEEPROM(const bool factoryReset) {
     #if defined(NURAD)
     fingering       = readSettingBounded(FINGER_ADDR, 0, 4, FINGER_FACTORY);
     #else
-    fingering       = readSettingBounded(FINGER_ADDR, 0, 2, FINGER_FACTORY);
+    fingering       = readSettingBounded(FINGER_ADDR, 0, 3, FINGER_FACTORY);
     #endif
     lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
@@ -269,7 +269,7 @@ void readEEPROM(const bool factoryReset) {
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
     legacy           = (dipSwBits & (1<<DIPSW_LEGACY))?1:0;
     legacyBrAct      = (dipSwBits & (1<<DIPSW_LEGACYBRACT))?1:0;
-    slowMidi         = (dipSwBits & (1<<DIPSW_SLOWMIDI))?1:0;
+    widiOn           = (dipSwBits & (1<<DIPSW_WIDION))?1:0;
     gateOpenEnable   = (dipSwBits & (1<<DIPSW_GATEOPEN))?1:0;
     specialKeyEnable = (dipSwBits & (1<<DIPSW_SPKEYENABLE))?1:0;
     bcasMode         = (dipSwBits & (1<<DIPSW_BCASMODE))?1:0;

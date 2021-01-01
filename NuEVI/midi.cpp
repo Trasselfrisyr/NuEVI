@@ -2,6 +2,7 @@
 
 #include "midi.h"
 #include "hardware.h"
+#include "globals.h"
 
 int midiChannel;
 
@@ -75,6 +76,10 @@ void midiPanic() { // all notes off
 void midiInitialize(uint8_t channel) {
   MIDI_SERIAL.begin(31250);   // start serial with midi baudrate 31250
   MIDI_SERIAL.flush();
+  if(widiJumper){
+    WIDI_SERIAL.begin(31250);   // start serial with midi baudrate 31250
+    WIDI_SERIAL.flush();
+  }
   midiSetChannel(channel);
 }
 
@@ -87,6 +92,11 @@ void midiSend3B(uint8_t midistatus, uint8_t data1, uint8_t data2) {
   MIDI_SERIAL.write(midistatus);
   MIDI_SERIAL.write(data1);
   MIDI_SERIAL.write(data2);
+  if (widiJumper && widiOn){
+    WIDI_SERIAL.write(midistatus);
+    WIDI_SERIAL.write(data1);
+    WIDI_SERIAL.write(data2);
+  }
 }
 
 //**************************************************************
@@ -95,6 +105,10 @@ void midiSend3B(uint8_t midistatus, uint8_t data1, uint8_t data2) {
 void midiSend2B(uint8_t midistatus, uint8_t data) {
   MIDI_SERIAL.write(midistatus);
   MIDI_SERIAL.write(data);
+  if (widiJumper && widiOn){
+    WIDI_SERIAL.write(midistatus);
+    WIDI_SERIAL.write(data);
+  }
 }
 
 //**************************************************************

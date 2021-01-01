@@ -36,6 +36,11 @@
 #define sLedPin 23
 #define statusLedPin 13
 
+//Pins for WIDI board management
+#define widiJumperPin 28
+#define widiJumperGndPin 27
+#define widiPowerPin 33
+
 //Analog input for measuring voltage
 #define vMeterPin A11
 
@@ -45,6 +50,7 @@
 
 //Which serial port to use for MIDI
 #define MIDI_SERIAL Serial3
+#define WIDI_SERIAL Serial2
 
 // MPR121 Rollers 0x5D
 
@@ -99,6 +105,11 @@
 #define biteJumperPin 11
 #define biteJumperGndPin 12
 
+//Pins for WIDI board management
+#define widiJumperPin 28
+#define widiJumperGndPin 27
+#define widiPowerPin 33
+
 //Analog pressure sensors. Breath and optional bite
 #define breathSensorPin A0
 #define bitePressurePin A7
@@ -123,6 +134,7 @@
 
 //Which serial port to use for MIDI
 #define MIDI_SERIAL Serial3
+#define WIDI_SERIAL Serial2
 
 #if defined(REVB)
 

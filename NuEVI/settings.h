@@ -101,7 +101,7 @@
 #define DIPSW_FASTBOOT    0
 #define DIPSW_LEGACY      1
 #define DIPSW_LEGACYBRACT 2
-#define DIPSW_SLOWMIDI    3
+#define DIPSW_WIDION      3
 #define DIPSW_GATEOPEN    4
 #define DIPSW_SPKEYENABLE 5
 #define DIPSW_BCASMODE    6

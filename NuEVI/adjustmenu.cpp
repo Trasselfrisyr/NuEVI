@@ -160,7 +160,7 @@ void autoCalSelected() {
   if(adjustOption == 0) {
     calRead = analogRead(breathSensorPin);
     breathThrVal = constrain(calRead+200, breathLoLimit, breathHiLimit);
-    breathMaxVal = constrain(breathThrVal+2000, breathLoLimit, breathHiLimit);
+    breathMaxVal = constrain(breathThrVal+1500, breathLoLimit, breathHiLimit);
     writeSetting(BREATH_THR_ADDR, breathThrVal);
     writeSetting(BREATH_MAX_ADDR, breathMaxVal);
   }

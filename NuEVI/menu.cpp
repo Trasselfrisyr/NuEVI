@@ -941,11 +941,11 @@ static void midiCustomDrawFunc(SubMenuRef __unused, char* __unused, const char**
   char buff[7];
   numToString(MIDIchannel, buff);
   plotSubOption(buff);
-  if (slowMidi) {
-    //replaced with breathInterval setting and not used anymore.. do cleanup later removing all slowMidi related stuff
-    //display.setTextSize(1);
-    //display.setCursor(116,51);
-    //display.print("S");
+  if (widiJumper && widiOn) {
+    //indicate that widi board is enabled
+    display.setTextSize(1);
+    display.setCursor(100,51);
+    display.print("WIDI");
   }
 }
 
@@ -1110,21 +1110,22 @@ const MenuPage extrasMenuPage = {
 }; 
 
 static bool midiEnterHandlerFunc() {
-  /*
+  
   //this switching is removed due to new breathInterval setting
   readSwitches();
-  if (pinkyKey){
-    slowMidi = !slowMidi;
+  if (pinkyKey && widiJumper){
+    widiOn = !widiOn;
     dipSwBits = dipSwBits ^ (1<<3);
     writeSetting(DIPSW_BITS_ADDR,dipSwBits);
+    if (widiJumper && widiOn) digitalWrite(widiPowerPin, HIGH); else digitalWrite(widiPowerPin, LOW);
     return false;
   } else {
     writeSetting(MIDI_ADDR, MIDIchannel);
     return true;
   }
-  */
-  writeSetting(MIDI_ADDR, MIDIchannel);
-  return true;
+  
+  //writeSetting(MIDI_ADDR, MIDIchannel);
+  //return true;
 }
 
 const MenuEntrySub midiMenu = {
@@ -1512,9 +1513,9 @@ const MenuEntrySub fingeringMenu = {
 };
 #else
 const MenuEntrySub fingeringMenu = {
-  MenuType::ESub, "FINGERING", "FINGERING", &fingering, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "FINGERING", "FINGERING", &fingering, 0, 3, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "EVI", "TPT", "HRN" };
+    const char* labs[] = { "EVI", "EVR", "TPT", "HRN" };
     strncpy(out, labs[fingering], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }

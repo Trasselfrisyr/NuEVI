@@ -187,7 +187,7 @@ uint16_t legacy = 0;
 uint16_t legacyBrAct = 0;
 byte halfTime = 0;
 boolean programonce = false;
-byte slowMidi = 0;
+byte widiOn = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
 int oldbreath=0;
@@ -218,6 +218,7 @@ byte leverIsOn=0;     // keep track and make sure we send CC with 0 value when o
 int oldport=0;
 int lastBite=0;
 byte biteJumper=0;
+byte widiJumper=0;
 int oldbitecc=0;
 int oldlevercc=0;
 
@@ -601,6 +602,16 @@ void setup() {
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
   #endif
 
+  pinMode(widiPowerPin, OUTPUT);        //WIDI
+  pinMode(widiJumperPin, INPUT_PULLUP); //WIDI
+  pinMode(widiJumperGndPin, OUTPUT);    //WIDI
+  digitalWrite(widiJumperGndPin, LOW);  //WIDI
+
+  widiJumper = !digitalRead(widiJumperPin); //WIDI
+  
+  Serial2.setRX (26); //WIDI
+  Serial2.setTX (31); //WIDI
+
   bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
   configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
   i2cScan = !factoryReset && !digitalRead(mPin);
@@ -633,19 +644,25 @@ void setup() {
   delay(100);
   analogWrite(bLedPin, BREATH_LED_BRIGHTNESS);
   if (!touchSensorRollers.begin(0x5D)) {  //should be D
-    while (1);  // Touch sensor initialization failed - stop doing stuff
+    while (1){  // Touch sensor initialization failed - stop doing stuff
+      if (!digitalRead(dPin) && !digitalRead(ePin) && !digitalRead(uPin) && !digitalRead(mPin)) _reboot_Teensyduino_(); // reboot to program mode if all buttons pressed
+    }
   }
   delay(100);
   analogWrite(bLedPin, 0);
   analogWrite(pLedPin, PORTAM_LED_BRIGHTNESS);
   if (!touchSensorLH.begin(0x5C)) {
-    while (1);  // Touch sensor initialization failed - stop doing stuff
+    while (1){  // Touch sensor initialization failed - stop doing stuff
+      if (!digitalRead(dPin) && !digitalRead(ePin) && !digitalRead(uPin) && !digitalRead(mPin)) _reboot_Teensyduino_(); // reboot to program mode if all buttons pressed
+    }
   }
   delay(100);
   analogWrite(pLedPin, 0);
   analogWrite(eLedPin, PORTAM_LED_BRIGHTNESS);
   if (!touchSensorRH.begin(0x5B)) {
-    while (1);  // Touch sensor initialization failed - stop doing stuff
+    while (1){  // Touch sensor initialization failed - stop doing stuff
+      if (!digitalRead(dPin) && !digitalRead(ePin) && !digitalRead(uPin) && !digitalRead(mPin)) _reboot_Teensyduino_(); // reboot to program mode if all buttons pressed
+    }
   }
   delay(100);
   analogWrite(eLedPin, 0);
@@ -656,7 +673,9 @@ void setup() {
   digitalWrite(statusLedPin,LOW);
   #else
   if (!touchSensor.begin(0x5A)) {
-    while (1);  // Touch sensor initialization failed - stop doing stuff
+    while (1){  // Touch sensor initialization failed - stop doing stuff
+      if (!digitalRead(dPin) && !digitalRead(ePin) && !digitalRead(uPin) && !digitalRead(mPin)) _reboot_Teensyduino_(); // reboot to program mode if all buttons pressed
+    }
   }
   #endif
 
@@ -717,6 +736,9 @@ void setup() {
     battMeasured[i] = analogRead(vMeterPin);
     delay(1);
   }
+
+  if (widiJumper && widiOn) digitalWrite(widiPowerPin, HIGH); else digitalWrite(widiPowerPin, LOW);
+   
   activeMIDIchannel = MIDIchannel;
   midiInitialize(MIDIchannel);
 
@@ -966,7 +988,7 @@ void loop() {
       }
       lastPinkyKey = pinkyKey;
     } else if (pinkySetting == GLD){
-      if (pinkyKey && K7){
+      /*if (pinkyKey && K7){
         ledMeter(portLimit);
         if (K6 && (portLimit < 127)){
           if (currentTime - lvlTime > (LVL_TIMER_INTERVAL)){
@@ -983,7 +1005,7 @@ void loop() {
         }
       } else if (!pinkyKey && lastPinkyKey){
         writeSetting(PORTLIMIT_ADDR,portLimit);
-      }
+      }*/
       lastPinkyKey = pinkyKey;
     }
   } else if (mainState == RISE_WAIT) {
@@ -1347,7 +1369,6 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  //if (currentTime - ccBreathSendTime > (CC_BREATH_INTERVAL+slowMidi*SLOW_MIDI_ADD)){
   if (currentTime - ccBreathSendTime > (breathInterval-1)){
     breath();
     ccBreathSendTime = currentTime;
@@ -2046,7 +2067,7 @@ void autoCal() {
   // Breath sensor
   calRead = analogRead(breathSensorPin);
   breathThrVal = constrain(calRead+200, breathLoLimit, breathHiLimit);
-  breathMaxVal = constrain(breathThrVal+2000, breathLoLimit, breathHiLimit);
+  breathMaxVal = constrain(breathThrVal+1500, breathLoLimit, breathHiLimit);
   writeSetting(BREATH_THR_ADDR, breathThrVal);
   writeSetting(BREATH_MAX_ADDR, breathMaxVal);
   // Pitch Bend
@@ -2316,13 +2337,20 @@ void readSwitches() {
       - 5*K4              //Fifth key
       + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
       + octaveR*12;       //Octave rollers
-  } else if (1 == fingering){ //TPT fingering
+  } else if (1 == fingering){ //EVR fingering
+    byte revOct = 6 - octaveR;
+    fingeredNoteUntransposed = startNote
+      - 2*K1 - K2 - 3*K3  //"Trumpet valves"
+      - 5*K4              //Fifth key
+      + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
+      + revOct*12;       //Octave rollers
+  } else if (2 == fingering){ //TPT fingering
         fingeredNoteUntransposed = startNote
       - 2*K1 - K2 - 3*K3  //"Trumpet valves"
       - 2                 //Trumpet in B flat
       + 2*K5 + K6 + trill3_interval*K7  //Trill keys. 3rd trill key interval controlled by setting
       + 24 + trumpetHarmonic[K4][octaveR]; // roller harmonics
-  } else if (2 == fingering){ //HRN fingering
+  } else if (3 == fingering){ //HRN fingering
         fingeredNoteUntransposed = startNote
       - 2*K1 - K2 - 3*K3  //"Trumpet valves"
       + 5*K4              //Switch to Bb horn
