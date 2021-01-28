@@ -1719,6 +1719,7 @@ void extraController() {
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
   exSensorIndicator = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
   if (pinkySetting == EC2){
+    CC1sw = true;
     //send 0 or 127 on extra controller CC2 depending on pinky key touch
     if (pinkyKey && extraCT2) {
       if (lastPinkyKey != pinkyKey){

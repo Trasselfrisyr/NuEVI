@@ -47,7 +47,7 @@
 
 #define ALK_BAT_FULL 2800 // about 4.6V
 #define NMH_BAT_FULL 2380 // about 3.9V
-#define LIP_BAT_FULL 2550 // about 4.2V
+#define LIP_BAT_FULL 2540 // about 4.2V
 #define ALK_BAT_LOW 2300  // about 3.8V
 #define NMH_BAT_LOW 2200  // about 3.6V
 #define LIP_BAT_LOW 2250  // about 3.7V
