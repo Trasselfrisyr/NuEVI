@@ -119,6 +119,10 @@ unsigned short leverControl = 0; // OFF, VIB, GLD, CC
 unsigned short biteCC = 0; // 0 - 127
 unsigned short leverCC = 0; // 0 -127
 
+unsigned short cvTune;  // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
+unsigned short cvScale; // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
+unsigned short cvVibRate; // OFF, 1 - 8 CV extra controller LFO vibrato rate 4.5Hz to 8Hz
+
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
 
 uint16_t bcasMode; //Legacy CASSIDY compile flag
@@ -247,6 +251,7 @@ byte lap = 0;
 static const float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings
 static const short vibMaxBiteList[17] = {1600,1400,1200,1000,900,800,700,600,500,400,300,250,200,150,100,50,25};
 static const short vibMaxList[12] = {300,275,250,225,200,175,150,125,100,75,50,25};
+static const int timeDividerList[9] = {0, 222, 200, 181, 167, 152, 143, 130, 125}; // For CV vibrato - 222 is 4.5Hz, 200 is 5Hz, 181 is 5.5Hz 167 is 6Hz, 152 is 6.5Hz, 143 is 7Hz, 130 is 7.5Hz, 125 is 8Hz
 
 static const unsigned short curveM4[] = {0,4300,7000,8700,9900,10950,11900,12600,13300,13900,14500,15000,15450,15700,16000,16250,16383};
 static const unsigned short curveM3[] = {0,2900,5100,6650,8200,9500,10550,11500,12300,13100,13800,14450,14950,15350,15750,16150,16383};
@@ -292,6 +297,22 @@ const byte saxFingerMatch[16][10] =
   {1, 0, 0, 2, 2, 0, 2, 2, 2, 2}, // B (-2 semis)
   {0, 2, 1, 2, 2, 2, 2, 2, 2, 2}, // C (-1 semis)
   {0, 2, 0, 2, 2, 2, 2, 2, 2, 2}, // C# (-0 semis)
+};
+
+static int waveformsTable[maxSamplesNum] = {
+  // Sine wave
+  0x7ff, 0x86a, 0x8d5, 0x93f, 0x9a9, 0xa11, 0xa78, 0xadd, 0xb40, 0xba1,
+  0xbff, 0xc5a, 0xcb2, 0xd08, 0xd59, 0xda7, 0xdf1, 0xe36, 0xe77, 0xeb4,
+  0xeec, 0xf1f, 0xf4d, 0xf77, 0xf9a, 0xfb9, 0xfd2, 0xfe5, 0xff3, 0xffc,
+  0xfff, 0xffc, 0xff3, 0xfe5, 0xfd2, 0xfb9, 0xf9a, 0xf77, 0xf4d, 0xf1f,
+  0xeec, 0xeb4, 0xe77, 0xe36, 0xdf1, 0xda7, 0xd59, 0xd08, 0xcb2, 0xc5a,
+  0xbff, 0xba1, 0xb40, 0xadd, 0xa78, 0xa11, 0x9a9, 0x93f, 0x8d5, 0x86a,
+  0x7ff, 0x794, 0x729, 0x6bf, 0x655, 0x5ed, 0x586, 0x521, 0x4be, 0x45d,
+  0x3ff, 0x3a4, 0x34c, 0x2f6, 0x2a5, 0x257, 0x20d, 0x1c8, 0x187, 0x14a,
+  0x112, 0xdf, 0xb1, 0x87, 0x64, 0x45, 0x2c, 0x19, 0xb, 0x2,
+  0x0, 0x2, 0xb, 0x19, 0x2c, 0x45, 0x64, 0x87, 0xb1, 0xdf,
+  0x112, 0x14a, 0x187, 0x1c8, 0x20d, 0x257, 0x2a5, 0x2f6, 0x34c, 0x3a4,
+  0x3ff, 0x45d, 0x4be, 0x521, 0x586, 0x5ed, 0x655, 0x6bf, 0x729, 0x794
 };
 
 int saxFingerResult[16] =
@@ -1432,8 +1453,14 @@ void loop() {
     } else {
       cvPitch = targetPitch;
     }
-    analogWrite(dacPin,constrain(cvPitch+map(pitchBend,0,16383,-84,84),0,4095));
-    //analogWrite(pwmDacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,500,4095))); //starting at 0.6V to match use of cv from sensor, so recalibration of cv offset/scaler is not needed
+    cvPitch += map(pitchBend,0,16383,-84,84);
+    if (cvVibRate){
+      int timeDivider = timeDividerList[cvVibRate];
+      int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
+      cvPitch += cvVib;
+    }
+    int cvPitchTuned = cvTune-100+map(cvPitch,0,4032,0,4032+cvScale-100);
+    analogWrite(dacPin,constrain(cvPitchTuned,0,4095));
   } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     //analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
   }
@@ -1832,101 +1859,6 @@ void extraController() {
 }
 
 //***********************************************************
-
-/*
-void portamento_() { //old version
-  if (biteJumper) { //PBITE (if pulled low with jumper, use pressure sensor instead of capacitive bite sensor)
-    biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
-  } else {
-    biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
-  }
-  if (pinkySetting == GLD){
-    if (portamento && pinkyKey){
-      if (!portIsOn) {
-        portOn();
-      }
-      port();
-    } else if (portIsOn) { // pinky key released
-      portOff();
-    }
-  } else if (0 == vibControl) {
-    // Portamento is controlled with the bite sensor (variable capacitor) in the mouthpiece
-    if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
-      if (!portIsOn) {
-        portOn();
-      }
-      port();
-    } else if (portIsOn) { // we have just gone below threshold, so send zero value
-      portOff();
-    }
-  } else if (1 == vibControl) {
-    // Portamento is switched to lever control
-    leverPortRead = touchRead(vibratoPin);
-    if (portamento && ((3000-leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
-      if (!portIsOn) {
-       portOn();
-      }
-      port();
-    } else if (portIsOn) { // we have just gone below threshold, so send zero value
-    portOff();
-  }
-  } else {
-    // no control for portamento
-    if (portIsOn)
-      portOff();
-  }
-}
-
-
-//***********************************************************
-
-void portOn() {
-  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
-    midiSendControlChange(CCN_PortOnOff, 127);
-  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
-    midiSendControlChange(CCN_PortSE02, 64);
-  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
-    midiSendControlChange(CCN_PortSE02, 127);
-  }
-  portIsOn = 1;
-}
-
-//***********************************************************
-
-void port() {
-  int portCC;
-  if (pinkySetting == GLD){
-    portCC = portLimit;
-  } else if (1 == vibControl)
-    portCC = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
-  else  
-    portCC = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, portLimit);
-  if ((portamento != 5) && (portCC != oldport)) { // portamento setting 5 is switch only, do not transmit glide rate
-    midiSendControlChange(CCN_Port, portCC);
-  }
-  oldport = portCC;
-}
-
-//***********************************************************
-
-void portOff() {
-  if ((portamento != 5) && (oldport != 0)) { //did a zero get sent? if not, then send one (unless portamento is switch only)
-    midiSendControlChange(CCN_Port, 0);
-  }
-  if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
-    midiSendControlChange(CCN_PortOnOff, 0);
-  } else if (portamento == 3) { // if portamento midi switching is enabled - SE02 OFF/LIN
-    midiSendControlChange(CCN_PortSE02, 0);
-  } else if (portamento == 4) { // if portamento midi switching is enabled - SE02 OFF/EXP
-    midiSendControlChange(CCN_PortSE02, 0);
-  }
-  portIsOn = 0;
-  oldport = 0;
-}
-
-//***********************************************************
-*/
-
  
 void portamento_() {
   int portSumCC = 0;

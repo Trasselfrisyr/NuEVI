@@ -1,4 +1,4 @@
-NuEVI and NuRAD Firmware 1.5b5 Notes
+NuEVI and NuRAD Firmware 1.5b7 Notes
 
 1.5b1:
 
@@ -62,3 +62,7 @@ Settings in GLIDE CC and LEVER CC are only used when corresponding control is se
 
 * Support for a CME WIDI Master Bluetooth MIDI board connected to Teensy underside pads. With this mod, if present it will be powered up by touching pinky/mod key and pressing enter in MIDI meny (what previously controlled the "slow midi" function that now is replaced by the CC interval menu item). "WIDI" will be indicated in the display below the MIDI channel number and the WIDI board will be powered up. Teensy pad connections: GND to GND (blue) of WIDI, 31 (TX2) via 47 ohm resistor to signal (green) of WIDI, 33 via 47 ohm resistor to power (red) of WIDI. 27 and 28 jumpered to indicate that the WIDI is connected.  
 
+
+1.5b7:
+
+* Added three new settings in EXTRAS MENU – CV TUNE, CV SCALE and CV EC LFO. The first two allow for software tuning of the CV output for 1V/Oct when using NuEVI CV, NuEVI Plus or NuEVI/NuRAD with external CV box or module. Also makes more simple versions of the CV boards possible (no potentiometers for adjustment). The CV EC LFO setting controls a new CV LFO vibrato function for the extra controller (lip sensor). It can be set to OFF (no extra controller LFO vibrato) or values 1 through 8, which represent vibrato freq from 4.5Hz to 8Hz. Default value is 3 (5.5Hz).

@@ -170,6 +170,14 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(LEVERCC_ADDR, LEVERCC_FACTORY);
         }
         
+        if(settingsVersion < 43) {
+            writeSetting(CVTUNE_ADDR, CVTUNE_FACTORY);
+            writeSetting(CVSCALE_ADDR, CVSCALE_FACTORY);
+        }
+
+        if(settingsVersion < 44) {
+            writeSetting(CVRATE_ADDR, CVRATE_FACTORY);
+        }
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
@@ -264,6 +272,9 @@ void readEEPROM(const bool factoryReset) {
     leverControl    = readSettingBounded(LEVERCTL_ADDR, 0, 3, LEVERCTL_FACTORY);
     biteCC          = readSettingBounded(BITECC_ADDR, 0, 127, BITECC_FACTORY);
     leverCC         = readSettingBounded(LEVERCC_ADDR, 0, 127, LEVERCC_FACTORY);
+    cvTune          = readSettingBounded(CVTUNE_ADDR, 1, 199, CVTUNE_FACTORY);
+    cvScale         = readSettingBounded(CVSCALE_ADDR, 1, 199, CVSCALE_FACTORY);
+    cvVibRate       = readSettingBounded(CVRATE_ADDR, 0, 8, CVRATE_FACTORY);
     
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

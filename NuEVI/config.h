@@ -5,7 +5,7 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.5b6"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.5b7"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
@@ -22,6 +22,7 @@
 #define LVL_TIMER_INTERVAL 15
 #define CVPORTATUNE 2
 
+#define maxSamplesNum 120
 
 #define breathLoLimit   0
 #define breathHiLimit   4095

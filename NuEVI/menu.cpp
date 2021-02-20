@@ -1038,6 +1038,37 @@ const MenuEntrySub fastBootMenu = {
   , nullptr
 };
 
+const MenuEntrySub cvTuneMenu = {
+  MenuType::ESub, "CV TUNE", "TUNING", &cvTune, 1, 199, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(cvTune-100, out, true);
+  },
+  [](SubMenuRef __unused) { writeSetting(CVTUNE_ADDR,cvTune); }
+  , nullptr
+};
+
+const MenuEntrySub cvScaleMenu = {
+  MenuType::ESub, "CV SCALE", "SCALING", &cvScale, 1, 199, MenuEntryFlags::ENone, 
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(cvScale-100, out, true);
+  },
+  [](SubMenuRef __unused) { writeSetting(CVSCALE_ADDR,cvScale); }
+  , nullptr
+};
+
+const MenuEntrySub cvEcVibMenu = {
+  MenuType::ESub, "CV EC LFO",  "RATE", &cvVibRate, 0, 8, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    if(cvVibRate) numToString(cvVibRate, out);
+    else strncpy(out, "OFF", 4);
+  },
+  [](const MenuEntrySub & __unused sub){
+    if (readSetting(CVRATE_ADDR) != cvVibRate) {
+      writeSetting(CVRATE_ADDR,cvVibRate);
+    }
+  }
+  , nullptr
+};
 
 static uint16_t wireless_power=0;
 static uint16_t wireless_channel=4;
@@ -1083,6 +1114,9 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&dacModeMenu,
   (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
+  (MenuEntry*)&cvTuneMenu,
+  (MenuEntry*)&cvScaleMenu,
+  (MenuEntry*)&cvEcVibMenu,
   (MenuEntry*)&wlPowerMenu,
   (MenuEntry*)&wlChannelMenu,
 };
@@ -1096,6 +1130,9 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&dacModeMenu,
   (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
+  (MenuEntry*)&cvTuneMenu,
+  (MenuEntry*)&cvScaleMenu,
+  (MenuEntry*)&cvEcVibMenu,
   (MenuEntry*)&wlPowerMenu,
   (MenuEntry*)&wlChannelMenu,
 };
