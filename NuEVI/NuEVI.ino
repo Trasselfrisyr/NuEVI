@@ -1428,6 +1428,7 @@ void loop() {
 
   if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
+    targetPitch += map(pitchBend,0,16383,-84,84);
     if (portIsOn){
       if (targetPitch > cvPitch){
         if (!cvPortaTuneCount) {
@@ -1453,7 +1454,7 @@ void loop() {
     } else {
       cvPitch = targetPitch;
     }
-    cvPitch += map(pitchBend,0,16383,-84,84);
+    
     if (cvVibRate){
       int timeDivider = timeDividerList[cvVibRate];
       int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum-1)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
