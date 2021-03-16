@@ -1460,7 +1460,7 @@ void loop() {
       int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum-1)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
       cvPitch += cvVib;
     }
-    int cvPitchTuned = cvTune-100+map(cvPitch,0,4032,0,4032+cvScale-100);
+    int cvPitchTuned = 2*(cvTune-100)+map(cvPitch,0,4032,0,4032+2*(cvScale-100));
     analogWrite(dacPin,constrain(cvPitchTuned,0,4095));
   } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
     //analogWrite(dacPin,breathCurve(map(constrain(pressureSensor,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095)));
