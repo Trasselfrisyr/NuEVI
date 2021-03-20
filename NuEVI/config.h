@@ -16,8 +16,8 @@
 // milliseconds
 #define CC_BREATH_INTERVAL 5
 #define SLOW_MIDI_ADD 7
-#define CC_INTERVAL 13
-#define CC_INTERVAL2 19
+#define CC_INTERVAL 9
+#define CC_INTERVAL2 13
 #define CC_INTERVAL3 37
 #define LVL_TIMER_INTERVAL 15
 #define CVPORTATUNE 2
