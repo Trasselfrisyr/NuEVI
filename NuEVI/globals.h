@@ -26,6 +26,7 @@
 #define LVLP 28
 #define GLD 29
 #define ECH 30
+#define QTN 31
 
 #define HOF 0
 #define MGR 1
@@ -162,6 +163,7 @@ extern int exSensor;
 extern int exSensorIndicator;
 
 extern int pitchBend;
+extern int pbSend;
 
 extern int pbUp;
 extern int pbDn;
@@ -214,6 +216,7 @@ extern byte K6;   // Trill key 2 (pitch change +1)
 extern byte K7;   // Trill key 3 (pitch change +4)
 
 extern byte halfPitchBendKey;
+extern byte quarterToneTrigger;
 extern byte specialKey;
 extern byte pinkyKey;
 

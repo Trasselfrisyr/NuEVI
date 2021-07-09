@@ -207,7 +207,7 @@ void readEEPROM(const bool factoryReset) {
     curve           = readSettingBounded(BREATHCURVE_ADDR, 0, 12, BREATHCURVE_FACTORY);
     velSmpDl        = readSettingBounded(VEL_SMP_DL_ADDR, 0, 30, VEL_SMP_DL_FACTORY);
     velBias         = readSettingBounded(VEL_BIAS_ADDR, 0, 9, VEL_BIAS_FACTORY);
-    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 30, PINKY_KEY_FACTORY);
+    pinkySetting    = readSettingBounded(PINKY_KEY_ADDR, 0, 31, PINKY_KEY_FACTORY);
     fastPatch[0]    = readSettingBounded(FP1_ADDR, 0, 127, 0);
     fastPatch[1]    = readSettingBounded(FP2_ADDR, 0, 127, 0);
     fastPatch[2]    = readSettingBounded(FP3_ADDR, 0, 127, 0);
@@ -244,7 +244,7 @@ void readEEPROM(const bool factoryReset) {
     lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);
-    harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 5, HARMSEL_FACTORY);
+    harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 7, HARMSEL_FACTORY);
     polySelect      = readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
     fwcType         = readSettingBounded(FWCTYPE_ADDR, 0, 4, FWCTYPE_FACTORY);
     fwcLockH        = readSettingBounded(FWCLCH_ADDR, 0, 1, FWCLCH_FACTORY);

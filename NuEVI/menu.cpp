@@ -1471,9 +1471,9 @@ const MenuEntrySub harmonicsMenu = {
 };
 
 const MenuEntrySub harmSelectMenu = {
-  MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 5, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "HARM SEL", "SERIES", &harmSelect, 0, 7, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* harmSelectMenuLabels[] = { "HM1", "HM2", "5TH", "OCT", "5DN", "ODN" };
+    const char* harmSelectMenuLabels[] = { "HM1", "HM2", "5TH", "OCT", "H1R", "H2R", "5TR", "OCR" };
     strncpy(out, harmSelectMenuLabels[harmSelect], 4);
   },
   [](const MenuEntrySub & __unused sub){
@@ -1501,11 +1501,11 @@ const MenuEntrySub deglitchMenu = {
 
 #if defined(NURAD)
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 30, MenuEntryFlags::ENone,
+  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 31, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #else
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 30, MenuEntryFlags::ENone,
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 31, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #endif
     if (pinkySetting == PBD)
@@ -1522,6 +1522,8 @@ const MenuEntrySub pinkyMenu = {
       strncpy(textBuffer, "GLD", 4);
     else if (pinkySetting == ECH)
       strncpy(textBuffer, "ECH", 4);
+    else if (pinkySetting == QTN)
+      strncpy(textBuffer, "QTN", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },

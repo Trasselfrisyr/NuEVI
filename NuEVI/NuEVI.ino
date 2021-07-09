@@ -239,6 +239,7 @@ int harmonics = 0;
 int brHarmonics = 0;
 
 int pitchBend=8192;
+int pbSend=8192;
 int oldpb=8192;
 int vibSignal=0;
 int pbUp=0;
@@ -461,12 +462,21 @@ const int minHipHmz[12][3] =     {{ -5, -9, -10 },   // C or key base
                                   { -4, -6, -9 }};  // B or base +11
 
 
-const int harmonicResult[6][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HM1
-                                  { 0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
-                                  { 0,   7,  12,  19,  24,  31,  36 },  //5TH
-                                  { 0,  12,  24,  36,  48,  60,  72 },  //OCT
-                                  { 0,  -5, -12, -17, -24, -29, -36 },  //5DN
-                                  { 0, -12, -24, -36, -48, -60, -72 }}; //ODN
+const int harmonicResult[8][7] = {{  0,   7,  12,  16,  19,  24,  28 },  //HM1
+                                  {  0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
+                                  {  0,   7,  12,  19,  24,  31,  36 },  //5TH
+                                  {  0,  12,  24,  36,  48,  60,  72 },  //OCT
+                                  {  0,   7,  12,  16,  19,  24,  28 },  //HM1
+                                  {  0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
+                                  {  0,   7,  12,  19,  24,  31,  36 },  //5TH
+                                  {  0,  12,  24,  36,  48,  60,  72 }};  //OCT
+
+                                  /*
+                                  { 28,  24,  19,  16,  12,   7,   0 },  //H1R
+                                  { 24,  22,  19,  16,  12,   7,   0 },  //H2R (7th harmonic not excluded)
+                                  { 36,  31,  24,  19,  12,   7,   0 },  //5TR
+                                  { 72,  60,  48,  36,  24,  12,   0 }}; //OCR
+                                  */
 
 
 const int brHarmonicResult[4][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HM1
@@ -545,6 +555,7 @@ byte octaveR = 0;
 byte lastOctaveR = 0;
 
 byte halfPitchBendKey;
+byte quarterToneTrigger;
 byte specialKey;
 byte pinkyKey;
 byte lastSpecialKey = 0;
@@ -1429,6 +1440,7 @@ void loop() {
   if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
     targetPitch += map(pitchBend,0,16383,-84,84);
+    targetPitch -=quarterToneTrigger*21;
     if (portIsOn){
       if (targetPitch > cvPitch){
         if (!cvPortaTuneCount) {
@@ -1571,6 +1583,7 @@ void pitch_bend() {
   pbUp = touchRead(pbUpPin); // PCB PIN "Pu"
   pbDn = touchRead(pbDnPin); // PCB PIN "Pd"
   halfPitchBendKey = (pinkySetting == PBD) && pinkyKey; // hold pinky key for 1/2 pitchbend value
+  quarterToneTrigger = (pinkySetting == QTN) && pinkyKey; // pinky key for a quarter tone down using pitch bend (assuming PB range on synth is set to 2 semitones)
 
   calculatedPBdepth = pbDepthList[PBdepth];
   if (halfPitchBendKey) calculatedPBdepth = calculatedPBdepth * 0.5;
@@ -1668,6 +1681,10 @@ void pitch_bend() {
 
   pitchBend = constrain(pitchBend, 0, 16383);
 
+  pbSend = pitchBend - quarterToneTrigger*calculatedPBdepth*0.25;
+
+  pbSend = constrain(pbSend, 0, 16383);
+
   if (subVibSquelch && (8192 != pitchBend)) {
     statusLedOff();
     vibLedOff = 1;
@@ -1680,9 +1697,9 @@ void pitch_bend() {
   //Serial.print(" - ");
   //Serial.println(oldpb);
 
-  if (pitchBend != oldpb) { // only send midi data if pitch bend has changed from previous value
-    midiSendPitchBend(pitchBend);
-    oldpb = pitchBend;
+  if (pbSend != oldpb) { // only send midi data if pitch bend has changed from previous value
+    midiSendPitchBend(pbSend);
+    oldpb = pbSend;
   }
 }
 
@@ -1787,7 +1804,11 @@ void extraController() {
   }
 
   if ((harmSetting && (pinkySetting != ECH)) || ((pinkySetting == ECH) && pinkyKey)){
-    harmonics = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, harmSetting);
+    if (harmSelect < 4){
+      harmonics = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, harmSetting);
+    } else {
+      harmonics = map(constrain(exSensor, extracThrVal, extracMaxVal), extracMaxVal, extracThrVal, 0, harmSetting);
+    }
   } else if ((pinkySetting == ECH) && !pinkyKey) {
     harmonics = 0;
   }
