@@ -436,7 +436,7 @@ static void mainTitleGetStr(char* out) {
 
   int vMeterReading = battAvg;
   memcpy(splice1, (vMeterReading > 3020) ? "USB" : "BAT", 3);
-  int vLowLimit;
+  int vLowLimit = NMH_BAT_LOW;
   switch (batteryType){
     case 0:
       vLowLimit = ALK_BAT_LOW;
@@ -546,31 +546,26 @@ static void clearFPS(int trills) {
 //***********************************************************
 // Poly Play menu
 
-static void rotatorSave(const MenuEntrySub& __unused sub) {
+static void saveRotatorSetting(const Rotator * rotator, uint16_t settingAddr)
+{
   int16_t stored;
   for(int i = 0; i < 4; ++i) {
-    stored = readSetting(ROTN1_ADDR+2*i);
-    if(stored != rotations[i])
-      writeSetting(ROTN1_ADDR+2*i,(rotations[i]));
+    stored = readSetting(settingAddr+2*i);
+    if(stored != rotator->rotations[i])
+      writeSetting(settingAddr+2*i,(rotator->rotations[i]));
   }
+}
+
+static void rotatorSave(const MenuEntrySub& __unused sub) {
+  saveRotatorSetting(&rotations_a, ROTN1_ADDR);
 }
 
 static void rotatorBSave(const MenuEntrySub& __unused sub) {
-  int16_t stored;
-  for(int i = 0; i < 4; ++i) {
-    stored = readSetting(ROTB1_ADDR+2*i);
-    if(stored != rotationsb[i])
-      writeSetting(ROTB1_ADDR+2*i,(rotationsb[i]));
-  }
+  saveRotatorSetting(&rotations_b, ROTB1_ADDR);
 }
 
 static void rotatorCSave(const MenuEntrySub& __unused sub) {
-  int16_t stored;
-  for(int i = 0; i < 4; ++i) {
-    stored = readSetting(ROTC1_ADDR+2*i);
-    if(stored != rotationsc[i])
-      writeSetting(ROTC1_ADDR+2*i,(rotationsc[i]));
-  }
+  saveRotatorSetting(&rotations_c, ROTC1_ADDR);
 }
 
 
@@ -579,100 +574,100 @@ static void rotatorOptionGet(SubMenuRef sub, char *out, const char** __unused un
 }
 
 static void parallelOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
-  numToString(parallel-24, out, true);
+  numToString(rotations_a.parallel-24, out, true);
 }
 
 static void parallelBOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
-  numToString(parallelb-24, out, true);
+  numToString(rotations_b.parallel-24, out, true);
 }
 
 static void parallelCOptionGet(SubMenuRef __unused, char *out, const char** __unused unit) {
-  numToString(parallelc-24, out, true);
+  numToString(rotations_c.parallel-24, out, true);
 }
 
 static void parallelSave(SubMenuRef __unused) {
-  writeSetting(PARAL_ADDR, parallel);
+  writeSetting(PARAL_ADDR, rotations_a.parallel);
 }
 
 static void parallelBSave(SubMenuRef __unused) {
-  writeSetting(PARAB_ADDR, parallelb);
+  writeSetting(PARAB_ADDR, rotations_b.parallel);
 }
 
 static void parallelCSave(SubMenuRef __unused) {
-  writeSetting(PARAC_ADDR, parallelc);
+  writeSetting(PARAC_ADDR, rotations_c.parallel);
 }
 
 const MenuEntrySub rotatorParaMenu  = {
-  MenuType::ESub, "RTA PARAL", "SEMITONES", &parallel, 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA PARAL", "SEMITONES", &rotations_a.parallel, 0, 48, MenuEntryFlags::ENone,
   parallelOptionGet, parallelSave, nullptr
 };
 
 const MenuEntrySub rotator1Menu  = {
-  MenuType::ESub, "RTA ROT 1", "SEMITONES", &rotations[0], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 1", "SEMITONES", &rotations_a.rotations[0], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator2Menu  = {
-  MenuType::ESub, "RTA ROT 2", "SEMITONES", &rotations[1], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 2", "SEMITONES", &rotations_a.rotations[1], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator3Menu  = {
-  MenuType::ESub, "RTA ROT 3", "SEMITONES", &rotations[2], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 3", "SEMITONES", &rotations_a.rotations[2], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotator4Menu  = {
-  MenuType::ESub, "RTA ROT 4", "SEMITONES", &rotations[3], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTA ROT 4", "SEMITONES", &rotations_a.rotations[3], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorSave, nullptr
 };
 
 const MenuEntrySub rotatorParaBMenu  = {
-  MenuType::ESub, "RTB PARAL", "SEMITONES", &parallelb, 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTB PARAL", "SEMITONES", &rotations_b.parallel, 0, 48, MenuEntryFlags::ENone,
   parallelBOptionGet, parallelBSave, nullptr
 };
 
 const MenuEntrySub rotatorB1Menu  = {
-  MenuType::ESub, "RTB ROT 1", "SEMITONES", &rotationsb[0], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTB ROT 1", "SEMITONES", &rotations_b.rotations[0], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorBSave, nullptr
 };
 
 const MenuEntrySub rotatorB2Menu  = {
-  MenuType::ESub, "RTB ROT 2", "SEMITONES", &rotationsb[1], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTB ROT 2", "SEMITONES", &rotations_b.rotations[1], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorBSave, nullptr
 };
 
 const MenuEntrySub rotatorB3Menu  = {
-  MenuType::ESub, "RTB ROT 3", "SEMITONES", &rotationsb[2], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTB ROT 3", "SEMITONES", &rotations_b.rotations[2], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorBSave, nullptr
 };
 
 const MenuEntrySub rotatorB4Menu  = {
-  MenuType::ESub, "RTB ROT 4", "SEMITONES", &rotationsb[3], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTB ROT 4", "SEMITONES", &rotations_b.rotations[3], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorBSave, nullptr
 };
 const MenuEntrySub rotatorParaCMenu  = {
-  MenuType::ESub, "RTC PARAL", "SEMITONES", &parallelc, 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTC PARAL", "SEMITONES", &rotations_c.parallel, 0, 48, MenuEntryFlags::ENone,
   parallelCOptionGet, parallelCSave, nullptr
 };
 
 const MenuEntrySub rotatorC1Menu  = {
-  MenuType::ESub, "RTC ROT 1", "SEMITONES", &rotationsc[0], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTC ROT 1", "SEMITONES", &rotations_c.rotations[0], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorCSave, nullptr
 };
 
 const MenuEntrySub rotatorC2Menu  = {
-  MenuType::ESub, "RTC ROT 2", "SEMITONES", &rotationsc[1], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTC ROT 2", "SEMITONES", &rotations_c.rotations[1], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorCSave, nullptr
 };
 
 const MenuEntrySub rotatorC3Menu  = {
-  MenuType::ESub, "RTC ROT 3", "SEMITONES", &rotationsc[2], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTC ROT 3", "SEMITONES", &rotations_c.rotations[2], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorCSave, nullptr
 };
 
 const MenuEntrySub rotatorC4Menu  = {
-  MenuType::ESub, "RTC ROT 4", "SEMITONES", &rotationsc[3], 0, 48, MenuEntryFlags::ENone,
+  MenuType::ESub, "RTC ROT 4", "SEMITONES", &rotations_c.rotations[3], 0, 48, MenuEntryFlags::ENone,
   rotatorOptionGet, rotatorCSave, nullptr
 };
 
@@ -839,7 +834,7 @@ static void polySelectSave(SubMenuRef __unused) {
 }
 
 const MenuEntrySub polySelectMenu = {
-  MenuType::ESub, "POLY MODE", "SELECT", &polySelect, 0,10, MenuEntryFlags::EMenuEntryWrap, 
+  MenuType::ESub, "POLY MODE", "SELECT", (uint16_t*)&polySelect, 0,10, MenuEntryFlags::EMenuEntryWrap, 
   polySelectOptionGet, polySelectSave, nullptr,
 };
 
