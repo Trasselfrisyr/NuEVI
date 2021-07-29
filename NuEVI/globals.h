@@ -28,33 +28,32 @@
 #define ECH 30
 #define QTN 31
 
+#define MOD 13
+
+//Vibrato direction
+#define UPWD 1
+#define DNWD 0
+
+
+enum PolySelect : unsigned short {
+    EHarmonizerOff = 0,
+    ETriadMajorGospelRoot = 1, // MGR
+    ETriadMajorGospelDominant = 2, // MGD
+    EMajorAddNine = 3,
+    EMinorDorian = 4,
+    EMinorAeolian = 5,
+    EMinorFourVoiceHip = 6,
+    EFourWayCloseHarmonizer = 7,
+    ERotatorA = 8,
+    ERotatorB = 9,
+    ERotatorC = 10,
+};
 
 struct Rotator 
 {
     uint16_t parallel;   // Semitones
     uint16_t rotations[4];
 };
-
-enum EPolySelect : unsigned short {
-    HarmonizerOff = 0,
-    TriadMajorGospelRoot = 1, // MGR
-    TriadMajorGospelDominant = 2, // MGD
-    MajorAddNine = 3,
-    MinorDorian = 4,
-    MinorAeolian = 5,
-    MinorFourVoiceHip = 6,
-    FourWayCloseHarmonizer = 7,
-    RotatorA = 8,
-    RotatorB = 9,
-    RotatorC = 10,
-} ;
-
-
-#define MOD 13
-
-//Vibrato direction
-#define UPWD 1
-#define DNWD 0
 
 
 extern const unsigned short* const curves[];
@@ -116,7 +115,7 @@ extern unsigned short harmSetting; // 0-7
 extern unsigned short harmSelect; // 0-5
 extern unsigned short brHarmSetting; // 0-7
 extern unsigned short brHarmSelect; // 0-3
-extern EPolySelect polySelect;  // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
+extern PolySelect polySelect;  // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
 extern unsigned short fwcType; // 6, m6, 7, m7
 extern unsigned short fwcLockH; // OFF:ON
 extern unsigned short fwcDrop2; // OFF:ON

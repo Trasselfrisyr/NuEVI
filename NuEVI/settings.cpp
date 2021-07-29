@@ -245,7 +245,7 @@ void readEEPROM(const bool factoryReset) {
     batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);
     harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 7, HARMSEL_FACTORY);
-    polySelect      = (EPolySelect)readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
+    polySelect      = (PolySelect)readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
     fwcType         = readSettingBounded(FWCTYPE_ADDR, 0, 4, FWCTYPE_FACTORY);
     fwcLockH        = readSettingBounded(FWCLCH_ADDR, 0, 1, FWCLCH_FACTORY);
     fwcDrop2        = readSettingBounded(FWCDP2_ADDR, 0, 1, FWCDP2_FACTORY);

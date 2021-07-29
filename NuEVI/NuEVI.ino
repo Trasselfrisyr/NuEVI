@@ -98,7 +98,7 @@ unsigned short harmSetting; // 0-7
 unsigned short harmSelect; // 0-5
 unsigned short brHarmSetting; // 0-7
 unsigned short brHarmSelect; // 0-3
-EPolySelect polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
+PolySelect polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
 unsigned short fwcType; // 6, m6, 7, m7 
 unsigned short fwcLockH; // OFF:ON
 unsigned short fwcDrop2; // OFF:ON
@@ -947,7 +947,7 @@ void loop() {
     #else
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     #endif
-    if (polySelect != HarmonizerOff) {
+    if (polySelect != EHarmonizerOff) {
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
           // special key just pressed, check other keys
@@ -1330,13 +1330,13 @@ static void stopRotatorNotes(byte note, const Rotator *rotator) {
 static void stopHarmonizerNotes(byte note)
 {
   switch(polySelect) {
-    case TriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, false); break;
-    case TriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, false);  break;
-    case MajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, false);    break;
-    case MinorDorian:               sendHarmonizerData(note, minDorHmz, false);     break;
-    case MinorAeolian:              sendHarmonizerData(note, minAeoHmz, false);     break;
-    case MinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, false);     break;
-    case FourWayCloseHarmonizer:
+    case ETriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, false); break;
+    case ETriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, false);  break;
+    case EMajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, false);    break;
+    case EMinorDorian:               sendHarmonizerData(note, minDorHmz, false);     break;
+    case EMinorAeolian:              sendHarmonizerData(note, minAeoHmz, false);     break;
+    case EMinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, false);     break;
+    case EFourWayCloseHarmonizer:
     {
       if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOff(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][0]-12*fwcDrop2));
       if ((hmzLimit+fwcDrop2)>2) midiSendNoteOff(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][1]));
@@ -1345,9 +1345,9 @@ static void stopHarmonizerNotes(byte note)
     }
     break;
 
-    case RotatorA: stopRotatorNotes(note, &rotations_a); break;
-    case RotatorB: stopRotatorNotes(note, &rotations_b); break;
-    case RotatorC: stopRotatorNotes(note, &rotations_c); break;
+    case ERotatorA: stopRotatorNotes(note, &rotations_a); break;
+    case ERotatorB: stopRotatorNotes(note, &rotations_b); break;
+    case ERotatorC: stopRotatorNotes(note, &rotations_c); break;
 
     default: break;
   }
@@ -1356,13 +1356,13 @@ static void stopHarmonizerNotes(byte note)
 static void startHarmonizerNotes(byte note)
 {
   switch(polySelect) {
-    case TriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, true); break;
-    case TriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, true);  break;
-    case MajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, true);    break;
-    case MinorDorian:               sendHarmonizerData(note, minDorHmz, true);     break;
-    case MinorAeolian:              sendHarmonizerData(note, minAeoHmz, true);     break;
-    case MinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, true);     break;
-    case FourWayCloseHarmonizer:
+    case ETriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, true); break;
+    case ETriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, true);  break;
+    case EMajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, true);    break;
+    case EMinorDorian:               sendHarmonizerData(note, minDorHmz, true);     break;
+    case EMinorAeolian:              sendHarmonizerData(note, minAeoHmz, true);     break;
+    case EMinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, true);     break;
+    case EFourWayCloseHarmonizer:
     {
       int limit = (hmzLimit+fwcDrop2);
       if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOn(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][0]-12*fwcDrop2), velocitySend);
@@ -1372,9 +1372,9 @@ static void startHarmonizerNotes(byte note)
     }
     break;
 
-    case RotatorA: updateRotator(note, &rotations_a); break;
-    case RotatorB: updateRotator(note, &rotations_b); break;
-    case RotatorC: updateRotator(note, &rotations_c); break;
+    case ERotatorA: updateRotator(note, &rotations_a); break;
+    case ERotatorB: updateRotator(note, &rotations_b); break;
+    case ERotatorC: updateRotator(note, &rotations_c); break;
 
     default: break;
   }
@@ -2016,7 +2016,7 @@ void readSwitches() {
       else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
       else if (lastOctaveR > 1) {
         octaveR = lastOctaveR; 
-        if (otfKey && polySelect && (polySelect<EPolySelect::RotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (otfKey && polySelect && (polySelect<PolySelect::ERotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
         if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
       }
       //if rollers are released and we are not coming down from roller 1, stay at the higher octave
@@ -2158,7 +2158,7 @@ void readSwitches() {
   else if (R1) octaveR = 1; //R1
   else if (lastOctaveR > 1) {
     octaveR = lastOctaveR; 
-    if (otfKey && polySelect && (polySelect<EPolySelect::RotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+    if (otfKey && polySelect && (polySelect<PolySelect::ERotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
     if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
   }
   //if rollers are released and we are not coming down from roller 1, stay at the higher octave

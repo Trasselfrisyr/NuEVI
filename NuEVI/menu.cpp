@@ -1416,7 +1416,7 @@ const MenuEntrySub portLimitMenu = {
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(portLimit, out);
   },
-[](const SubMenuRef & __unused sub) { writeSetting(PORTLIMIT_ADDR,portLimit); }
+  [](SubMenuRef __unused sub) { writeSetting(PORTLIMIT_ADDR,portLimit); }
   , nullptr
 };
 
@@ -1451,7 +1451,7 @@ const MenuEntrySub extraCC2Menu = {
     if(extraCT2) numToString(extraCT2, out);
     else strncpy(out, "OFF", 4);
   },
-[](const MenuEntrySub & __unused sub) { writeSetting(EXTRA2_ADDR,extraCT2); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA2_ADDR,extraCT2); }
   , nullptr
 };
 
@@ -1461,7 +1461,7 @@ const MenuEntrySub harmonicsMenu = {
     if(harmSetting) numToString(harmSetting, out);
     else strncpy(out, "OFF", 4);
   },
-[](const MenuEntrySub & __unused sub) { writeSetting(HARMSET_ADDR,harmSetting); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(HARMSET_ADDR,harmSetting); }
   , nullptr
 };
 
@@ -1532,7 +1532,7 @@ const MenuEntrySub lvlCtrlCCMenu = {
     if(levelCC) numToString(levelCC, out);
     else strncpy(out, "AT", 4);
   },
-[](const MenuEntrySub & __unused sub) { writeSetting(LEVEL_CC_ADDR,levelCC); }
+  [](const MenuEntrySub & __unused sub) { writeSetting(LEVEL_CC_ADDR,levelCC); }
   , nullptr
 };
 
@@ -1544,6 +1544,7 @@ const MenuEntrySub fingeringMenu = {
     strncpy(out, labs[fingering], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }
+  , nullptr
 };
 #else
 const MenuEntrySub fingeringMenu = {
@@ -1553,6 +1554,7 @@ const MenuEntrySub fingeringMenu = {
     strncpy(out, labs[fingering], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(FINGER_ADDR,fingering); }
+  , nullptr
 };
 #endif
 
