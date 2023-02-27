@@ -93,8 +93,9 @@
 #define CVTUNE_ADDR 180
 #define CVSCALE_ADDR 182
 #define CVRATE_ADDR 184
+#define ROLLER_ADDR 186
 
-#define EEPROM_SIZE 186 //Last address +2
+#define EEPROM_SIZE 188 //Last address +2
 
 
 //DAC output modes
@@ -111,7 +112,7 @@
 
 
 //"factory" values for settings
-#define EEPROM_VERSION 44
+#define EEPROM_VERSION 45
 
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
@@ -156,7 +157,7 @@
 #define BREATH_CC2_FACTORY 0  //OFF,1-127
 #define BREATH_CC2_RISE_FACTORY 1
 #define VIB_SENS_BITE_FACTORY 8
-#define VIB_SQUELCH_BITE_FACTORY 10
+#define VIB_SQUELCH_BITE_FACTORY 15
 #define VIB_CONTROL_FACTORY 0
 #define TRILL3_INTERVAL_FACTORY 4
 #define DAC_MODE_FACTORY DAC_MODE_PITCH
@@ -196,6 +197,7 @@
 #define CVTUNE_FACTORY 100 // 100 is zero tuning
 #define CVSCALE_FACTORY 100 // 100 is zero scaling
 #define CVRATE_FACTORY 3 // 3 is 5.5Hz
+#define ROLLER_FACTORY 1
 
 #define NO_CHECKSUM 0x7F007F00
 

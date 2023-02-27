@@ -35,7 +35,7 @@ FOR:                  PJRC Teensy 3.2 and three MPR121 capactive touch sensor bo
                       Uses an SSD1306 controlled OLED display communicating over I2C.
 PROGRAMME FUNCTION:   EWI Wind Controller using the Freescale MP3V5004GP breath sensor
                       and capacitive touch keys. Output to both USB MIDI and DIN MIDI.
-                      
+
 ...if you just uncomment the #define NURAD in hardware.h
 */
 
@@ -92,6 +92,7 @@ unsigned short extraCT2; // OFF:1-127
 unsigned short levelCC; // 0-127
 unsigned short levelVal; // 0-127
 unsigned short fingering; // 0-4 EWI,EWX,SAX,EVI,EVR
+unsigned short rollerMode; //0-2
 unsigned short lpinky3; // 0-25 (OFF, -12 - MOD - +12)
 unsigned short batteryType; // 0-2 ALK,NIM,LIP
 unsigned short harmSetting; // 0-7
@@ -99,10 +100,10 @@ unsigned short harmSelect; // 0-5
 unsigned short brHarmSetting; // 0-7
 unsigned short brHarmSelect; // 0-3
 unsigned short polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
-unsigned short fwcType; // 6, m6, 7, m7 
+unsigned short fwcType; // 6, m6, 7, m7
 unsigned short fwcLockH; // OFF:ON
 unsigned short fwcDrop2; // OFF:ON
-unsigned short hmzKey; // 0-11 (0 is C) 
+unsigned short hmzKey; // 0-11 (0 is C)
 unsigned short hmzLimit; // 2-5
 unsigned short otfKey; //OFF:ON
 unsigned short breathInterval = 6; // 3-15
@@ -151,9 +152,15 @@ byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volu
 int pbDepthList[13] = {8192,8192,4096,2731,2048,1638,1365,1170,1024,910,819,744,683};
 
 #if defined(NURAD)
+#if defined(SEAMUS)
+int calOffsetRollers[6] = {-70,20,20,20,20,120};
+int calOffsetRH[12] = {0,0,0,0,0,-50,121,0,0,50,0,120};
+int calOffsetLH[12] = {120,0,120,0,50,115,118,0,50,0,0,0};
+#else
 int calOffsetRollers[6] = {16,10,8,21,24,41};
 int calOffsetRH[12] = {-88,-68,-31,13,4,120,121,-68,-85,-34,23,87};
 int calOffsetLH[12] = {90,-13,-33,-93,-82,115,118,2,4,-40,-75,-94};
+#endif
 #endif
 
 int battMeasured[50];
@@ -191,6 +198,7 @@ uint16_t legacy = 0;
 uint16_t legacyBrAct = 0;
 byte halfTime = 0;
 boolean programonce = false;
+boolean oneroll;
 byte widiOn = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
@@ -248,6 +256,7 @@ byte vibLedOff = 0;
 byte oldpkey = 0;
 
 byte lap = 0;
+byte rSum = 0;
 
 static const float vibDepth[10] = {0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.40,0.45}; // max pitch bend values (+/-) for the vibrato settings
 static const short vibMaxBiteList[17] = {1600,1400,1200,1000,900,800,700,600,500,400,300,250,200,150,100,50,25};
@@ -330,7 +339,7 @@ const int blockFWC[4][12][3] =  {{{ -3, -5, -8 },   // C or key base
                                   { -3, -6, -9 },   // D or base +2
                                   { -3, -5, -9 },   // D# or base +3
                                   { -4, -5, -9 },   // E or base +4
-                                  { -3, -6, -9 },   // F or base +5 
+                                  { -3, -6, -9 },   // F or base +5
                                   { -3, -5, -8 },   // F# or base +6
                                   { -3, -5, -8 },   // G or base +7
                                   { -3, -6, -9 },   // G# or base +8
@@ -343,7 +352,7 @@ const int blockFWC[4][12][3] =  {{{ -3, -5, -8 },   // C or key base
                                   { -3, -6, -9 },   // D or base +2
                                   { -3, -6, -8 },   // D# or base +3
                                   { -3, -6, -9 },   // E or base +4
-                                  { -3, -6, -9 },   // F or base +5 
+                                  { -3, -6, -9 },   // F or base +5
                                   { -3, -6, -8 },   // F# or base +6
                                   { -3, -6, -8 },   // G or base +7
                                   { -3, -6, -9 },   // G# or base +8
@@ -356,26 +365,26 @@ const int blockFWC[4][12][3] =  {{{ -3, -5, -8 },   // C or key base
                                   { -3, -6, -9 },   // D or base +2
                                   { -4, -6, -9 },   // D# or base +3
                                   { -4, -6, -9 },   // E or base +4
-                                  { -3, -6, -9 },   // F or base +5 
+                                  { -3, -6, -9 },   // F or base +5
                                   { -3, -7, -9 },   // F# or base +6
                                   { -3, -7, -9 },   // G or base +7
                                   { -3, -6, -9 },   // G# or base +8
                                   { -3, -6, -9 },   // A or base +9
                                   { -3, -6, -10 },   // Bb or base +10
-                                  { -3, -6, -9 }},  // B or base +11                                  
+                                  { -3, -6, -9 }},  // B or base +11
 // m7
                                  {{ -2, -5, -9 },   // C or key base
                                   { -2, -5, -9 },   // C# or base +1
                                   { -3, -6, -9 },   // D or base +2
                                   { -3, -5, -8 },   // D# or base +3
                                   { -3, -5, -8 },   // E or base +4   3 6 9
-                                  { -3, -6, -9 },   // F or base +5 
+                                  { -3, -6, -9 },   // F or base +5
                                   { -4, -7, -9 },   // F# or base +6
                                   { -4, -7, -9 },   // G or base +7
                                   { -3, -6, -9 },   // G# or base +8
                                   { -3, -6, -9 },   // A or base +9
                                   { -3, -7, -10 },   // Bb or base +10
-                                  { -3, -6, -9 }}};  // B or base +11                                  
+                                  { -3, -6, -9 }}};  // B or base +11
 
 // Major Gospel Root (MGR), Bert Lochs
 const int majGosRootHmz[12][3] = {{ -5, -8, -12 },   // C or key base
@@ -383,7 +392,7 @@ const int majGosRootHmz[12][3] = {{ -5, -8, -12 },   // C or key base
                                   { -3, -7, -12 },   // D or base +2
                                   { -6, -9, -12 },   // D# or base +3
                                   { -4, -9, -12 },   // E or base +4
-                                  { -5, -8, -12 },   // F or base +5 
+                                  { -5, -8, -12 },   // F or base +5
                                   { -3, -6, -12 },   // F# or base +6
                                   { -3, -7, -12 },   // G or base +7
                                   { -3, -8, -12 },   // G# or base +8
@@ -397,7 +406,7 @@ const int majGosDomHmz[12][3] =  {{ -5, -8, -12 },   // C or key base
                                   { -3, -7, -12 },   // D or base +2
                                   { -6, -9, -12 },   // D# or base +3
                                   { -4, -9, -12 },   // E or base +4
-                                  { -5, -8, -12 },   // F or base +5 
+                                  { -5, -8, -12 },   // F or base +5
                                   { -3, -6, -12 },   // F# or base +6
                                   { -5, -8, -12 },   // G or base +7
                                   { -3, -8, -12 },   // G# or base +8
@@ -411,13 +420,13 @@ const int majAdd9Hmz[12][3] =    {{ -5, -8, -10 },   // C or key base
                                   { -3, -5, -7 },   // D or base +2
                                   { -3, -7, -9 },   // D# or base +3
                                   { -2, -4, -9 },   // E or base +4
-                                  { -5, -8, -10 },   // F or base +5 
+                                  { -5, -8, -10 },   // F or base +5
                                   { -4, -6, -10 },   // F# or base +6
                                   { -3, -5, -7 },   // G or base +7
                                   { -4, -6, -10 },   // G# or base +8
                                   { -2, -4, -9 },   // A or base +9
                                   { -5, -8, -10 },   // Bb or base +10
-                                  { -2, -4, -9 }};  // B or base +11                                  
+                                  { -2, -4, -9 }};  // B or base +11
 
 // Minor Dorian (MND), Bert Lochs
 const int minDorHmz[12][3] =     {{ -5, -9, -12 },   // C or key base
@@ -425,7 +434,7 @@ const int minDorHmz[12][3] =     {{ -5, -9, -12 },   // C or key base
                                   { -5, -9, -12 },   // D or base +2
                                   { -3, -8, -12 },   // D# or base +3
                                   { -3, -8, -12 },   // E or base +4
-                                  { -3, -8, -12 },   // F or base +5 
+                                  { -3, -8, -12 },   // F or base +5
                                   { -5, -9, -12 },   // F# or base +6
                                   { -5, -9, -12 },   // G or base +7
                                   { -5, -8, -12 },   // G# or base +8
@@ -439,7 +448,7 @@ const int minAeoHmz[12][3] =     {{ -5, -9, -12 },   // C or key base
                                   { -3, -9, -12 },   // D or base +2
                                   { -3, -8, -12 },   // D# or base +3
                                   { -6, -9, -12 },   // E or base +4
-                                  { -5, -9, -12 },   // F or base +5 
+                                  { -5, -9, -12 },   // F or base +5
                                   { -5, -9, -12 },   // F# or base +6
                                   { -5, -9, -12 },   // G or base +7
                                   { -3, -8, -12 },   // G# or base +8
@@ -447,13 +456,13 @@ const int minAeoHmz[12][3] =     {{ -5, -9, -12 },   // C or key base
                                   { -3, -8, -12 },   // Bb or base +10
                                   { -6, -8, -12 }};  // B or base +11
 
-// Minor 4-voice Hip (MNH), Bert Lochs                                                                    
+// Minor 4-voice Hip (MNH), Bert Lochs
 const int minHipHmz[12][3] =     {{ -5, -9, -10 },   // C or key base
                                   { -5, -9, -10 },   // C# or base +1
                                   { -5, -9, -10 },   // D or base +2
                                   { -3, -4, -8 },   // D# or base +3
                                   { -3, -4, -8 },   // E or base +4
-                                  { -3, -4, -8 },   // F or base +5 
+                                  { -3, -4, -8 },   // F or base +5
                                   { -5, -9, -10 },   // F# or base +6
                                   { -5, -9, -10 },   // G or base +7
                                   { -5, -6, -8 },   // G# or base +8
@@ -482,13 +491,13 @@ const int harmonicResult[8][7] = {{  0,   7,  12,  16,  19,  24,  28 },  //HM1
 const int brHarmonicResult[4][7] = {{ 0,   7,  12,  16,  19,  24,  28 },  //HM1
                                     { 0,   7,  12,  16,  19,  22,  24 },  //HM2 (7th harmonic not excluded)
                                     { 0,   7,  12,  19,  24,  31,  36 },  //5TH
-                                    { 0,  12,  24,  36,  48,  60,  72 }}; //OCT                                 
-                                  
+                                    { 0,  12,  24,  36,  48,  60,  72 }}; //OCT
+
 const int rollerHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  24,  26 },  //F horn 2,3,4,5,6,8,9 hrm
                                   { 7,  12,  16,  19,  24,  26,  31 }}; //Bb horn 3,4,5,6,8,9,12 hrm
 
-const int trumpetHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  26,  31 },  //!K4: hrm 8->9, 10->12       
-                                   { 0,   7,  12,  16,  19,  24,  28 }}; //trumpet 2,3,4,5,6,8,10 hrm                        
+const int trumpetHarmonic[2][7] = {{ 0,   7,  12,  16,  19,  26,  31 },  //!K4: hrm 8->9, 10->12
+                                   { 0,   7,  12,  16,  19,  24,  28 }}; //trumpet 2,3,4,5,6,8,10 hrm
 
 
 int vibThr;          // this gets auto calibrated in setup
@@ -510,7 +519,7 @@ byte addedIntervals = 1;
 
 #if defined(NURAD)
             // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed
-byte LHs;            
+byte LHs;
 byte LH1;   // Left Hand key 1 (pitch change -2)
 byte LHb;   // Left Hand bis key (pitch change -1 unless both LH1 and LH2 are pressed)
 byte LH2;   // Left Hand key 2  (with LH1 also pressed pitch change is -2, otherwise -1)
@@ -550,6 +559,7 @@ byte R2;
 byte R3;
 byte R4;
 byte R5;
+byte R6;
 
 byte octaveR = 0;
 byte lastOctaveR = 0;
@@ -557,7 +567,8 @@ byte lastOctaveR = 0;
 byte halfPitchBendKey;
 byte quarterToneTrigger;
 byte specialKey;
-byte pinkyKey;
+byte patchKey = 0;
+byte pinkyKey = 0;
 byte lastSpecialKey = 0;
 byte lastPinkyKey = 0;
 int pitchlatch;
@@ -571,6 +582,7 @@ byte lastpcc2 = 0;
 byte slurSustain = 0;
 byte parallelChord = 0;
 byte subOctaveDouble = 0;
+byte slurSostenuto = 0;
 
 #if defined(NURAD)
 Adafruit_MPR121 touchSensorRollers = Adafruit_MPR121();
@@ -640,14 +652,14 @@ void setup() {
   digitalWrite(widiJumperGndPin, LOW);  //WIDI
 
   widiJumper = !digitalRead(widiJumperPin); //WIDI
-  
+
   Serial2.setRX (26); //WIDI
   Serial2.setTX (31); //WIDI
 
   bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
   configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
   i2cScan = !factoryReset && !digitalRead(mPin);
-  
+
   initDisplay(); //Start up display and show logo
 
   //If going into config management mode, stop here before we even touch the EEPROM.
@@ -662,15 +674,15 @@ void setup() {
     i2cScanDisplay();
   }
   #endif
-  
+
 
   //Read eeprom data into global vars
   readEEPROM(factoryReset);
-  
+
   touch_Thr = map(ctouchThrVal,ctouchHiLimit,ctouchLoLimit,ttouchLoLimit,ttouchHiLimit);
-  
+
   activePatch = patch;
-  
+
   #if defined(NURAD)
   digitalWrite(statusLedPin,HIGH);
   delay(100);
@@ -770,7 +782,7 @@ void setup() {
   }
 
   if (widiJumper && widiOn) digitalWrite(widiPowerPin, HIGH); else digitalWrite(widiPowerPin, LOW);
-   
+
   activeMIDIchannel = MIDIchannel;
   midiInitialize(MIDIchannel);
 
@@ -844,6 +856,7 @@ void loop() {
       lastpcc1=pcCombo1;
       lastpcc2=pcCombo2;
       if (
+          patchKey ||
           (bothPB && legacy) ||
           (brSuck && legacyBrAct && justPbUp) ||
           (brSuck && legacyBrAct && bcasMode && noPb)
@@ -956,6 +969,7 @@ void loop() {
           if (K4) {
             if (!slurSustain) {
               slurSustain = 1;
+              slurSostenuto = 0;
               parallelChord = 0;
               rotatorOn = 0;
             } else slurSustain = 0;
@@ -973,11 +987,19 @@ void loop() {
               rotatorOn = 0;
             } else subOctaveDouble = 0;
           }
-          if (!K1 && !K4 && !K5) {
+          if (K2) {
+            if (!slurSostenuto) {
+              slurSostenuto = 1;
+              slurSustain = 0;
+              //rotatorOn = 0;
+            } else slurSostenuto = 0;
+          }
+          if (!K1 && !K4 && !K5 && !K2 && !pinkyKey) {
             slurSustain = 0;
             parallelChord = 0;
             subOctaveDouble = 0;
             rotatorOn = 0;
+            slurSostenuto = 0;
           }
           if (pinkyKey) {
             if (!rotatorOn) {
@@ -996,6 +1018,7 @@ void loop() {
       slurSustain = 0;
       parallelChord = 0;
       subOctaveDouble = 0;
+      slurSostenuto = 0;
     }
     if ((pinkySetting == LVL) || (pinkySetting == LVLP)){
       if (pinkyKey && K7){
@@ -1145,6 +1168,9 @@ void loop() {
         if (!priority) { // mono prio to base note
           midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
         }
+        if (slurSostenuto) {
+          midiSendControlChange(66, 127);
+        }
         activeNote = fingeredNote;
         mainState = NOTE_ON;
       }
@@ -1219,6 +1245,9 @@ void loop() {
       }
       if (slurSustain) {
         midiSendControlChange(64, 0);
+      }
+      if (slurSostenuto) {
+        midiSendControlChange(66, 0);
       }
       breathLevel = 0;
       mainState = NOTE_OFF;
@@ -1429,7 +1458,7 @@ void loop() {
     // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
     // this is one of the big reasons the display is for setup use only
     drawSensorPixels(); // live sensor monitoring for the setup screens
-    if (rotatorOn || slurSustain || parallelChord || subOctaveDouble || gateOpen) {
+    if (rotatorOn || slurSustain || parallelChord || subOctaveDouble || slurSostenuto || gateOpen) {
       statusLedFlip();
     } else {
       statusLedOn();
@@ -1466,7 +1495,7 @@ void loop() {
     } else {
       cvPitch = targetPitch;
     }
-    
+
     if (cvVibRate){
       int timeDivider = timeDividerList[cvVibRate];
       int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum-1)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
@@ -1546,7 +1575,7 @@ void breath() {
   if (breathCCval != oldbreath) { // only send midi data if breath has changed from previous value
     if (breathCC) {
       // send midi cc
-      midiSendControlChange(ccList[breathCC], breathCCval);    
+      midiSendControlChange(ccList[breathCC], breathCCval);
     }
     if (breathAT) {
       // send aftertouch
@@ -1597,7 +1626,7 @@ void pitch_bend() {
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
       vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
-    }  
+    }
     if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
         vibSignal = (vibSignal + map(constrain(vibReadBite, (vibZeroBite - vibMaxBite), vibThrBite), vibThrBite, (vibZeroBite - vibMaxBite), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
@@ -1753,7 +1782,7 @@ void battCheck(){
     }
     battAvg /= 50;
     battCheckPos++;
-    if (battCheckPos == 50) battCheckPos = 0;    
+    if (battCheckPos == 50) battCheckPos = 0;
 }
 
 void extraController() {
@@ -1812,7 +1841,7 @@ void extraController() {
   } else if ((pinkySetting == ECH) && !pinkyKey) {
     harmonics = 0;
   }
-  
+
   if ((extraCT || extraCT2) && (exSensor >= extracThrVal)) { // if we are enabled and over the threshold, send data
     if (!extracIsOn) {
       extracIsOn = 1;
@@ -1881,7 +1910,7 @@ void extraController() {
 }
 
 //***********************************************************
- 
+
 void portamento_() {
   int portSumCC = 0;
   if (pinkySetting == GLD){
@@ -1903,11 +1932,17 @@ void portamento_() {
   if (2 == leverControl) {
     // Portamento is controlled with thumb lever
     leverPortRead = touchRead(vibratoPin);
+#if defined(SEAMUS)
+    if (portamento && ((leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
+      portSumCC += map(constrain((leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
+    }
+#else
     if (portamento && ((3000-leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
       portSumCC += map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
     }
+#endif
   }
-  portSumCC = constrain(portSumCC, 0, portLimit); // Total output glide rate limited to glide max setting 
+  portSumCC = constrain(portSumCC, 0, portLimit); // Total output glide rate limited to glide max setting
   if (portSumCC) { // there is a portamento level, so go for it
     if (!portIsOn) {
       portOn();
@@ -1974,7 +2009,7 @@ void biteCC_() {
       if (!biteIsOn) {
         biteIsOn = 1;
       }
-      if (biteCClevel != oldbitecc) { 
+      if (biteCClevel != oldbitecc) {
         midiSendControlChange(biteCC, biteCClevel);
       }
       oldbitecc = biteCClevel;
@@ -1997,7 +2032,7 @@ void leverCC_() {
       if (!leverIsOn) {
         leverIsOn = 1;
       }
-      if (leverCClevel != oldlevercc) { 
+      if (leverCClevel != oldlevercc) {
         midiSendControlChange(leverCC, leverCClevel);
       }
       oldlevercc = leverCClevel;
@@ -2047,7 +2082,7 @@ void autoCal() {
   writeSetting(PORTAM_THR_ADDR, portamThrVal);
   writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
   // Touch sensors
-  calRead = ctouchHiLimit;  
+  calRead = ctouchHiLimit;
   for (byte i = 0; i < 6; i++) {
     calReadNext = touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300;
     if (calReadNext < calRead) calRead = calReadNext; //use lowest value
@@ -2081,7 +2116,7 @@ void autoCal() {
     writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
   }
   // Touch sensors
-  calRead = ctouchHiLimit;  
+  calRead = ctouchHiLimit;
   for (byte i = 0; i < 12; i++) {
     calReadNext = touchSensor.filteredData(i);
     if (calReadNext < calRead) calRead = calReadNext; //use lowest value
@@ -2106,41 +2141,95 @@ void readSwitches() {
   switch (lap){
     case 0:
       // Octave rollers
-      int touchValueRollers[12]; 
+      int touchValueRollers[12];
       for (byte i=0; i<6; i++){
         //touchValueRollers[i]=touchSensorRollers.filteredData(i) - calOffsetRollers[i];
         touchValueRollers[i]=touchSensorRollers.filteredData(i) * (300-calOffsetRollers[i])/300;
       }
-      // 6-pin version
-      octaveR = 0;
-      if      (touchValueRollers[rPin6] < ctouchThrVal) octaveR = 6; //R6
-      else if (R5=(touchValueRollers[rPin5] < ctouchThrVal)) octaveR = 5;  //R5 (store for combo check)
-      else if (R4=(touchValueRollers[rPin4] < ctouchThrVal)) octaveR = 4;  //R4 (store for combo check)
-      else if (R3=(touchValueRollers[rPin3] < ctouchThrVal)) octaveR = 3;  //R3 (store for combo check)
-      else if (R2=(touchValueRollers[rPin2] < ctouchThrVal)) octaveR = 2;  //R2 (store for combo check)
-      else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
-      else if (lastOctaveR > 1) {
-        octaveR = lastOctaveR; 
-        if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
-        if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
-      }
-      //if rollers are released and we are not coming down from roller 1, stay at the higher octave
-
-      lastOctaveR = octaveR;
-       /*
-      //5-pin version
-      octaveR = 0;
-      if      ((touchValueRollers[rPin5] < ctouchThrVal) && (touchValueRollers[rPin3] < ctouchThrVal)) octaveR = 6; //R6
-      else if (touchValueRollers[rPin5] < ctouchThrVal) octaveR = 5;  //R5
-      else if (touchValueRollers[rPin4] < ctouchThrVal) octaveR = 4;  //R4
-      else if (touchValueRollers[rPin3] < ctouchThrVal) octaveR = 3;  //R3
-      else if (touchValueRollers[rPin2] < ctouchThrVal) octaveR = 2;  //R2
-      else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
+ #if defined(SEAMUS)
+        /*
+        // 5-pin version
+        octaveR = 0;
+        if ((R5=(touchValueRollers[rPin5] < ctouchThrVal)) && ((touchValueRollers[rPin1] < ctouchThrVal))) octaveR = 6; //R6 = R5 && R1
+        else if (R5=(touchValueRollers[rPin5] < ctouchThrVal)) octaveR = 5; //R5
+        else if (R4=(touchValueRollers[rPin4] < ctouchThrVal)) octaveR = 4; //R4
+        else if ((R3=(touchValueRollers[rPin3] < ctouchThrVal)) && lastOctaveR) octaveR = 3; //R3
+        else if (R2=(touchValueRollers[rPin2] < ctouchThrVal)) octaveR = 2; //R2
+        else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1; //R1
+        else if (lastOctaveR > 1) {
+          octaveR = lastOctaveR;
+          if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+          if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers
+        }
+  //if rollers are released and we are not coming down from roller 1, stay at the higher octave
+  //CV filter leak prevention when putting NuEVI aside
       */
+      // 5-pin version, 1 & 6 common
+
+      R1=(touchValueRollers[rPin1] < ctouchThrVal);
+      R2=(touchValueRollers[rPin2] < ctouchThrVal);
+      R3=(touchValueRollers[rPin3] < ctouchThrVal);
+      R4=(touchValueRollers[rPin4] < ctouchThrVal);
+      R5=(touchValueRollers[rPin5] < ctouchThrVal);
+      rSum = R1+R2+R3+R4+R5;
+
+      octaveR = 0;
+      oneroll = (rollerMode < 2);
+      if (R5 && R1) octaveR = 6; //R6 = R5 && R1
+      else if (R5 && (R4 || oneroll)) octaveR = 5; //R5
+      else if (R4 && (R3 || oneroll)) octaveR = 4; //R4
+      else if (R3 && (R2 || oneroll)) octaveR = 3; //R3
+      else if (R2 && (R1 || oneroll)) octaveR = 2; //R2
+      else if (R1) octaveR = 1; //R1
+      else if (lastOctaveR > 1) {
+        if (rollerMode) octaveR = lastOctaveR; //if rollers are released and we are not coming down from roller 1, stay at the higher octave
+        if (otfKey && !rSum && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers
+      }
+      if ((3 == rollerMode) && R1 && !R5 && (6 == lastOctaveR)) octaveR = 7; // Bonus octave on top
+      // Roller modes
+      // 0: Highest touched roller, no release memory (legacy style), 1 in menu
+      // 1: Highest touched roller, release memory, 2 in menu
+      // 2: Touched roller pair, release memory, 3 in menu
+      // 3: Touched roller pair, release memory, bonus octave on top, 4 in menu
+
+  #else
+     // 6-pin version, NuRAD
+
+      R1=(touchValueRollers[rPin1] < ctouchThrVal);
+      R2=(touchValueRollers[rPin2] < ctouchThrVal);
+      R3=(touchValueRollers[rPin3] < ctouchThrVal);
+      R4=(touchValueRollers[rPin4] < ctouchThrVal);
+      R5=(touchValueRollers[rPin5] < ctouchThrVal);
+      R6=(touchValueRollers[rPin6] < ctouchThrVal);
+      rSum = R1+R2+R3+R4+R5+R6;
+
+      octaveR = 0;
+      oneroll = (rollerMode < 2);
+      if      (R6 && (R5 || oneroll)) octaveR = 6;  //R6
+      else if (R5 && (R4 || oneroll)) octaveR = 5;  //R5
+      else if (R4 && (R3 || oneroll)) octaveR = 4;  //R4
+      else if (R3 && (R2 || oneroll)) octaveR = 3;  //R3
+      else if (R2 && (R1 || oneroll)) octaveR = 2;  //R2
+      else if (R1) octaveR = 1;  //R1
+      else if (lastOctaveR > 1) {
+        if (rollerMode) octaveR = lastOctaveR; //if rollers are released and we are not coming down from roller 1, stay at the higher octave
+        if (otfKey && !rSum && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers
+      }
+      if ((3 == rollerMode) && R6 && !R5 && (6 == lastOctaveR)) octaveR = 7; // Bonus octave on top
+      // Roller modes
+      // 0: Highest touched roller, no release memory (legacy style), 1 in menu
+      // 1: Highest touched roller, release memory, 2 in menu
+      // 2: Touched roller pair, release memory, 3 in menu
+      // 3: Touched roller pair, release memory, bonus octave on top, 4 in menu
+#endif
+      lastOctaveR = octaveR;
+
       break;
-    case 1:       
+    case 1:
       // RH keys
-      int touchValueRH[12]; 
+      int touchValueRH[12];
       for (byte i=0; i<12; i++){
         //touchValueRH[i]=touchSensorRH.filteredData(i) - calOffsetRH[i];
         touchValueRH[i]=touchSensorRH.filteredData(i) * (300-calOffsetRH[i])/300;
@@ -2152,11 +2241,16 @@ void readSwitches() {
       RHp1=(touchValueRH[RHp1Pin] < ctouchThrVal);
       RHp2=(touchValueRH[RHp2Pin] < ctouchThrVal);
       RHp3=(touchValueRH[RHp3Pin] < ctouchThrVal);
-      specialKey=(touchValueRH[spec1Pin] < ctouchThrVal) && (touchValueRH[spec2Pin] < ctouchThrVal); 
+#if defined(SEAMUS)
+      specialKey=(touchValueRH[spec1Pin] < ctouchThrVal);
+#else
+      specialKey=(touchValueRH[spec1Pin] < ctouchThrVal) && (touchValueRH[spec2Pin] < ctouchThrVal);
+#endif
+      patchKey=(touchValueRH[patchPin] < ctouchThrVal);
       break;
     case 2:
       // LH keys
-      int touchValueLH[12]; 
+      int touchValueLH[12];
       for (byte i=0; i<12; i++){
         //touchValueLH[i]=touchSensorLH.filteredData(i) - calOffsetLH[i];
         touchValueLH[i]=touchSensorLH.filteredData(i) * (300-calOffsetLH[i])/300;
@@ -2170,8 +2264,17 @@ void readSwitches() {
       LHp2=(touchValueLH[LHp2Pin] < ctouchThrVal);
       LHp3=(touchValueLH[LHp3Pin] < ctouchThrVal);
   }
-  if (lap<2) lap++; else lap=0; 
-  
+  if (lap<2) lap++; else lap=0;
+
+#if defined(SEAMUS)
+  K1=RH1;
+  K2=RH2;
+  K3=RH3;
+  K4=LHp1;
+  K5=RHs;
+  K6=LHp2;
+  K7=RHp3;
+#else
   K1=RHp2;
   K2=LHp2;
   K3=LHp3;
@@ -2179,17 +2282,17 @@ void readSwitches() {
   K5=RHp1;
   K6=RHp2;
   K7=RHp3;
-
+#endif
   pinkyKey = LHs || ((lpinky3==MOD) && LHp3);
-  
+
   int qTransp = ((pinkyKey && (pinkySetting < 25)) ? pinkySetting-12 : 0) + ((LHp3 && lpinky3) ? lpinky3-13 : 0);
 
 
-  // Calculate midi note number from pressed keys  
-  
+  // Calculate midi note number from pressed keys
+
   if (0==fingering){ //EWI standard fingering
     //fingeredNote=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12+(octave-3)*12+transpose-12+qTransp;
-    
+
     fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+octaveR*12;
   } else if (1==fingering) { //EWX extended EWI fingering - lift LH1 for extended range up, touch RHp3 for extended range down
     fingeredNoteUntransposed=startNote+1-2*LH1-(LHb && !(LH1 && LH2))-LH2-(LH2 && LH1)-2*LH3+LHp1-LHp2+(RHs && !LHp1)-RH1-(RH1 && LH3)-RH2-2*RH3+RHp1-RHp2-2*RHp3+9*(!LH1 && LH2 && LH3)-10*(!RH3 && RHp3)+octaveR*12;
@@ -2204,10 +2307,10 @@ void readSwitches() {
     saxFinger[7] = RH3;
     saxFinger[8] = RHp1;
     saxFinger[9] = RHp3;
-    
+
     byte matched = 0;
     byte combo = 0;
-    
+
     while (matched<10 && combo<16)
     {
       combo++;
@@ -2215,31 +2318,41 @@ void readSwitches() {
       for (byte finger=0; finger < 10; finger++)
       {
         if ((saxFinger[finger] == saxFingerMatch[combo-1][finger]) || (saxFingerMatch[combo-1][finger] == 2)) matched++;
-      } 
+      }
     }
     if (matched<11 && combo==17) fingeredNoteUntransposed=lastFingering; else fingeredNoteUntransposed = startNote+1+saxFingerResult[combo-1]-LHp2+RHs-(RHp2 && (1 == combo) && LHp2)+octaveR*12;
   } else if (3==fingering) { // EVI fingering
+
       fingeredNoteUntransposed = startNote
       - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
       - 5*LH1              //Fifth key
       + 2*RHs + 4*RHp3  //Trill keys +2 and +4
       + (!LH2 || !LH3 || LHp2) // Trill +1 achieved by lifting finger from LH2 or LH3, or touching LHp2
       + octaveR*12;       //Octave rollers
+
+      /*
+      //Evan special fingering test
+      fingeredNoteUntransposed = startNote
+      - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
+      - 5*LH1              //Fifth key
+      - 12*LH3 - 24*LH2  //Octaves on LH2 and LH3
+      + octaveR*12;       //Octave rollers
+      */
   } else { // EVI fingering with reversed octave rollers
       fingeredNoteUntransposed = startNote
       - 2*RH1 - RH2 - 3*RH3  //"Trumpet valves"
       - 5*LH1              //Fifth key
       + 2*RHs + 4*RHp3  //Trill keys +2 and +4
       + (!LH2 || !LH3 || LHp2) // Trill +1 achieved by lifting finger from LH2 or LH3, or touching LHp2
-      + (6-octaveR)*12;       //Octave rollers, reversed    
+      + (6-octaveR)*12;       //Octave rollers, reversed
   }
-  
+
   int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics] + brHarmonicResult[brHarmSelect][brHarmonics]; //lip sensor and breath harmonics
-  
+
   if (pinkyKey) pitchlatch = fingeredNoteUntransposed;  //use pitchlatch to make settings based on note fingered
 
 #else //NuEVI
-  
+
   // Read touch pads (MPR121), compare against threshold value
   bool touchKeys[12];
   for (byte i = 0; i < 12; i++) {
@@ -2253,21 +2366,27 @@ void readSwitches() {
   R3 = touchKeys[R3Pin];
   R4 = touchKeys[R4Pin];
   R5 = touchKeys[R5Pin];
+  rSum = R1+R2+R3+R4+R5;
 
   octaveR = 0;
+  oneroll = (rollerMode < 2);
   if (R5 && R3) octaveR = 6; //R6 = R5 && R3
-  else if (R5) octaveR = 5; //R5
-  else if (R4) octaveR = 4; //R4
-  else if (R3 && lastOctaveR) octaveR = 3; //R3
-  else if (R2) octaveR = 2; //R2
+  else if (R5 && (R4 || oneroll)) octaveR = 5; //R5
+  else if (R4 && (R3 || oneroll)) octaveR = 4; //R4
+  else if (R3 && (R2 || (oneroll && lastOctaveR))) octaveR = 3; //R3
+  else if (R2 && (R1 || oneroll)) octaveR = 2; //R2
   else if (R1) octaveR = 1; //R1
   else if (lastOctaveR > 1) {
-    octaveR = lastOctaveR; 
-    if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
-    if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
+  if (rollerMode) octaveR = lastOctaveR; //if rollers are released and we are not coming down from roller 1, stay at the higher octave (CV filter leak prevention when putting NuEVI aside)
+  if (otfKey && !rSum && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+  if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers
   }
-  //if rollers are released and we are not coming down from roller 1, stay at the higher octave
-  //CV filter leak prevention when putting NuEVI aside
+  if ((3 == rollerMode) && R3 && !R5 && (6 == lastOctaveR)) octaveR = 7; // Bonus octave on top
+  // Roller modes
+  // 0: Highest touched roller, no release memory (legacy style), 1 in menu
+  // 1: Highest touched roller, release memory, 2 in menu
+  // 2: Touched roller pair, release memory, 3 in menu
+  // 3: Touched roller pair, release memory, bonus octave on top, 4 in menu
 
   lastOctaveR = octaveR;
 
@@ -2315,11 +2434,11 @@ void readSwitches() {
   }
 
 
-    
+
   if (K3 && K7){
     if (4 == trill3_interval) fingeredNoteUntransposed+=2; else fingeredNoteUntransposed+=4;
   }
-  
+
   int fingeredNoteRead = fingeredNoteUntransposed + (octave - 3) * 12 + transpose - 12 + qTransp + harmonicResult[harmSelect][harmonics] + brHarmonicResult[brHarmSelect][brHarmonics]; //lip sensor harmonics
 
   pcCombo1 = (K1 && K5 && !K2 && !K3);
