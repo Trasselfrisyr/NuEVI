@@ -98,7 +98,7 @@ unsigned short harmSetting; // 0-7
 unsigned short harmSelect; // 0-5
 unsigned short brHarmSetting; // 0-7
 unsigned short brHarmSelect; // 0-3
-unsigned short polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
+PolySelect polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
 unsigned short fwcType; // 6, m6, 7, m7 
 unsigned short fwcLockH; // OFF:ON
 unsigned short fwcDrop2; // OFF:ON
@@ -132,12 +132,10 @@ uint16_t dacMode;
 
 byte rotatorOn = 0;
 byte currentRotation = 3;
-uint16_t rotations[4]; // semitones { -5, -10, -7, -14 };
-uint16_t parallel; // = 7; // semitones
-uint16_t rotationsb[4];
-uint16_t parallelb; // semitones
-uint16_t rotationsc[4];
-uint16_t parallelc; // semitones
+
+Rotator rotations_a;
+Rotator rotations_b;
+Rotator rotations_c;
 
 byte gateOpen = 0; // setting for gate always open, note on sent for every time fingering changes, no matter the breath status
 uint16_t gateOpenEnable = 0;
@@ -949,7 +947,7 @@ void loop() {
     #else
     specialKey = (touchRead(specialKeyPin) > touch_Thr); //S2 on pcb
     #endif
-    if (polySelect) {
+    if (polySelect != EHarmonizerOff) {
       if (lastSpecialKey != specialKey) {
         if (specialKey) {
           // special key just pressed, check other keys
@@ -1078,69 +1076,7 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          if (MGR == polySelect){ // Triad Major Gospel Root
-              midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MGD == polySelect){ // Triad Major Gospel Dominant
-              midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MA9 == polySelect){ // Major add9
-              midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MND == polySelect){ // Minor Dorian
-              midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MNA == polySelect){ // Minor Aeolian
-              midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MNH == polySelect){ // Minor 4-voice Hip
-              midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (FWC == polySelect){ // Four Way Close Harmonizer
-              if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][0]-12*fwcDrop2), velocitySend);
-              if ((hmzLimit+fwcDrop2)>2)  midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if ((hmzLimit+fwcDrop2)>3) midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][2]), velocitySend);
-              if (((hmzLimit+fwcDrop2)>4) && (1 == fwcLockH)) midiSendNoteOn(noteValueCheck(fingeredNote-12), velocitySend);
-          } else if (RT1 == polySelect) { // Rotator A
-              if (parallel-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotations[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotations[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
-          } else if (RT2 == polySelect) { // Rotator B
-              if (parallelb-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallelb-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotationsb[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotationsb[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotationsb[currentRotation]-24), velocitySend); // send Note On message for new note
-          } else if (RT3 == polySelect) { // Rotator C
-              if (parallelc-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallelc-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotationsc[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotationsc[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotationsc[currentRotation]-24), velocitySend); // send Note On message for new note
-          }
+          startHarmonizerNotes(fingeredNote);
         }
         if (!priority) { // mono prio to base note
           midiSendNoteOn(fingeredNote, velocitySend); // send Note On message for new note
@@ -1174,45 +1110,7 @@ void loop() {
         }
       }
       if (rotatorOn) {
-        if (MGR == polySelect){  // Triad Major Gospel Root
-            midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][2]));
-        } else if (MGD == polySelect){  // Triad Major Gospel Dominant
-            midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][2]));
-        } else if (MA9 == polySelect){  // Major add9
-            midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][2]));
-        } else if (MND == polySelect){  // Minor Dorian
-            midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][2]));
-        } else if (MNA == polySelect){  // Minor Dorian
-            midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][2]));
-        } else if (MNH == polySelect){  // Minor 4-voice Hip
-            midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][0]));
-            if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][1]));
-            if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][2]));
-        } else if (FWC == polySelect){ // Four Way Close Harmonizer
-            if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][0]-12*fwcDrop2));
-            if ((hmzLimit+fwcDrop2)>2) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][1]));
-            if ((hmzLimit+fwcDrop2)>3) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][2]));
-            if (((hmzLimit+fwcDrop2)>4) && (1 == fwcLockH)) midiSendNoteOff(noteValueCheck(activeNote-12));
-        } else if (RT1 == polySelect){  // Rotator A
-            if (parallel - 24) midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
-            if (rotations[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
-        } else if (RT2 == polySelect){  // Rotator B
-            if (parallelb - 24) midiSendNoteOff(noteValueCheck(activeNote + parallelb-24 )); // send Note Off message for old note
-            if (rotationsb[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotationsb[currentRotation]-24)); // send Note Off message for old note
-        } else if (RT3 == polySelect){  // Rotator C
-            if (parallelc - 24) midiSendNoteOff(noteValueCheck(activeNote + parallelc-24 )); // send Note Off message for old note
-            if (rotationsc[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotationsc[currentRotation]-24)); // send Note Off message for old note
-        }
+        stopHarmonizerNotes(activeNote);
       }
       if (!priority) {
         midiSendNoteOff(activeNote); //  send Note Off message
@@ -1252,46 +1150,9 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          if (MGR == polySelect){  // Triad Major Gospel Root
-              midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majGosRootHmz[(activeNote-hmzKey)%12][2]));
-          } else if (MGD == polySelect){  // Triad Major Gospel Dominant
-              midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majGosDomHmz[(activeNote-hmzKey)%12][2]));
-          } else if (MA9 == polySelect){  // Major add9
-              midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+majAdd9Hmz[(activeNote-hmzKey)%12][2]));
-          } else if (MND == polySelect){  // Minor Dorian
-              midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minDorHmz[(activeNote-hmzKey)%12][2]));
-          } else if (MNA == polySelect){  // Minor Dorian
-              midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minAeoHmz[(activeNote-hmzKey)%12][2]));
-          } else if (MNH == polySelect){  // Minor 4-voice Hip
-              midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][0]));
-              if (hmzLimit>2) midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][1]));
-              if (hmzLimit>3) midiSendNoteOff(noteValueCheck(activeNote+minHipHmz[(activeNote-hmzKey)%12][2]));
-          } else if (FWC == polySelect){  // Four Way Close Harmonizer
-              if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][0]-12*fwcDrop2));
-              if ((hmzLimit+fwcDrop2)>2) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][1]));
-              if ((hmzLimit+fwcDrop2)>3) midiSendNoteOff(noteValueCheck(activeNote+blockFWC[fwcType][(activeNote-hmzKey)%12][2]));
-              if (((hmzLimit+fwcDrop2)>4) && (1 == fwcLockH)) midiSendNoteOff(noteValueCheck(activeNote-12));
-          } else if (RT1 == polySelect){  // Rotator A
-              if (parallel - 24) midiSendNoteOff(noteValueCheck(activeNote + parallel-24 )); // send Note Off message for old note
-              if (rotations[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotations[currentRotation]-24)); // send Note Off message for old note
-          } else if (RT2 == polySelect){  // Rotator B
-              if (parallelb - 24) midiSendNoteOff(noteValueCheck(activeNote + parallelb-24 )); // send Note Off message for old note
-              if (rotationsb[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotationsb[currentRotation]-24)); // send Note Off message for old note
-          } else if (RT3 == polySelect){  // Rotator C
-              if (parallelc - 24) midiSendNoteOff(noteValueCheck(activeNote + parallelc-24 )); // send Note Off message for old note
-              if (rotationsc[currentRotation]-24) midiSendNoteOff(noteValueCheck(activeNote + rotationsc[currentRotation]-24)); // send Note Off message for old note
-          }
+          stopHarmonizerNotes(activeNote);
         }
+
         if ((parallelChord || subOctaveDouble || rotatorOn) && !priority) { // poly playing, send old note off before new note on
           midiSendNoteOff(activeNote); // send Note Off message for old note
         }
@@ -1314,69 +1175,7 @@ void loop() {
           }
         }
         if (rotatorOn) {
-          if (MGR == polySelect){ // Triad Major Gospel Root
-              midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majGosRootHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MGD == polySelect){ // Triad Major Gospel Dominant
-              midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majGosDomHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MA9 == polySelect){ // Major add9
-              midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+majAdd9Hmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MND == polySelect){ // Minor Dorian
-              midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minDorHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MNA == polySelect){ // Minor Aeolian
-              midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minAeoHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (MNH == polySelect){ // Minor 4-voice Hip
-              midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][0]), velocitySend);
-              if (hmzLimit>2) midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if (hmzLimit>3) midiSendNoteOn(noteValueCheck(fingeredNote+minHipHmz[(fingeredNote-hmzKey)%12][2]), velocitySend);
-          } else if (FWC == polySelect){ // Four Way Close Harmonizer
-              if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][0]-12*fwcDrop2), velocitySend);
-              if ((hmzLimit+fwcDrop2)>2)  midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][1]), velocitySend);
-              if ((hmzLimit+fwcDrop2)>3) midiSendNoteOn(noteValueCheck(fingeredNote+blockFWC[fwcType][(fingeredNote-hmzKey)%12][2]), velocitySend);
-              if (((hmzLimit+fwcDrop2)>4) && (1 == fwcLockH)) midiSendNoteOn(noteValueCheck(fingeredNote-12), velocitySend);
-          } else if (RT1 == polySelect) { // Rotator A
-              if (parallel-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallel-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotations[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotations[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
-          } else if (RT2 == polySelect) { // Rotator B
-              if (parallelb-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallelb-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotationsb[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotationsb[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotationsb[currentRotation]-24), velocitySend); // send Note On message for new note
-          } else if (RT3 == polySelect) { // Rotator C
-              if (parallelc-24) midiSendNoteOn(noteValueCheck(fingeredNote + parallelc-24), velocitySend); // send Note On message for new note
-              if (currentRotation < 3) currentRotation++;
-              else currentRotation = 0;
-              int allCheck=4;
-              while ((0 == rotationsc[currentRotation]-24) && allCheck){
-                if (currentRotation < 3) currentRotation++;
-                else currentRotation = 0;
-                allCheck--;
-              }
-              if (rotationsc[currentRotation]-24) midiSendNoteOn(noteValueCheck(fingeredNote + rotationsc[currentRotation]-24), velocitySend); // send Note On message for new note
-          }
+          startHarmonizerNotes(fingeredNote);
         }
 
         if (!priority) {
@@ -1401,7 +1200,7 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  if (currentTime - ccBreathSendTime > (breathInterval-1)){
+  if ((currentTime - ccBreathSendTime) > (breathInterval-1u)){
     breath();
     ccBreathSendTime = currentTime;
   }
@@ -1486,7 +1285,103 @@ void loop() {
 
 //_______________________________________________________________________________________________ FUNCTIONS
 
+static void sendHarmonizerData( uint8_t note, const int harmony[][3], bool sendOn )
+{
+  const int* offs = harmony[(note-hmzKey)%12];
+  if(sendOn) {
+    midiSendNoteOn(noteValueCheck(note+offs[0]), velocitySend);
+    if (hmzLimit>2) midiSendNoteOn(noteValueCheck(note+offs[1]), velocitySend);
+    if (hmzLimit>3) midiSendNoteOn(noteValueCheck(note+offs[2]), velocitySend);
+  } else {
+    midiSendNoteOff(noteValueCheck(note+offs[0]));
+    if (hmzLimit>2) midiSendNoteOff(noteValueCheck(note+offs[1]));
+    if (hmzLimit>3) midiSendNoteOff(noteValueCheck(note+offs[2]));
+  }
+}
 
+//**************************************************************
+
+static void updateRotator(byte note, const Rotator *rotator) {
+  auto parallel = rotator->parallel;
+  auto rotations = rotator->rotations;
+
+  if (parallel-24) {
+    midiSendNoteOn(noteValueCheck(note + parallel-24), velocitySend); // send Note On message for new note
+  }
+
+  currentRotation = (currentRotation +1) % 4;
+    
+  int allCheck=4;
+  while ((0 == rotations[currentRotation]-24) && allCheck){
+    if (currentRotation < 3) currentRotation++;
+    else currentRotation = 0;
+    allCheck--;
+  }
+  if (rotations[currentRotation]-24) midiSendNoteOn(noteValueCheck(note + rotations[currentRotation]-24), velocitySend); // send Note On message for new note
+}
+
+//**************************************************************
+
+static void stopRotatorNotes(byte note, const Rotator *rotator) {
+  if (rotator->parallel - 24) midiSendNoteOff(noteValueCheck(note + rotator->parallel-24 )); // send Note Off message for old note
+  if (rotator->rotations[currentRotation]-24) midiSendNoteOff(noteValueCheck(note + rotator->rotations[currentRotation]-24)); // send Note Off message for old note
+}
+
+static void stopHarmonizerNotes(byte note)
+{
+  switch(polySelect) {
+    case ETriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, false); break;
+    case ETriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, false);  break;
+    case EMajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, false);    break;
+    case EMinorDorian:               sendHarmonizerData(note, minDorHmz, false);     break;
+    case EMinorAeolian:              sendHarmonizerData(note, minAeoHmz, false);     break;
+    case EMinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, false);     break;
+    case EFourWayCloseHarmonizer:
+    {
+      if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOff(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][0]-12*fwcDrop2));
+      if ((hmzLimit+fwcDrop2)>2) midiSendNoteOff(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][1]));
+      if ((hmzLimit+fwcDrop2)>3) midiSendNoteOff(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][2]));
+      if (((hmzLimit+fwcDrop2)>4) && (1 == fwcLockH)) midiSendNoteOff(noteValueCheck(note-12));
+    }
+    break;
+
+    case ERotatorA: stopRotatorNotes(note, &rotations_a); break;
+    case ERotatorB: stopRotatorNotes(note, &rotations_b); break;
+    case ERotatorC: stopRotatorNotes(note, &rotations_c); break;
+
+    default: break;
+  }
+}
+
+static void startHarmonizerNotes(byte note)
+{
+  switch(polySelect) {
+    case ETriadMajorGospelRoot:      sendHarmonizerData(note, majGosRootHmz, true); break;
+    case ETriadMajorGospelDominant:  sendHarmonizerData(note, majGosDomHmz, true);  break;
+    case EMajorAddNine:              sendHarmonizerData(note, majAdd9Hmz, true);    break;
+    case EMinorDorian:               sendHarmonizerData(note, minDorHmz, true);     break;
+    case EMinorAeolian:              sendHarmonizerData(note, minAeoHmz, true);     break;
+    case EMinorFourVoiceHip:         sendHarmonizerData(note, minHipHmz, true);     break;
+    case EFourWayCloseHarmonizer:
+    {
+      int limit = (hmzLimit+fwcDrop2);
+      if (!fwcDrop2 || (hmzLimit>(3+fwcLockH))) midiSendNoteOn(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][0]-12*fwcDrop2), velocitySend);
+      if (limit>2)  midiSendNoteOn(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][1]), velocitySend);
+      if (limit>3)  midiSendNoteOn(noteValueCheck(note+blockFWC[fwcType][(note-hmzKey)%12][2]), velocitySend);
+      if ((limit>4) && (1 == fwcLockH)) midiSendNoteOn(noteValueCheck(note-12), velocitySend);
+    }
+    break;
+
+    case ERotatorA: updateRotator(note, &rotations_a); break;
+    case ERotatorB: updateRotator(note, &rotations_b); break;
+    case ERotatorC: updateRotator(note, &rotations_c); break;
+
+    default: break;
+  }
+}
+
+
+//**************************************************************
 // non linear mapping function (http://playground.arduino.cc/Main/MultiMap)
 // note: the _in array should have increasing values
 unsigned int multiMap(unsigned short val, const unsigned short * _in, const unsigned short * _out, uint8_t size) {
@@ -1515,7 +1410,7 @@ unsigned int breathCurve(unsigned int inputVal) {
 }
 
 // MIDI note value check with out of range octave repeat
-int noteValueCheck(int note) {
+inline int noteValueCheck(int note) {
   if (note > 127) {
     note = 115 + (note - 127) % 12;
   } else if (note < 0) {
@@ -2121,7 +2016,7 @@ void readSwitches() {
       else if (touchValueRollers[rPin1] < ctouchThrVal) octaveR = 1;  //R1
       else if (lastOctaveR > 1) {
         octaveR = lastOctaveR; 
-        if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (otfKey && polySelect && (polySelect<PolySelect::ERotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
         if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
       }
       //if rollers are released and we are not coming down from roller 1, stay at the higher octave
@@ -2263,7 +2158,7 @@ void readSwitches() {
   else if (R1) octaveR = 1; //R1
   else if (lastOctaveR > 1) {
     octaveR = lastOctaveR; 
-    if (otfKey && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
+    if (otfKey && polySelect && (polySelect<PolySelect::ERotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12; 
     if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers 
   }
   //if rollers are released and we are not coming down from roller 1, stay at the higher octave
