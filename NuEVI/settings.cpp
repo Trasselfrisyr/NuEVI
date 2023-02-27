@@ -179,6 +179,10 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(CVRATE_ADDR, CVRATE_FACTORY);
         }
 
+        if(settingsVersion < 45) {
+            writeSetting(ROLLER_ADDR, ROLLER_FACTORY);
+        }
+
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
 
@@ -275,6 +279,7 @@ void readEEPROM(const bool factoryReset) {
     cvTune          = readSettingBounded(CVTUNE_ADDR, 1, 199, CVTUNE_FACTORY);
     cvScale         = readSettingBounded(CVSCALE_ADDR, 1, 199, CVSCALE_FACTORY);
     cvVibRate       = readSettingBounded(CVRATE_ADDR, 0, 8, CVRATE_FACTORY);
+    rollerMode      = readSettingBounded(ROLLER_ADDR, 0, 3, ROLLER_FACTORY);
     
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

@@ -6,18 +6,30 @@
 // Do things with status LED.
 void statusLedOn() {
   digitalWrite(statusLedPin, HIGH);
+#if defined(SEAMUS)
+  analogWrite(sLedPin, SPCKEY_LED_BRIGHTNESS);
+#endif
 }
 
 void statusLedOff() {
   digitalWrite(statusLedPin, LOW);
+#if defined(SEAMUS)
+  analogWrite(sLedPin, 0);
+#endif
 }
 
 void statusLed(bool state) {
-  digitalWrite(statusLedPin, state);    
+  digitalWrite(statusLedPin, state);
+#if defined(SEAMUS)
+  analogWrite(sLedPin, state*SPCKEY_LED_BRIGHTNESS);
+#endif
 }
 
 void statusLedFlip() {
   digitalWrite(statusLedPin, !digitalRead(statusLedPin));
+#if defined(SEAMUS)
+  if (digitalRead(statusLedPin)) analogWrite(sLedPin, SPCKEY_LED_BRIGHTNESS); else analogWrite(sLedPin, 0);
+#endif
 }
 
 void statusLedFlash(uint16_t delayTime) {

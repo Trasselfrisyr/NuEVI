@@ -176,7 +176,11 @@ void autoCalSelected() {
   }
   // Lever
   if(adjustOption == 5) {
+#if defined(SEAMUS)
+    calRead = touchRead(vibratoPin);
+#else
     calRead = 3000-touchRead(vibratoPin);
+#endif
     leverThrVal = constrain(calRead+60, leverLoLimit, leverHiLimit);
     leverMaxVal = constrain(calRead+120, leverLoLimit, leverHiLimit);
     writeSetting(LEVER_THR_ADDR, leverThrVal);
@@ -419,7 +423,11 @@ void plotSensorPixels(){
   }
   #endif
   else if(adjustOption == 5) {
-    int pos = map(constrain(3000-touchRead(vibratoPin), leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);
+ #if defined(SEAMUS)
+    int pos = map(constrain(touchRead(vibratoPin), leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);
+ #else
+     int pos = map(constrain(3000-touchRead(vibratoPin), leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);
+ #endif
     redraw = updateSensorPixel(pos, -1);
   }
 

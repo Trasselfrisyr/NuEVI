@@ -19,6 +19,9 @@
 #define VIBRATO_MENU 7
 #define ABOUT_MENU 8
 #define EXTRAS_MENU 9
+#define ROTA_MENU 10
+#define ROTB_MENU 11
+#define ROTC_MENU 12
 
 #define ARR_LEN(a)  (sizeof (a) / sizeof (a[0]))
 
