@@ -101,7 +101,7 @@ unsigned short harmSelect; // 0-5
 unsigned short brHarmSetting; // 0-7
 unsigned short brHarmSelect; // 0-3
 PolySelect polySelect; // OFF, MGR, MGD, MND, MNH, FWC, RTA, RTB or RTC
-unsigned short fwcType; // 6, m6, 7, m7 
+unsigned short fwcType; // 6, m6, 7, m7
 unsigned short fwcLockH; // OFF:ON
 unsigned short fwcDrop2; // OFF:ON
 unsigned short hmzKey; // 0-11 (0 is C)
@@ -233,8 +233,6 @@ int leverPortRead;
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
 byte portIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
-byte biteIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
-byte leverIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 int oldport=0;
 int finalPortCC=0;
 int lastBite=0;
@@ -1369,7 +1367,7 @@ static void updateRotator(byte note, const Rotator *rotator) {
   }
 
   currentRotation = (currentRotation +1) % 4;
-    
+
   int allCheck=4;
   while ((0 == rotations[currentRotation]-24) && allCheck){
     if (currentRotation < 3) currentRotation++;
@@ -1933,18 +1931,10 @@ void biteCC_() {
     if (biteSensor >= portamThrVal) { // we are over the threshold, calculate CC value
       biteCClevel = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
     }
-    if (biteCClevel) { // there is a bite CC level, so go for it
-      if (!biteIsOn) {
-        biteIsOn = 1;
-      }
-      if (biteCClevel != oldbitecc) {
-        midiSendControlChange(biteCC, biteCClevel);
-      }
+
+    if (biteCClevel != oldbitecc) {
+      midiSendControlChange(biteCC, biteCClevel);
       oldbitecc = biteCClevel;
-    } else if (biteIsOn) {
-      midiSendControlChange(biteCC, 0);
-      biteIsOn = 0;
-      oldbitecc = 0;
     }
   }
 }
@@ -1956,18 +1946,9 @@ void leverCC_() {
     if (((3000-leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
       leverCClevel = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
-    if (leverCClevel) { // there is a lever CC level, so go for it
-      if (!leverIsOn) {
-        leverIsOn = 1;
-      }
-      if (leverCClevel != oldlevercc) {
-        midiSendControlChange(leverCC, leverCClevel);
-      }
+    if (leverCClevel != oldlevercc) {
+      midiSendControlChange(leverCC, leverCClevel);
       oldlevercc = leverCClevel;
-    } else if (leverIsOn) {
-      midiSendControlChange(leverCC, 0);
-      leverIsOn = 0;
-      oldlevercc = 0;
     }
   }
 }
