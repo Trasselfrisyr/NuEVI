@@ -2109,7 +2109,7 @@ void readSwitches() {
       else if (R1) octaveR = 1;  //R1
       else if (lastOctaveR > 1) {
         if (rollerMode) octaveR = lastOctaveR; //if rollers are released and we are not coming down from roller 1, stay at the higher octave
-        if (otfKey && !rSum && polySelect && (polySelect<RT1) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
+        if (otfKey && !rSum && polySelect && (polySelect<PolySelect::ERotatorA) && rotatorOn && (mainState == NOTE_OFF)) hmzKey = fingeredNote%12;
         if (mainState == NOTE_OFF) currentRotation = 3; //rotator reset by releasing rollers
       }
       if ((3 == rollerMode) && R6 && !R5 && (6 == lastOctaveR)) octaveR = 7; // Bonus octave on top
