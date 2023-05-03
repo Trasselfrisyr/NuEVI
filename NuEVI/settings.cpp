@@ -494,7 +494,7 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
 //Send EEPROM and firmware versions
 void sendSysexVersion() {
   char sysexMessage[] = "vvvNuEVIc04eevvvvvvvv"; //Placeholders for vendor and code
-  uint8_t fwStrLen = min(strlen(FIRMWARE_VERSION), 8); //Limit firmware version string to 8 bytes
+  uint8_t fwStrLen = min(strlen(FIRMWARE_VERSION), (size_t)8); //Limit firmware version string to 8 bytes
 
   memcpy(sysexMessage, sysex_id, 3);
   memcpy(sysexMessage+13, FIRMWARE_VERSION, fwStrLen);
@@ -569,7 +569,7 @@ void handleSysex(uint8_t *data, unsigned int length) {
   }
 
   //Get message code
-  char messageCode[3];
+  char messageCode[4];
   strncpy(messageCode, (char*)(data+9), 3);
 
   if(!strncmp(messageCode, "c00", 3)) { //Config dump request
