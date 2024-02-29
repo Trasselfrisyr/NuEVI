@@ -190,8 +190,8 @@ void autoCalSelected() {
   // Bite Pressure sensor
   if(adjustOption == 1) {
     calRead = analogRead(bitePressurePin);
-    portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
-    portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+    portamThrVal = constrain(calRead+800, portamLoLimit, portamHiLimit);
+    portamMaxVal = constrain(portamThrVal+1200, portamLoLimit, portamHiLimit);
     writeSetting(PORTAM_THR_ADDR, portamThrVal);
     writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
   }
@@ -227,8 +227,8 @@ void autoCalSelected() {
     } else {
       // Pressure sensor
       calRead = analogRead(bitePressurePin);
-      portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
-      portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+      portamThrVal = constrain(calRead+800, portamLoLimit, portamHiLimit);
+      portamMaxVal = constrain(portamThrVal+1200, portamLoLimit, portamHiLimit);
       writeSetting(PORTAM_THR_ADDR, portamThrVal);
       writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
     }

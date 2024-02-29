@@ -74,7 +74,8 @@ unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 unsigned short breathAT;
 unsigned short velocity;
 unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
-unsigned short portLimit; // 1-127
+unsigned short portLimit; // 0-127
+unsigned short portLoLimit; // 0-127
 unsigned short PBdepth;   // OFF:1-12 divider
 unsigned short extraCT;   // OFF:MW:FP:CF:SP
 unsigned short vibrato;   // OFF:1-9
@@ -125,6 +126,7 @@ unsigned short cvScale; // 1 - 199 representing -99 to +99 in menu (offset of 10
 unsigned short cvVibRate; // OFF, 1 - 8 CV extra controller LFO vibrato rate 4.5Hz to 8Hz
 
 unsigned short fastPatch[7] = {0,0,0,0,0,0,0};
+unsigned short fastPatchEnable = 0;
 
 uint16_t bcasMode; //Legacy CASSIDY compile flag
 uint16_t trill3_interval;
@@ -144,6 +146,8 @@ uint16_t gateOpenEnable = 0;
 uint16_t specialKeyEnable = 0;
 
 int touch_Thr = 1300;
+int patchKeyThrEVI = 0;
+int lockGlideKeyThr = 0;
 
 byte ccList[11] = {0,1,2,7,11,1,2,7,11,74,20};  // OFF, Modulation, Breath, Volume, Expression (then same sent in hires), CC74 (cutoff/brightness), CC20 (UNO Cutoff)
 
@@ -175,10 +179,12 @@ unsigned long lastDeglitchTime = 0;         // The last time the fingering was c
 unsigned long ccSendTime = 0L;              // The last time we sent CC values
 unsigned long ccSendTime2 = 0L;             // The last time we sent CC values 2 (slower)
 unsigned long ccSendTime3 = 0L;             // The last time we sent CC values 3 (and slower)
+unsigned long cvpTrigTime = 0L;
 unsigned long lvlTime = 0L;
 unsigned long ccBreathSendTime = 0L;        // The last time we sent breath CC values
 unsigned long breath_on_time = 0L;          // Time when breath sensor value went over the ON threshold
 unsigned long currentTime;
+unsigned long glideLockDeglitchTime = 0L;
 
 int lastFingering = 0;             // Keep the last fingering value for debouncing
 
@@ -191,12 +197,16 @@ byte activePatch=0;
 byte doPatchUpdate=0;
 
 byte cvPortaTuneCount = 0;
+byte cvpTrig = 0;
 
 uint16_t legacy = 0;
 uint16_t legacyBrAct = 0;
 byte halfTime = 0;
 boolean programonce = false;
 boolean oneroll;
+boolean glideLockOnce;
+boolean glideLockOn;
+boolean lastlockGlideKey;
 byte widiOn = 0;
 
 int breathLevel=0;   // breath level (smoothed) not mapped to CC value
@@ -226,6 +236,7 @@ byte portIsOn=0;     // keep track and make sure we send CC with 0 value when of
 byte biteIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 byte leverIsOn=0;     // keep track and make sure we send CC with 0 value when off threshold
 int oldport=0;
+int finalPortCC=0;
 int lastBite=0;
 byte biteJumper=0;
 byte widiJumper=0;
@@ -643,7 +654,7 @@ void setup() {
   pinMode(biteJumperGndPin, OUTPUT);    //PBITE
   digitalWrite(biteJumperGndPin, LOW);  //PBITE
   #endif
-
+  
   pinMode(widiPowerPin, OUTPUT);        //WIDI
   pinMode(widiJumperPin, INPUT_PULLUP); //WIDI
   pinMode(widiJumperGndPin, OUTPUT);    //WIDI
@@ -654,8 +665,8 @@ void setup() {
   Serial2.setRX (26); //WIDI
   Serial2.setTX (31); //WIDI
 
-  bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin);
-  configManagementMode = !factoryReset && !digitalRead(uPin) && !digitalRead(dPin);
+  bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin) && digitalRead(dPin) && digitalRead(uPin);
+  configManagementMode = !digitalRead(uPin) && !digitalRead(dPin) && digitalRead(ePin) && digitalRead(mPin);
   i2cScan = !factoryReset && !digitalRead(mPin);
 
   initDisplay(); //Start up display and show logo
@@ -752,6 +763,10 @@ void setup() {
   vibThrBite = vibZeroBite - vibSquelchBite;
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
 
+  patchKeyThrEVI = touchRead(patchPinEVI) + hackyTouchOffset;
+  lockGlideKeyThr = touchRead(lockGlidePin) + hackyTouchOffset;
+  
+
   if (factoryReset) autoCal();
 
   if(!fastBoot) {
@@ -826,13 +841,30 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
-
+      bool patchKeyEVI = touchRead(patchPinEVI) > patchKeyThrEVI;
+      bool lockGlideKey = touchRead(lockGlidePin) > lockGlideKeyThr;
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool justPbDn = !(pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool justPbUp = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && !(pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool noPb = !(pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && !(pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool brSuck = analogRead(breathSensorPin) < (breathCalZero - 850);
       int pitchlatchForPatch = patchLimit(pitchlatch + 1);
+
+        if (lockGlideKey != lastlockGlideKey) { //
+          // reset the debouncing timer
+          glideLockDeglitchTime = millis();
+        }
+        if ((millis() - glideLockDeglitchTime) > GLIDE_LOCK_DEGLITCH) {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state
+          if (!glideLockOnce && lockGlideKey){
+            glideLockOn = !glideLockOn; // toggle glide lock
+            glideLockOnce = 1;
+          }
+          if (!lockGlideKey) glideLockOnce = 0;
+        }
+        lastlockGlideKey = lockGlideKey;
+      
       if (pcCombo1 && (pcCombo1 != lastpcc1)){ // latched note number to patch number, send with K1/K5 combo
         if (patch != pitchlatchForPatch) {
           patch = pitchlatchForPatch;
@@ -855,6 +887,7 @@ void loop() {
       lastpcc2=pcCombo2;
       if (
           patchKey ||
+          patchKeyEVI ||
           (bothPB && legacy) ||
           (brSuck && legacyBrAct && justPbUp) ||
           (brSuck && legacyBrAct && bcasMode && noPb)
@@ -1229,7 +1262,7 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  if ((currentTime - ccBreathSendTime) > (breathInterval-1u)){
+  if ((currentTime - ccBreathSendTime) > (breathInterval-1)){
     breath();
     ccBreathSendTime = currentTime;
   }
@@ -1245,6 +1278,7 @@ void loop() {
     portamento_();
     ccSendTime2 = currentTime;
   }
+  
   if (currentTime - ccSendTime3 > CC_INTERVAL3) {
     if (gateOpenEnable || gateOpen) doorKnobCheck();
     battCheck();
@@ -1253,6 +1287,7 @@ void loop() {
     } else updateSensorLEDs();
     ccSendTime3 = currentTime;
   }
+  
   if (currentTime - pixelUpdateTime > pixelUpdateInterval) {
     // even if we just alter a pixel, the whole display is redrawn (35ms of MPU lockup) and we can't do that all the time
     // this is one of the big reasons the display is for setup use only
@@ -1265,36 +1300,31 @@ void loop() {
     pixelUpdateTime = currentTime;
   }
 
+  if (currentTime - cvpTrigTime > CVP_INTERVAL) {
+    cvpTrig = 1;
+    cvpTrigTime = currentTime;
+  }
+
   if(dacMode == DAC_MODE_PITCH) { // pitch CV from DAC and breath CV from PWM on pin 6, for filtering and scaling on separate board
     targetPitch = (fingeredNote-24)*42;
     targetPitch += map(pitchBend,0,16383,-84,84);
     targetPitch -=quarterToneTrigger*21;
-    if (portIsOn){
-      if (targetPitch > cvPitch){
-        if (!cvPortaTuneCount) {
-          cvPitch += 1+(127-oldport)/4;
+    if (finalPortCC){
+      if (cvpTrig){
+        if (targetPitch > cvPitch){
+          cvPitch += 1+(127-finalPortCC)/4;
+          if (cvPitch > targetPitch) cvPitch = targetPitch;
+        } else if (targetPitch < cvPitch){
+          cvPitch -= 1+(127-finalPortCC)/4;
+          if (cvPitch < targetPitch) cvPitch = targetPitch;
+        } else {
+          cvPitch = targetPitch;
         }
-        else {
-          cvPortaTuneCount++;
-          if (cvPortaTuneCount > CVPORTATUNE) cvPortaTuneCount=0;
-        }
-        if (cvPitch > targetPitch) cvPitch = targetPitch;
-      } else if (targetPitch < cvPitch){
-        if (!cvPortaTuneCount) {
-          cvPitch -= 1+(127-oldport)/4;
-        }
-        else {
-          cvPortaTuneCount++;
-          if (cvPortaTuneCount > CVPORTATUNE) cvPortaTuneCount=0;
-        }
-        if (cvPitch < targetPitch) cvPitch = targetPitch;
-      } else {
-        cvPitch = targetPitch;
+        cvpTrig = 0;
       }
     } else {
       cvPitch = targetPitch;
     }
-
     if (cvVibRate){
       int timeDivider = timeDividerList[cvVibRate];
       int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum-1)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
@@ -1809,9 +1839,10 @@ void extraController() {
 void portamento_() {
   int portSumCC = 0;
   if (pinkySetting == GLD){
-    if (portamento && pinkyKey){
-      portSumCC += portLimit;
-    }
+    if (portamento && pinkyKey) portSumCC += 127;
+  }
+  if (glideLockOn){
+    if (portamento) portSumCC += 127;
   }
   if (2 == biteControl) {
     // Portamento is controlled with the bite sensor in the mouthpiece
@@ -1821,7 +1852,7 @@ void portamento_() {
       biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
     }
     if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
-      portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, portLimit);
+      portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
     }
   }
   if (2 == leverControl) {
@@ -1829,23 +1860,25 @@ void portamento_() {
     leverPortRead = touchRead(vibratoPin);
 #if defined(SEAMUS)
     if (portamento && ((leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
-      portSumCC += map(constrain((leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
+      portSumCC += map(constrain((leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
 #else
     if (portamento && ((3000-leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
-      portSumCC += map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, portLimit);
+      portSumCC += map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
 #endif
   }
-  portSumCC = constrain(portSumCC, 0, portLimit); // Total output glide rate limited to glide max setting
+  portSumCC = constrain(portSumCC, 0 , 127); // Total output glide rate limited to full range
+  finalPortCC = map(portSumCC, 0 , 127, portLoLimit , portLimit); // Map to operate between set limits
+
   if (portSumCC) { // there is a portamento level, so go for it
     if (!portIsOn) {
       portOn();
     }
-    port(portSumCC);
-  }else if (portIsOn) {
+    port(finalPortCC);
+  } else if (portIsOn) {
     portOff();
-  }
+  } else port(finalPortCC);
 }
 
 //***********************************************************
@@ -1873,8 +1906,8 @@ void port(int portCC) {
 //***********************************************************
 
 void portOff() {
-  if ((portamento != 5) && (oldport != 0)) { //did a zero get sent? if not, then send one (unless portamento is switch only)
-    midiSendControlChange(CCN_Port, 0);
+  if ((portamento != 5) && (oldport != portLoLimit)) { //did a zero get sent? if not, then send one (unless portamento is switch only)
+    midiSendControlChange(CCN_Port, portLoLimit);
   }
   if ((portamento == 2) || (portamento == 5)) { // if portamento midi switching is enabled
     midiSendControlChange(CCN_PortOnOff, 0);
@@ -1884,7 +1917,7 @@ void portOff() {
     midiSendControlChange(CCN_PortSE02, 0);
   }
   portIsOn = 0;
-  oldport = 0;
+  oldport = portLoLimit;
 }
 
 //***********************************************************
@@ -1972,8 +2005,8 @@ void autoCal() {
 #if defined(NURAD) // NuRAD sensor calibration
   // Bite Pressure sensor
   calRead = analogRead(bitePressurePin);
-  portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
-  portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+  portamThrVal = constrain(calRead+800, portamLoLimit, portamHiLimit);
+  portamMaxVal = constrain(portamThrVal+1200, portamLoLimit, portamHiLimit);
   writeSetting(PORTAM_THR_ADDR, portamThrVal);
   writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
   // Touch sensors
@@ -2005,8 +2038,8 @@ void autoCal() {
   } else {
     // Pressure sensor
     calRead = analogRead(bitePressurePin);
-    portamThrVal = constrain(calRead+300, portamLoLimit, portamHiLimit);
-    portamMaxVal = constrain(portamThrVal+600, portamLoLimit, portamHiLimit);
+    portamThrVal = constrain(calRead+800, portamLoLimit, portamHiLimit);
+    portamMaxVal = constrain(portamThrVal+1200, portamLoLimit, portamHiLimit);
     writeSetting(PORTAM_THR_ADDR, portamThrVal);
     writeSetting(PORTAM_MAX_ADDR, portamMaxVal);
   }

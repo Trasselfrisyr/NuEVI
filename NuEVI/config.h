@@ -5,7 +5,7 @@
 
 // Compile options, comment/uncomment to change
 
-#define FIRMWARE_VERSION "1.6.0"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
+#define FIRMWARE_VERSION "1.6.1"    // FIRMWARE VERSION NUMBER HERE <<<<<<<<<<<<<<<<<<<<<<<
 
 #define ON_Delay   20   // Set Delay after ON threshold before velocity is checked (wait for tounging peak)
 #define CCN_Port 5      // Controller number for portamento level
@@ -19,8 +19,10 @@
 #define CC_INTERVAL 9
 #define CC_INTERVAL2 13
 #define CC_INTERVAL3 37
+#define CVP_INTERVAL 5
 #define LVL_TIMER_INTERVAL 15
-#define CVPORTATUNE 2
+#define GLIDE_LOCK_DEGLITCH 40
+
 
 #define maxSamplesNum 120
 
@@ -39,16 +41,17 @@
 #define leverLoLimit    1400
 #define leverHiLimit    2000
 
+#define hackyTouchOffset 500
 
 #define MIN_LED_BRIGHTNESS    5   // lowest PWM value that still is visible
 #define BREATH_LED_BRIGHTNESS 600 // up to 4095, PWM
 #define PORTAM_LED_BRIGHTNESS 300 // up to 4095, PWM
-#define EXTCON_LED_BRIGHTNESS 300 // up to 4095, PWM
-#define SPCKEY_LED_BRIGHTNESS 700 // up to 4095, PWM
+#define EXTCON_LED_BRIGHTNESS 500 // up to 4095, PWM
+#define SPCKEY_LED_BRIGHTNESS 2200 // up to 4095, PWM
 
 #define ALK_BAT_FULL 2800 // about 4.6V
 #define NMH_BAT_FULL 2380 // about 3.9V
-#define LIP_BAT_FULL 2540 // about 4.2V
+#define LIP_BAT_FULL 2530 // about 4.2V
 #define ALK_BAT_LOW 2300  // about 3.8V
 #define NMH_BAT_LOW 2200  // about 3.6V
 #define LIP_BAT_LOW 2250  // about 3.7V

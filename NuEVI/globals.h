@@ -84,7 +84,8 @@ extern unsigned short breathCC2Rise;  // 1X:2X:3X:4X:5X
 extern unsigned short breathAT;
 extern unsigned short velocity;
 extern unsigned short portamento;// switching on cc65? just cc5 enabled? SW:ON:OFF
-extern unsigned short portLimit; // 1-127
+extern unsigned short portLimit; // 0-127
+extern unsigned short portLoLimit; // 0-127
 extern unsigned short PBdepth;   // OFF:1-12 divider
 extern unsigned short extraCT;   // OFF:MW:FP:CF:SP
 extern unsigned short vibrato;   // OFF:1-9
@@ -105,6 +106,7 @@ extern unsigned short vibSensBite; // vibrato sensitivity (bite)
 extern unsigned short vibSquelchBite; //vibrato signal squelch (bite)
 extern unsigned short vibControl;
 extern unsigned short fastPatch[7];
+extern unsigned short fastPatchEnable;
 extern unsigned short extraCT2; // OFF:1-127
 extern unsigned short levelCC; // 0-127
 extern unsigned short levelVal; // 0-127
@@ -191,6 +193,7 @@ extern int battAvg;
 extern int breathLevel;
 extern byte portIsOn;
 extern int oldport;
+extern int finalPortCC;
 
 #if defined(NURAD)
             // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed

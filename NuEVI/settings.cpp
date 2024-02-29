@@ -183,6 +183,10 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(ROLLER_ADDR, ROLLER_FACTORY);
         }
 
+        if(settingsVersion < 46) {
+            writeSetting(PORT_LO_LIM_ADDR, PORT_LO_LIM_FACTORY);
+        }
+
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
 
@@ -246,7 +250,7 @@ void readEEPROM(const bool factoryReset) {
     fingering       = readSettingBounded(FINGER_ADDR, 0, 3, FINGER_FACTORY);
     #endif
     lpinky3         = readSettingBounded(LPINKY3_ADDR, 0, 25, LPINKY3_FACTORY);
-    batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 2, BATTYPE_FACTORY);
+    batteryType     = readSettingBounded(BATTYPE_ADDR, 0, 3, BATTYPE_FACTORY);
     harmSetting     = readSettingBounded(HARMSET_ADDR, 0, 6, HARMSET_FACTORY);
     harmSelect      = readSettingBounded(HARMSEL_ADDR, 0, 7, HARMSEL_FACTORY);
     polySelect      = (PolySelect)readSettingBounded(POLYSEL_ADDR, 0, 10, POLYSEL_FACTORY);
@@ -267,7 +271,7 @@ void readEEPROM(const bool factoryReset) {
     rotations_c.rotations[3]   = readSettingBounded(ROTC4_ADDR, 0, 48, ROTC4_FACTORY);
     otfKey          = readSettingBounded(OTFKEY_ADDR, 0, 1, OTFKEY_FACTORY);
     breathInterval  = readSettingBounded(BRINTERV_ADDR, 3, 15, BRINTERV_FACTORY);
-    portLimit       = readSettingBounded(PORTLIMIT_ADDR, 1, 127, PORTLIMIT_FACTORY);
+    portLimit       = readSettingBounded(PORTLIMIT_ADDR, 0, 127, PORTLIMIT_FACTORY);
     leverThrVal     = readSettingBounded(LEVER_THR_ADDR, leverLoLimit, leverHiLimit, LEVER_THR_FACTORY);
     leverMaxVal     = readSettingBounded(LEVER_MAX_ADDR, leverLoLimit, leverHiLimit, LEVER_MAX_FACTORY);
     brHarmSetting   = readSettingBounded(BRHARMSET_ADDR, 0, 6, BRHARMSET_FACTORY);
@@ -280,6 +284,7 @@ void readEEPROM(const bool factoryReset) {
     cvScale         = readSettingBounded(CVSCALE_ADDR, 1, 199, CVSCALE_FACTORY);
     cvVibRate       = readSettingBounded(CVRATE_ADDR, 0, 8, CVRATE_FACTORY);
     rollerMode      = readSettingBounded(ROLLER_ADDR, 0, 3, ROLLER_FACTORY);
+    portLoLimit     = readSettingBounded(PORT_LO_LIM_ADDR, 0, 127, PORT_LO_LIM_FACTORY);
     
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
@@ -289,7 +294,7 @@ void readEEPROM(const bool factoryReset) {
     gateOpenEnable   = (dipSwBits & (1<<DIPSW_GATEOPEN))?1:0;
     specialKeyEnable = (dipSwBits & (1<<DIPSW_SPKEYENABLE))?1:0;
     bcasMode         = (dipSwBits & (1<<DIPSW_BCASMODE))?1:0;
-
+    fastPatchEnable  = (dipSwBits & (1<<DIPSW_FPENABLE))?1:0;
 }
 
 

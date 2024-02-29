@@ -219,6 +219,9 @@ int drawBatt(int x,int y){
       break;
     case 2:
       bar = constrain((10 *(vMeterReading - LIP_BAT_LOW)) / (LIP_BAT_FULL - LIP_BAT_LOW),0,10);
+      break;
+    case 3:
+      bar = constrain((10 *(vMeterReading - LIP_BAT_LOW)) / (LIP_BAT_FULL - LIP_BAT_LOW),0,10);
   }
   display.fillRect(x+1,y+13-bar,3,constrain(bar,0,10),WHITE);
   return bar;
@@ -438,25 +441,52 @@ static void mainTitleGetStr(char* out) {
   char* splice2 = menuTitle + 17;
 
   int vMeterReading = battAvg;
-  memcpy(splice1, (vMeterReading > 3020) ? "USB" : "BAT", 3);
+  
   int vLowLimit = NMH_BAT_LOW;
+  int vFullLimit = NMH_BAT_FULL+500;
   switch (batteryType){
     case 0:
       vLowLimit = ALK_BAT_LOW;
+      vFullLimit = ALK_BAT_FULL+220;
       break;
     case 1:
       vLowLimit = NMH_BAT_LOW;
+      vFullLimit = NMH_BAT_FULL+500;
       break;
     case 2:
       vLowLimit = LIP_BAT_LOW;
+      vFullLimit = LIP_BAT_FULL+100;
+      break;
+    case 3:
+      vLowLimit = LIP_BAT_LOW;
+      vFullLimit = LIP_BAT_FULL+100;
   }
-  if (vMeterReading <= vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh
-    memcpy(splice2, "LOW ", 4);
-  } else {
-    int voltage = map(vMeterReading,2200,3060,36,50);
-    splice2[0] = (voltage/10)+'0';
-    splice2[2] = (voltage%10)+'0';
-  }
+    if (batteryType < 3){ // batt is not LiPo with revised wiring
+      memcpy(splice1, (vMeterReading > vFullLimit) ? "USB" : "BAT", 3);
+      if (vMeterReading <= vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh
+        memcpy(splice2, "LOW ", 4);
+      } else {
+        int voltage = map(vMeterReading,2200,3060,36,50);
+        splice2[0] = (voltage/10)+'0';
+        splice2[2] = (voltage%10)+'0';
+      }
+    } else { // batt is LiPo with revised wiring
+      memcpy(splice1, "BAT", 3);
+      if (vMeterReading > 2970) {    
+      memcpy(splice2, "FULL", 4);
+      } else if (vMeterReading > vFullLimit) {
+      memcpy(splice2, "CHG ", 4);
+     } else {
+      if (vMeterReading <= vLowLimit) { //2300 alkaline, 2250 lipo, 2200 nimh
+        memcpy(splice2, "LOW ", 4);
+      } else {
+        int voltage = map(vMeterReading,2200,3060,36,50);
+        splice2[0] = (voltage/10)+'0';
+        splice2[2] = (voltage%10)+'0';
+      }
+     }
+    }
+
   strncpy(out, menuTitle, 22);
 }
 
@@ -1174,6 +1204,18 @@ const MenuEntrySub fastBootMenu = {
   , nullptr
 };
 
+const MenuEntrySub fastPatchMenu = {
+  MenuType::ESub, "FASTPATCH", "FASTPATCH", &fastPatchEnable, 0, 1, MenuEntryFlags::ENone,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    strncpy(out, fastPatchEnable?"ON":"OFF", 4);
+  },
+  [](SubMenuRef __unused) {
+    setBit(dipSwBits, DIPSW_FPENABLE, fastPatchEnable);
+    writeSetting(DIPSW_BITS_ADDR, dipSwBits);
+  }
+  , nullptr
+};
+
 const MenuEntrySub cvTuneMenu = {
   MenuType::ESub, "CV TUNE", "TUNING", &cvTune, 1, 199, MenuEntryFlags::ENone,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
@@ -1229,9 +1271,9 @@ const MenuEntrySub wlChannelMenu = {
 
 // Battery type menu
 const MenuEntrySub batteryTypeMenu = {
-  MenuType::ESub, "BAT TYPE", "BAT TYPE", &batteryType, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BAT TYPE", "BAT TYPE", &batteryType, 0, 3, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
-    const char* breathCCMenuLabels[] = { "ALK", "NMH", "LIP" };
+    const char* breathCCMenuLabels[] = { "ALK", "NMH", "LP1", "LP2" };
     strncpy(out, breathCCMenuLabels[batteryType], 4);
   },
   [](const MenuEntrySub & __unused sub){
@@ -1250,6 +1292,7 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&dacModeMenu,
   (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
+  (MenuEntry*)&fastPatchMenu,
   (MenuEntry*)&cvTuneMenu,
   (MenuEntry*)&cvScaleMenu,
   (MenuEntry*)&cvEcVibMenu,
@@ -1266,6 +1309,7 @@ const MenuEntry* extrasMenuEntries[] = {
   (MenuEntry*)&dacModeMenu,
   (MenuEntry*)&batteryTypeMenu,
   (MenuEntry*)&fastBootMenu,
+  (MenuEntry*)&fastPatchMenu,
   (MenuEntry*)&cvTuneMenu,
   (MenuEntry*)&cvScaleMenu,
   (MenuEntry*)&cvEcVibMenu,
@@ -1553,7 +1597,7 @@ const MenuEntrySub portMenu = {
 
 
 const MenuEntrySub portLimitMenu = {
-  MenuType::ESub, "GLIDE LMT",  "MAX LEVEL", &portLimit, 1, 127, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "GLIDE MAX",  "MAX LEVEL", &portLimit, 0, 127, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(portLimit, out);
   },
@@ -1561,6 +1605,14 @@ const MenuEntrySub portLimitMenu = {
   , nullptr
 };
 
+const MenuEntrySub portLoLimitMenu = {
+  MenuType::ESub, "GLIDE MIN",  "MIN LEVEL", &portLoLimit, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused, char* out, const char** __unused unit) {
+    numToString(portLoLimit, out);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(PORT_LO_LIM_ADDR,portLoLimit); }
+  , nullptr
+};
 
 
 const MenuEntrySub pitchBendMenu = {
@@ -1731,6 +1783,7 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&leverCCMenu,
   (MenuEntry*)&portMenu,
   (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&portLoLimitMenu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
@@ -1752,6 +1805,7 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&leverCCMenu,
   (MenuEntry*)&portMenu,
   (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&portLoLimitMenu,
   (MenuEntry*)&vibratoSubMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
@@ -1913,15 +1967,35 @@ const MenuPageCustom aboutMenuPage =  { nullptr, EMenuPageCustom,
       display.println(FIRMWARE_VERSION);
       int vMeterReading = battAvg;
       int voltage = map(vMeterReading,2200,3060,36,50);
+      int vFullLimit = 0;
+      switch (batteryType){
+        case 0:
+          vFullLimit = ALK_BAT_FULL+400;
+          break;
+        case 1:
+          vFullLimit = NMH_BAT_FULL+500;
+          break;
+        case 2:
+          vFullLimit = LIP_BAT_FULL+100;
+          break;
+        case 3:
+          vFullLimit = LIP_BAT_FULL+100;
+      }
       display.setCursor(16,32);
-      if (vMeterReading > 3020){
+      if (vMeterReading > vFullLimit){
         drawFlash(4,34);
         display.print("USB power");
         display.setCursor(16,42);
-        display.print(voltage/10);
-        display.print(".");
-        display.print(voltage%10);
-        display.print("v");
+        if (batteryType < 3){ 
+          display.print(voltage/10);
+          display.print(".");
+          display.print(voltage%10);
+          display.print("v");
+        } else if (vMeterReading > 2970) {
+          display.print("LiPo charged");
+        } else {
+          display.print("LiPo charging");
+        }
       } else {
         int bar = drawBatt(4,34);
         if (0 == batteryType) {
@@ -1942,7 +2016,7 @@ const MenuPageCustom aboutMenuPage =  { nullptr, EMenuPageCustom,
           display.print(".");
           display.print(voltage%10);
           display.print("v");
-        } else if (2 == batteryType) {
+        } else if (batteryType >= 2) {
           display.println("LiPo battery");
           display.setCursor(16,42);
           display.print(bar);
@@ -2146,7 +2220,7 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
         int trills = readTrills();
         switch (input.current) {
           case BTN_MENU+BTN_ENTER:
-            if (trills) {
+            if (trills && fastPatchEnable) {
               menuState = PATCH_VIEW;
               stateFirstRun = 1;
               setFPS(trills, patch);
@@ -2154,7 +2228,7 @@ static bool updatePage(const MenuPage *page, KeyState &input, uint32_t timeNow) 
             break;
 
           case BTN_MENU+BTN_UP:
-            if (trills) {
+            if (trills && fastPatchEnable) {
               menuState = PATCH_VIEW;
               stateFirstRun = 1;
               clearFPS(trills);
@@ -2227,13 +2301,15 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
       case BTN_DOWN:
       // fallthrough
       case BTN_UP:
-        if (trills && (fastPatch[trills-1] > 0)){
-          patch = fastPatch[trills-1];
-          activePatch = 0;
-          doPatchUpdate = 1;
-          FPD = 1;
-          writeSetting(PATCH_ADDR,patch);
-        } else if (!trills){
+        if (trills && fastPatchEnable) {
+          if (fastPatch[trills-1] > 0){
+            patch = fastPatch[trills-1];
+            activePatch = 0;
+            doPatchUpdate = 1;
+            FPD = 1;
+            writeSetting(PATCH_ADDR,patch);
+          }
+        } else {
           patch = (((patch-1u) + ((input.current == BTN_UP)?1u:-1u))&127u) + 1u;
           activePatch = 0;
           doPatchUpdate = 1;
@@ -2244,7 +2320,7 @@ static bool patchPageUpdate(KeyState& input, uint32_t timeNow) {
         break;
 
       case BTN_ENTER:
-        if (trills && (fastPatch[trills-1] > 0)){
+        if (trills && fastPatchEnable && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
           doPatchUpdate = 1;
@@ -2300,12 +2376,12 @@ static bool idlePageUpdate(KeyState& __unused input, uint32_t __unused timeNow) 
       case BTN_UP:
         // fallthrough
       case BTN_DOWN:
-        if (!trills) {
+        if (!trills && fastPatchEnable) {
           patch = (((patch-1u) + ((input.current == BTN_UP)?1u:-1u))&127u) + 1u;
         }
         // fallthrough
       case BTN_ENTER:
-        if (trills && (fastPatch[trills-1] > 0)){
+        if (trills && fastPatchEnable && (fastPatch[trills-1] > 0)){
           patch = fastPatch[trills-1];
           activePatch = 0;
           doPatchUpdate = 1;

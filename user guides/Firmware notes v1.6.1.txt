@@ -1,0 +1,11 @@
+Firmware v1.6.1 notes
+
+* Added min glide level setting GLIDE MIN and renamed GLIDE LMT to GLIDE MAX. Makes it possible to have a minimum glide other than zero. Also enables you to set up a range of glide CC in either direction to work within (setting min level higher than max level makes levels go opposite direction). 
+
+Example for use is with Craftsynth 2.0 where the CC#5 glide control is divided in two ranges on the same CC, on either side of the 63 center value.
+
+* Some improvements to CV portamento handling.
+
+* Added support for a revised circuitry of power switch and charger board on LiPo/WL models. New BAT TYPE setting for this is LP2. If your controller has this revised circuitry, using LP2 instead of LP1 setting (previously named LIP setting) will change battery related messages in the display to make more sense for this setup. To know if your controller has got this revised circuitry, check switch behavior. If back position is ”off”, mid position is ”on” and front position is ”on+wireless” then you should use this new type setting. If positions are ”battery power off/USB power on” (back position), ”charge” (middle position) and ”battery power on” (front position), then the original LP1 setting should be used. 
+
+* Added enable setting for the FastPatch function. Default is off, so if you are already using FastPatch, make sure to set this setting to ON. You find the new setting in EXTRAS – FASTPATCH. The advantage of having this default off is that holding the controller the "wrong way" (i.e. touching keys that control FastPatch) while operating menu buttons will no longer be a problem.
