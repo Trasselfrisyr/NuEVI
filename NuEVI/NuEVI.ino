@@ -41,8 +41,8 @@ PROGRAMME FUNCTION:   EWI Wind Controller using the Freescale MP3V5004GP breath 
 
 
 //Make sure compiler is set to the appropriate platform
-#ifndef __MK20DX256__
-  #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256)."
+#if !defined(__MK20DX256__) && !defined(__IMXRT1062__)
+  #error "Wrong target platform. Please set to Teensy 3.1/3.2 (MK20DX256) or Teensy 4.0 (IMXRT1062)."
 #endif
 
 #if !defined(USB_MIDI) && !defined(USB_MIDI_SERIAL)
@@ -611,10 +611,12 @@ bool i2cScan = false;
 void cvUpdate(){
   int cvPressure = analogRead(breathSensorPin);
   #if defined(NURAD)
+  #if !defined(LITE)
   analogWrite(pwmDacPin,map(constrain(cvPressure,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095));
   if(dacMode == DAC_MODE_BREATH){
     analogWrite(dacPin,map(constrain(cvPressure,breathThrVal,4095),breathThrVal,4095,0,4095));
   }
+  #endif
   #else
   if(dacMode == DAC_MODE_PITCH){
     analogWrite(pwmDacPin,cvPressure);
@@ -630,7 +632,11 @@ void setup() {
 
   analogReadResolution(12);   // set resolution of ADCs to 12 bit
   analogWriteResolution(12);
+  #if !defined(LITE)
   analogWriteFrequency(pwmDacPin,11718.75);
+  #else
+  analogWriteFrequency(dacPin,36621.09);
+  #endif
   Wire.setClock(1000000);
 
   pinMode(dPin, INPUT_PULLUP);
@@ -642,8 +648,9 @@ void setup() {
   pinMode(pLedPin, OUTPUT);        // portam indicator LED
   pinMode(statusLedPin,OUTPUT);    // Teensy onboard LED
   pinMode(dacPin, OUTPUT);         //DAC output for analog signal
+  #if !defined(LITE)
   pinMode(pwmDacPin, OUTPUT);      //PWMed DAC output for analog signal
-
+  #endif
   #if defined(NURAD)
   pinMode(eLedPin, OUTPUT);        // breath indicator LED
   pinMode(sLedPin, OUTPUT);        // portam indicator LED
@@ -660,8 +667,13 @@ void setup() {
 
   widiJumper = !digitalRead(widiJumperPin); //WIDI
 
+  #if defined(LITE)
+  Serial7.setRX (28); //WIDI
+  Serial7.setTX (29); //WIDI
+  #else
   Serial2.setRX (26); //WIDI
   Serial2.setTX (31); //WIDI
+  #endif
 
   bool factoryReset = !digitalRead(ePin) && !digitalRead(mPin) && digitalRead(dPin) && digitalRead(uPin);
   configManagementMode = !digitalRead(uPin) && !digitalRead(dPin) && digitalRead(ePin) && digitalRead(mPin);
@@ -742,6 +754,17 @@ void setup() {
   #endif
 
   //auto-calibrate the vibrato threshold while showing splash screen
+  #if defined(LITE)
+  vibZero = vibZeroBite = breathCalZero = 0;
+  const int sampleCount = 4;
+  for(int i = 1 ; i <= sampleCount; ++i) {
+    vibZero += map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);;
+    breathCalZero += analogRead(breathSensorPin);
+    vibZeroBite += analogRead(bitePressurePin);
+    statusLed(i&1);
+    delay(fastBoot?75:220); //Shorter delay for fastboot
+  }
+#else
   vibZero = vibZeroBite = breathCalZero = 0;
   const int sampleCount = 4;
   for(int i = 1 ; i <= sampleCount; ++i) {
@@ -751,7 +774,7 @@ void setup() {
     statusLed(i&1);
     delay(fastBoot?75:220); //Shorter delay for fastboot
   }
-
+#endif
   vibZero /= sampleCount;
   breathCalZero /= sampleCount;
   vibZeroBite /= sampleCount;
@@ -760,10 +783,10 @@ void setup() {
   vibThrLo = vibZero + vibSquelch;
   vibThrBite = vibZeroBite - vibSquelchBite;
   vibThrBiteLo = vibZeroBite + vibSquelchBite;
-
+ #if !defined(LITE)
   patchKeyThrEVI = touchRead(patchPinEVI) + hackyTouchOffset;
   lockGlideKeyThr = touchRead(lockGlidePin) + hackyTouchOffset;
-  
+#endif
 
   if (factoryReset) autoCal();
 
@@ -800,9 +823,9 @@ void setup() {
   //Serial.begin(9600); // debug
 
   statusLedOn();    // Switch on the onboard LED to indicate power on/ready
-
+  #if !defined(LITE)
   cvTimer.begin(cvUpdate,500); // Update breath CV output every 500 microseconds
-
+  #endif
 }
 
 //_______________________________________________________________________________________________ MAIN LOOP
@@ -839,8 +862,13 @@ void loop() {
       mainState = RISE_WAIT; // Go to next state
     }
     if (legacy || legacyBrAct) {
+      #if defined(LITE)
+      bool patchKeyEVI = 0;
+      bool lockGlideKey = 0;
+      #else
       bool patchKeyEVI = touchRead(patchPinEVI) > patchKeyThrEVI;
       bool lockGlideKey = touchRead(lockGlidePin) > lockGlideKeyThr;
+      #endif
       bool bothPB = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool justPbDn = !(pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && (pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
       bool justPbUp = (pbUp > ((pitchbMaxVal + pitchbThrVal) / 2)) && !(pbDn > ((pitchbMaxVal + pitchbThrVal) / 2));
@@ -1532,8 +1560,13 @@ void pitch_bend() {
   byte pbTouched = 0;
   int vibRead = 0;
   int vibReadBite = 0;
+#if defined(LITE)
+  pbUp = map(constrain(touchSensorRollers.filteredData(pbUpPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
+  pbDn = map(constrain(touchSensorRollers.filteredData(pbDnPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
+#else
   pbUp = touchRead(pbUpPin); // PCB PIN "Pu"
   pbDn = touchRead(pbDnPin); // PCB PIN "Pd"
+#endif
   halfPitchBendKey = (pinkySetting == PBD) && pinkyKey; // hold pinky key for 1/2 pitchbend value
   quarterToneTrigger = (pinkySetting == QTN) && pinkyKey; // pinky key for a quarter tone down using pitch bend (assuming PB range on synth is set to 2 semitones)
 
@@ -1548,7 +1581,10 @@ void pitch_bend() {
     if (biteJumper){ //PBITE (if pulled low with jumper, or NuRAD compile, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
+#if defined(LITE)
+#else
       vibReadBite = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+#endif
     }
     if (vibReadBite < vibThrBite) {
       if (UPWD == vibDirection) {
@@ -1567,7 +1603,11 @@ void pitch_bend() {
     }
   }
   if (1 == leverControl) { //lever vibrato
+#if defined(LITE)
+    vibRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
+#else
     vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
+#endif
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
         vibSignal = (vibSignal + map(constrain(vibRead, (vibZero - vibMax), vibThr), vibThr, (vibZero - vibMax), 0, calculatedPBdepth * vibDepth[vibrato]))/2;
@@ -1713,7 +1753,11 @@ void extraController() {
   bool CC1sw = false;
   int extracCC;
   // Extra Controller is the lip touch sensor (proportional) in front of the mouthpiece
+  #if defined(LITE)
+  exSensor = exSensor * 0.6 + 0.4 * map(constrain(touchSensorRollers.filteredData(extraPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, extracHiLimit, extracLoLimit);
+#else
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
+#endif
   exSensorIndicator = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
   if (pinkySetting == EC2){
     CC1sw = true;
@@ -1847,16 +1891,23 @@ void portamento_() {
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
+#if defined(LITE)
+#else
       biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
-    }
+#endif
+   }
     if (portamento && (biteSensor >= portamThrVal)) { // if we are enabled and over the threshold, send portamento
       portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
     }
   }
   if (2 == leverControl) {
     // Portamento is controlled with thumb lever
+#if defined(LITE)
+    leverPortRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
+#else
     leverPortRead = touchRead(vibratoPin);
-#if defined(SEAMUS)
+#endif
+#if defined(SEAMUS) or defined(LITE)
     if (portamento && ((leverPortRead) >= leverThrVal)) { // if we are enabled and over the threshold, send portamento
       portSumCC += map(constrain((leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
@@ -1926,7 +1977,10 @@ void biteCC_() {
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
+ #if defined(LITE)
+ #else
       biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
+ #endif
     }
     if (biteSensor >= portamThrVal) { // we are over the threshold, calculate CC value
       biteCClevel = map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
@@ -1942,7 +1996,11 @@ void biteCC_() {
 void leverCC_() {
   int leverCClevel = 0;
   if (3 == leverControl){
+#if defined(LITE)
+    leverPortRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
+#else
     leverPortRead = touchRead(vibratoPin);
+#endif
     if (((3000-leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
       leverCClevel = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
@@ -1958,7 +2016,11 @@ void autoCal() {
   int calReadNext;
 // NuRAD/NuEVI sensor calibration
   // Extra Controller
+#if defined(LITE)
+  calRead = map(constrain(touchSensorRollers.filteredData(extraPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, extracHiLimit, extracLoLimit);
+#else
   calRead = touchRead(extraPin);
+#endif
   extracThrVal = constrain(calRead+200, extracLoLimit, extracHiLimit);
   extracMaxVal = constrain(extracThrVal+600, extracLoLimit, extracHiLimit);
   writeSetting(EXTRAC_THR_ADDR, extracThrVal);
@@ -1970,15 +2032,28 @@ void autoCal() {
   writeSetting(BREATH_THR_ADDR, breathThrVal);
   writeSetting(BREATH_MAX_ADDR, breathMaxVal);
   // Pitch Bend
+#if defined(LITE)
+  calRead = map(constrain(touchSensorRollers.filteredData(pbUpPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
+  calReadNext = map(constrain(touchSensorRollers.filteredData(pbDnPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
+#else
   calRead = touchRead(pbUpPin);
   calReadNext = touchRead(pbDnPin);
+#endif
   if (calReadNext > calRead) calRead = calReadNext; //use highest value
   pitchbThrVal = constrain(calRead+200, pitchbLoLimit, pitchbHiLimit);
   pitchbMaxVal = constrain(pitchbThrVal+800, pitchbLoLimit, pitchbHiLimit);
   writeSetting(PITCHB_THR_ADDR, pitchbThrVal);
   writeSetting(PITCHB_MAX_ADDR, pitchbMaxVal);
   // Lever
-  calRead = 3000-touchRead(vibratoPin);
+#if defined(LITE)
+  calRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
+#else
+  calRead = touchRead(vibratoPin);
+#endif
+#if defined(SEAMUS) or defined(LITE)
+#else
+  calRead = 3000-calRead;
+#endif
   leverThrVal = constrain(calRead+60, leverLoLimit, leverHiLimit);
   leverMaxVal = constrain(calRead+120, leverLoLimit, leverHiLimit);
   writeSetting(LEVER_THR_ADDR, leverThrVal);
