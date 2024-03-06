@@ -729,7 +729,7 @@ void setup() {
   }
   delay(100);
   analogWrite(eLedPin, 0);
-  analogWrite(sLedPin, PORTAM_LED_BRIGHTNESS);
+  analogWrite(sLedPin, SPCKEY_LED_BRIGHTNESS);
   delay(100);
   analogWrite(sLedPin, 0);
   delay(100);

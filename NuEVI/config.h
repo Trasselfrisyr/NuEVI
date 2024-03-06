@@ -47,7 +47,7 @@
 #define BREATH_LED_BRIGHTNESS 600 // up to 4095, PWM
 #define PORTAM_LED_BRIGHTNESS 300 // up to 4095, PWM
 #define EXTCON_LED_BRIGHTNESS 500 // up to 4095, PWM
-#define SPCKEY_LED_BRIGHTNESS 2200 // up to 4095, PWM
+#define SPCKEY_LED_BRIGHTNESS 3000 // up to 4095, PWM
 
 #define ALK_BAT_FULL 2800 // about 4.6V
 #define NMH_BAT_FULL 2380 // about 3.9V
