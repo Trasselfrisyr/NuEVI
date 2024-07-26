@@ -2,9 +2,9 @@
 #define __HARDWARE_H
 
 #define REVB
-#define NURAD
+//#define NURAD
 //#define SEAMUS
-#define LITE
+//#define LITE
 
 //#define I2CSCANNER
 
@@ -60,7 +60,8 @@
 #define extraPin 9
 #define pbUpPin 10
 #define pbDnPin 8
-#define vibratoPin 7 //glide pad
+#define vibratoPin 7 // pad
+#define glsPin 7 // glide strip (use extraPin instead?)
 
 #define bitePin 17
 

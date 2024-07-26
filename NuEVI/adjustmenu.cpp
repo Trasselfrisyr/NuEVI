@@ -91,7 +91,11 @@ static void extracSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry extraSensorAdjustMenu = {
-  "LIP/EC", 
+#if defined(LITE)
+  "GLS/EC",
+#else
+  "LIP/EC",
+#endif 
   {
     { &extracThrVal, extracLoLimit, extracHiLimit },
     { &extracMaxVal, extracLoLimit, extracHiLimit }
@@ -120,7 +124,11 @@ static void leverSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry leverAdjustMenu = {
+  #if defined(LITE)
+  "PAD", 
+  #else
   "LEVER", 
+  #endif
   {
     { &leverThrVal, leverLoLimit, leverHiLimit },
     { &leverMaxVal, leverLoLimit, leverHiLimit }

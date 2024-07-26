@@ -610,15 +610,17 @@ bool i2cScan = false;
 
 //Update CV output pin, run from timer.
 void cvUpdate(){
-  #if defined(NURAD)
   #if !defined(LITE)
   int cvPressure = analogRead(breathSensorPin);
+  #endif
+  #if defined(NURAD)
+  #if !defined(LITE)
   analogWrite(pwmDacPin,map(constrain(cvPressure,breathThrVal,breathMaxVal),breathThrVal,breathMaxVal,0,4095));
   if(dacMode == DAC_MODE_BREATH){
     analogWrite(dacPin,map(constrain(cvPressure,breathThrVal,4095),breathThrVal,4095,0,4095));
   }
   #endif
-  #else
+  #else //NuEVI
   if(dacMode == DAC_MODE_PITCH){
     analogWrite(pwmDacPin,cvPressure);
   } else { //DAC_MODE_BREATH
@@ -1887,6 +1889,9 @@ void portamento_() {
   if (glideLockOn){
     if (portamento) portSumCC += 127;
   }
+  if (extraCT == 5){
+    if (portamento) portSumCC += exSensorIndicator;
+  } 
   if (2 == biteControl) {
     // Portamento is controlled with the bite sensor in the mouthpiece
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
@@ -2002,9 +2007,15 @@ void leverCC_() {
 #else
     leverPortRead = touchRead(vibratoPin);
 #endif
+#if defined(SEAMUS) or defined(LITE)
+    if (((leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
+      leverCClevel = map(constrain((leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
+    }
+#else
     if (((3000-leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
       leverCClevel = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);
     }
+#endif
     if (leverCClevel != oldlevercc) {
       midiSendControlChange(leverCC, leverCClevel);
       oldlevercc = leverCClevel;

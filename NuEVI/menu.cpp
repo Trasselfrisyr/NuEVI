@@ -1567,7 +1567,11 @@ const MenuEntrySub biteCCMenu = {
 };
 
 const MenuEntrySub leverCtlMenu = {
+#if defined(LITE)
+  MenuType::ESub, "PAD CTL", "PAD DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+#else
   MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+#endif
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
     const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
     strncpy(out, labs[leverControl], 4);
@@ -1577,7 +1581,11 @@ const MenuEntrySub leverCtlMenu = {
 };
 
 const MenuEntrySub leverCCMenu = {
+#if defined(LITE)
+  MenuType::ESub, "PAD CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#else
   MenuType::ESub, "LEVER CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#endif
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(leverCC, out);
   },
@@ -1629,9 +1637,9 @@ const MenuEntrySub pitchBendMenu = {
 };
 
 const MenuEntrySub extraMenu = {
-  MenuType::ESub, "EXCT CC A", "EXCT CC A", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "EXCT CC A", "EXCT CC A", &extraCT, 0,5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char** __unused unit) {
-    const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
+    const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP", "GLD" };
     strncpy(out, extraMenuLabels[extraCT], 12);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_ADDR,extraCT); }
@@ -1861,7 +1869,11 @@ const MenuEntrySub vibRetnMenu = {
 };
 
 const MenuEntrySub vibSenseMenu = {
+#if defined(LITE)
+  MenuType::ESub, "SENSE PAD", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+#else
   MenuType::ESub, "SENSE LVR", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+#endif
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     numToString(vibSens, textBuffer);
   },
@@ -1870,7 +1882,11 @@ const MenuEntrySub vibSenseMenu = {
 };
 
 const MenuEntrySub vibSquelchMenu = {
+#if defined(LITE)
+  MenuType::ESub, "SQUELCH P", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+#else
   MenuType::ESub, "SQUELCH L", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+#endif
   [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
     numToString(vibSquelch, textBuffer);
   },

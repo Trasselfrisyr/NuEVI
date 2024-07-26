@@ -134,7 +134,7 @@
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
+#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal, 5 - GLD
 #define VIBRATO_FACTORY 4   // 0 - OFF, 1 - 9 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128

@@ -204,7 +204,7 @@ void readEEPROM(const bool factoryReset) {
     velocity        = readSettingBounded(VELOCITY_ADDR, 0, 127, VELOCITY_FACTORY);
     portamento      = readSettingBounded(PORTAM_ADDR, 0, 5, PORTAM_FACTORY);
     PBdepth         = readSettingBounded(PB_ADDR, 0, 12, PB_FACTORY);
-    extraCT         = readSettingBounded(EXTRA_ADDR, 0, 4, EXTRA_FACTORY);
+    extraCT         = readSettingBounded(EXTRA_ADDR, 0, 5, EXTRA_FACTORY);
     vibrato         = readSettingBounded(VIBRATO_ADDR, 0, 9, VIBRATO_FACTORY);
     deglitch        = readSettingBounded(DEGLITCH_ADDR, 0, 70, DEGLITCH_FACTORY);
     extracThrVal    = readSettingBounded(EXTRAC_THR_ADDR, extracLoLimit, extracHiLimit, EXTRAC_THR_FACTORY);
