@@ -276,7 +276,7 @@ void readEEPROM(const bool factoryReset) {
     leverMaxVal     = readSettingBounded(LEVER_MAX_ADDR, leverLoLimit, leverHiLimit, LEVER_MAX_FACTORY);
     brHarmSetting   = readSettingBounded(BRHARMSET_ADDR, 0, 6, BRHARMSET_FACTORY);
     brHarmSelect    = readSettingBounded(BRHARMSEL_ADDR, 0, 3, BRHARMSEL_FACTORY);
-    biteControl     = readSettingBounded(BITECTL_ADDR, 0, 3, BITECTL_FACTORY);
+    biteControl     = readSettingBounded(BITECTL_ADDR, 0, 4, BITECTL_FACTORY);
     leverControl    = readSettingBounded(LEVERCTL_ADDR, 0, 3, LEVERCTL_FACTORY);
     biteCC          = readSettingBounded(BITECC_ADDR, 0, 127, BITECC_FACTORY);
     leverCC         = readSettingBounded(LEVERCC_ADDR, 0, 127, LEVERCC_FACTORY);

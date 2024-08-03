@@ -126,7 +126,7 @@ extern unsigned short hmzKey; // 0-11 (0 is C)
 extern unsigned short hmzLimit; // 2-5
 extern unsigned short otfKey; //OFF:ON
 extern unsigned short breathInterval; // 3-15
-extern unsigned short biteControl; // OFF, VIB, GLD, CC
+extern unsigned short biteControl; // OFF, VIB, GLD, CC, VIB+
 extern unsigned short leverControl; // OFF, VIB, GLD, CC
 extern unsigned short biteCC; // 0 - 127
 extern unsigned short leverCC; // 0 -127
