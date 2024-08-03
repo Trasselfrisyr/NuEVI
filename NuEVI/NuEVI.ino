@@ -116,7 +116,7 @@ unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DN
 unsigned short vibSensBite = 2; // vibrato sensitivity (bite)
 unsigned short vibSquelchBite = 12; //vibrato signal squelch (bite)
 unsigned short vibControl = 0;
-unsigned short biteControl = 0; // OFF, VIB, GLD, CC
+unsigned short biteControl = 0; // OFF, VIB, GLD, CC, VIB+
 unsigned short leverControl = 0; // OFF, VIB, GLD, CC
 unsigned short biteCC = 0; // 0 - 127
 unsigned short leverCC = 0; // 0 -127
@@ -1544,7 +1544,7 @@ void pitch_bend() {
   vibMax = vibMaxList[vibSens - 1];
   vibMaxBite = vibMaxBiteList[vibSensBite - 1];
 
-  if (1 == biteControl){ //bite vibrato
+  if (1 == biteControl || 4 == biteControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, or NuRAD compile, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
@@ -1922,7 +1922,7 @@ void portOff() {
 
 void biteCC_() {
   int biteCClevel = 0;
-  if (3 == biteControl){
+  if (3 == biteControl || 4 == biteControl){
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
