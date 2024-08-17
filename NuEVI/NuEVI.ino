@@ -116,8 +116,8 @@ unsigned short vibDirection = DNWD; //direction of first vibrato wave UPWD or DN
 unsigned short vibSensBite = 2; // vibrato sensitivity (bite)
 unsigned short vibSquelchBite = 12; //vibrato signal squelch (bite)
 unsigned short vibControl = 0;
-unsigned short biteControl = 0; // OFF, VIB, GLD, CC, VIB+
-unsigned short leverControl = 0; // OFF, VIB, GLD, CC
+unsigned short biteControl = 0; // OFF, VIB, GLD, CC, VIB+, GLD+, VG, VG+
+unsigned short leverControl = 0; // OFF, VIB, GLD, CC, VIB+, GLD+, VG, VG+
 unsigned short biteCC = 0; // 0 - 127
 unsigned short leverCC = 0; // 0 -127
 
@@ -1544,7 +1544,7 @@ void pitch_bend() {
   vibMax = vibMaxList[vibSens - 1];
   vibMaxBite = vibMaxBiteList[vibSensBite - 1];
 
-  if (1 == biteControl || 4 == biteControl){ //bite vibrato
+  if (1 == biteControl || 4 == biteControl || 6 == biteControl || 7 == biteControl){ //bite vibrato
     if (biteJumper){ //PBITE (if pulled low with jumper, or NuRAD compile, use pressure sensor instead of capacitive bite sensor)
       vibReadBite = analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
@@ -1566,7 +1566,7 @@ void pitch_bend() {
       vibSignal = vibSignal / 2;
     }
   }
-  if (1 == leverControl) { //lever vibrato
+  if (1 == leverControl || 4 == leverControl || 6 == leverControl || 7 == leverControl) { //lever vibrato
     vibRead = touchRead(vibratoPin); // SENSOR PIN 15 - built in var cap
     if (vibRead < vibThr) {
       if (UPWD == vibDirection) {
@@ -1842,7 +1842,7 @@ void portamento_() {
   if (glideLockOn){
     if (portamento) portSumCC += 127;
   }
-  if (2 == biteControl) {
+  if (2 == biteControl || 5 == biteControl || 6 == biteControl || 7 == biteControl) {
     // Portamento is controlled with the bite sensor in the mouthpiece
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
@@ -1853,7 +1853,7 @@ void portamento_() {
       portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
     }
   }
-  if (2 == leverControl) {
+  if (2 == leverControl || 5 == leverControl || 6 == leverControl || 7 == leverControl) {
     // Portamento is controlled with thumb lever
     leverPortRead = touchRead(vibratoPin);
 #if defined(SEAMUS)
@@ -1922,7 +1922,7 @@ void portOff() {
 
 void biteCC_() {
   int biteCClevel = 0;
-  if (3 == biteControl || 4 == biteControl){
+  if (3 == biteControl || 4 == biteControl || 5 == biteControl || 7 == biteControl){
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
@@ -1941,7 +1941,7 @@ void biteCC_() {
 
 void leverCC_() {
   int leverCClevel = 0;
-  if (3 == leverControl){
+  if (3 == leverControl || 4 == leverControl || 5 == leverControl || 7 == leverControl){
     leverPortRead = touchRead(vibratoPin);
     if (((3000-leverPortRead) >= leverThrVal)) { // we are over the threshold, calculate CC value
       leverCClevel = map(constrain((3000-leverPortRead), leverThrVal, leverMaxVal), leverThrVal, leverMaxVal, 0, 127);

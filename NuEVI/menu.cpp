@@ -1548,10 +1548,10 @@ const MenuPage breathMenuPage = {
 // Control menu
 
 const MenuEntrySub biteCtlMenu = {
-  MenuType::ESub, "BITE CTL", "BITE DEST", &biteControl, 0, 4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "BITE CTL", "BITE DEST", &biteControl, 0, 7, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "OFF", "VIB", "GLD", "CC", "VIB+" };
-    strncpy(out, labs[biteControl], 5);
+    const char* labs[] = { "OFF", "VIB", "GLD", "CC", "VIB+", "GLD+", "VG", "VG+" };
+    strncpy(out, labs[biteControl], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(BITECTL_ADDR,biteControl); }
   , nullptr
@@ -1567,9 +1567,9 @@ const MenuEntrySub biteCCMenu = {
 };
 
 const MenuEntrySub leverCtlMenu = {
-  MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 7, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
+    const char* labs[] = { "OFF", "VIB", "GLD", "CC", "VIB+", "GLD+", "VG", "VG+" };
     strncpy(out, labs[leverControl], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(LEVERCTL_ADDR,leverControl); }
