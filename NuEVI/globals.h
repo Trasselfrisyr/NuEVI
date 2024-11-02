@@ -27,6 +27,7 @@
 #define GLD 29
 #define ECH 30
 #define QTN 31
+#define KCC 32
 
 #define MOD 13
 

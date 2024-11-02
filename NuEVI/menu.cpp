@@ -1689,11 +1689,11 @@ const MenuEntrySub deglitchMenu = {
 
 #if defined(NURAD)
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 31, MenuEntryFlags::ENone,
+  MenuType::ESub, "MOD KEY", "MOD KEY", &pinkySetting, 0, 32, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #else
 const MenuEntrySub pinkyMenu = {
-  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 31, MenuEntryFlags::ENone,
+  MenuType::ESub, "PINKY KEY", "PINKY KEY", &pinkySetting, 0, 32, MenuEntryFlags::ENone,
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
 #endif
     if (pinkySetting == PBD)
@@ -1712,6 +1712,8 @@ const MenuEntrySub pinkyMenu = {
       strncpy(textBuffer, "ECH", 4);
     else if (pinkySetting == QTN)
       strncpy(textBuffer, "QTN", 4);
+    else if (pinkySetting == KCC)
+      strncpy(textBuffer, "KCC", 4);
     else
       numToString(pinkySetting-12, textBuffer, true);
   },
