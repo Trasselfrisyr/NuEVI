@@ -604,6 +604,8 @@ IntervalTimer cvTimer;
 bool configManagementMode = false;
 bool i2cScan = false;
 
+byte kccKeys[15] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+byte lastKccKeys[15] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 //_______________________________________________________________________________________________ SETUP
 
@@ -1270,6 +1272,7 @@ void loop() {
     extraController();
     biteCC_();
     leverCC_();
+    keys2CCs();
     ccSendTime = currentTime;
   }
   if (currentTime - ccSendTime2 > CC_INTERVAL2) {
@@ -1754,7 +1757,6 @@ void extraController() {
     CC2sw = true;
     CC1sw = true;
   }
-
   if ((harmSetting && (pinkySetting != ECH)) || ((pinkySetting == ECH) && pinkyKey)){
     if (harmSelect < 4){
       harmonics = map(constrain(exSensor, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, harmSetting);
@@ -1829,6 +1831,48 @@ void extraController() {
       midiSendControlChange(extraCT2, 0);
       oldextrac2 = 0;
     }
+  }
+}
+
+//***********************************************************
+
+void keys2CCs() {
+  int i=0;
+  int pressed=0;
+
+  if (pinkySetting == KCC) {
+    kccKeys[0] = RHs;
+    kccKeys[1] = RH1;
+    kccKeys[2] = RH2;
+    kccKeys[3] = RH3;
+    kccKeys[4] = RHp1;
+    kccKeys[5] = RHp2;
+    kccKeys[6] = RHp3;
+    kccKeys[7] = LHb;
+    kccKeys[8] = LH1;
+    kccKeys[9] = LH2;
+    kccKeys[10] = LH3;
+    kccKeys[11] = LHp1;
+    kccKeys[12] = LHp2;
+    kccKeys[13] = LHp3;
+    kccKeys[14] = specialKey;
+
+    for (i=0; i<15; i++) {
+      if (kccKeys[i]) pressed++;
+      if (pinkyKey && lastPinkyKey && kccKeys[i] && !lastKccKeys[i]) // new key press detected
+        midiSendControlChange((levelCC+i+1)%128, 127);
+      if (pinkyKey && !kccKeys[i] && lastKccKeys[i]) // new key release detected
+        midiSendControlChange((levelCC+i+1)%128, 0);
+      if (pinkyKey)
+        lastKccKeys[i] = kccKeys[i]; // track keys state for next pass
+      else // or if MOD released
+        lastKccKeys[i] = 0; // reset all
+    }
+    if (pinkyKey && !lastPinkyKey && !pressed) // new MOD press event and no other RH/LH
+      midiSendControlChange(levelCC, 127);
+    if (!pinkyKey && lastPinkyKey && !pressed) // MOD released & no other keys held
+      midiSendControlChange(levelCC, 0);
+    lastPinkyKey = pinkyKey;
   }
 }
 
