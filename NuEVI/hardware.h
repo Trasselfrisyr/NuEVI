@@ -1,10 +1,12 @@
 #ifndef __HARDWARE_H
 #define __HARDWARE_H
+#endif
 
 #define REVB
 //#define NURAD
 //#define SEAMUS
 //#define LITE
+//#define EVIR2
 
 //#define I2CSCANNER
 
@@ -61,7 +63,7 @@
 #define pbUpPin 10
 #define pbDnPin 8
 #define vibratoPin 7 // pad
-#define glsPin 7 // glide strip (use extraPin instead?)
+#define extraPin2 11
 
 #define bitePin 17
 
@@ -174,7 +176,71 @@
 
 #endif
 #else //NuEVI <<<<<<<<<<<<<<<<<<<<<<<
+#if defined(EVIR2)  //NuEVI R2
 
+//Analog pressure sensors. Breath and optional bite
+#define breathSensorPin A0
+#define bitePressurePin A7
+
+//Digital pins for menu buttons
+#define dPin 3
+#define ePin 4
+#define uPin 5
+#define mPin 6
+
+//Pins jumpered to enable bite pressure sensor
+#define biteJumperPin 11
+#define biteJumperGndPin 12
+
+//Output pins for LEDs (breath, power, status)
+#define bLedPin 10
+#define pLedPin 9
+#define statusLedPin 13
+
+//DAC outputs for analog and pwm
+#define dacPin 1 // PWM on pin 1 for pitch CV
+
+//Which serial port to use for MIDI
+#define MIDI_SERIAL Serial2
+#define WIDI_SERIAL Serial7
+
+//Pins for WIDI board management
+#define widiJumperPin 30
+#define widiJumperGndPin 31
+#define widiPowerPin 33
+
+//Analog input for measuring voltage
+#define vMeterPin A6
+
+//Analog input for piezo vibrato
+#define piezoPin A9
+
+//MPR121 board main/roller
+#define R1Pin 6
+#define R2Pin 7
+#define R3Pin 8
+#define R4Pin 9
+#define R5Pin 10
+#define K4Pin 11
+#define pbUpPin 4
+#define pbDnPin 3
+#define vibratoPin 5
+#define extraPin 1
+#define extraPin2 2
+
+//MPR121 board key
+#define K1Pin 11//0
+#define K2Pin 10//1
+#define K3Pin 9//2
+#define K5Pin 2//9
+#define K6Pin 1//10
+#define K7Pin 0//11
+#define specialKeyPin 4       // SK  7
+#define halfPitchBendKeyPin 3 // PD  8
+#define patchPinEVI 6
+#define lockGlidePin 7
+
+#else
 // Pin definitions
 
 // Teensy pins
@@ -284,7 +350,6 @@
  */
 
 #endif //REVB
+#endif //EVIR2
 #endif //NURAD
 
-
-#endif

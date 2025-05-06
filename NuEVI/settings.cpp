@@ -187,6 +187,10 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(PORT_LO_LIM_ADDR, PORT_LO_LIM_FACTORY);
         }
 
+        if(settingsVersion < 47) {
+            writeSetting(EXTRA_SRC_ADDR, EXTRA_SRC_FACTORY);
+        }
+
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
 
@@ -285,6 +289,7 @@ void readEEPROM(const bool factoryReset) {
     cvVibRate       = readSettingBounded(CVRATE_ADDR, 0, 8, CVRATE_FACTORY);
     rollerMode      = readSettingBounded(ROLLER_ADDR, 0, 3, ROLLER_FACTORY);
     portLoLimit     = readSettingBounded(PORT_LO_LIM_ADDR, 0, 127, PORT_LO_LIM_FACTORY);
+    extraSrc        = readSettingBounded(EXTRA_SRC_ADDR, 0, 1, EXTRA_SRC_FACTORY);
     
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;

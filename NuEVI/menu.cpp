@@ -1567,13 +1567,17 @@ const MenuEntrySub biteCCMenu = {
 };
 
 const MenuEntrySub leverCtlMenu = {
-#if defined(LITE)
+#if defined(LITE) or defined(EVIR2)
   MenuType::ESub, "PAD CTL", "PAD DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
 #else
   MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
 #endif
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    #if defined(EVIR2)
+    const char* labs[] = { "OFF", "OFF", "GLD", "CC" };
+    #else
     const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
+    #endif
     strncpy(out, labs[leverControl], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(LEVERCTL_ADDR,leverControl); }
@@ -1581,7 +1585,7 @@ const MenuEntrySub leverCtlMenu = {
 };
 
 const MenuEntrySub leverCCMenu = {
-#if defined(LITE)
+#if defined(LITE) or defined(EVIR2)
   MenuType::ESub, "PAD CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
 #else
   MenuType::ESub, "LEVER CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
@@ -1643,6 +1647,20 @@ const MenuEntrySub extraMenu = {
     strncpy(out, extraMenuLabels[extraCT], 12);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_ADDR,extraCT); }
+  , nullptr
+};
+
+const MenuEntrySub extraSrcMenu = {
+  MenuType::ESub, "EXCT SRC", "INPUT", &extraSrc, 0,1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char** __unused unit) {
+    #if defined(EVIR2)
+    const char* extraSrcMenuLabels[] = { "LIP", "AUX"};
+    #else
+    const char* extraSrcMenuLabels[] = { "LIP", "GLS"};
+    #endif
+    strncpy(out, extraSrcMenuLabels[extraSrc], 12);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_SRC_ADDR,extraSrc); }
   , nullptr
 };
 
@@ -1793,6 +1811,9 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portLimitMenu,
   (MenuEntry*)&portLoLimitMenu,
   (MenuEntry*)&vibratoSubMenu,
+  #if defined(LITE)
+  (MenuEntry*)&extraSrcMenu,
+  #endif
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
@@ -1801,6 +1822,28 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
   (MenuEntry*)&lpinky3Menu,
+  (MenuEntry*)&fingeringMenu,
+  (MenuEntry*)&rollerMenu,
+  (MenuEntry*)&pitchBendMenu
+};
+#elif defined(EVIR2)
+const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&biteCtlMenu,
+  (MenuEntry*)&biteCCMenu,
+  (MenuEntry*)&leverCtlMenu,
+  (MenuEntry*)&leverCCMenu,
+  (MenuEntry*)&portMenu,
+  (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&portLoLimitMenu,
+  (MenuEntry*)&vibratoSubMenu,
+  (MenuEntry*)&extraSrcMenu,
+  (MenuEntry*)&extraMenu,
+  (MenuEntry*)&extraCC2Menu,
+  (MenuEntry*)&harmonicsMenu,
+  (MenuEntry*)&harmSelectMenu,
+  (MenuEntry*)&deglitchMenu,
+  (MenuEntry*)&pinkyMenu,
+  (MenuEntry*)&lvlCtrlCCMenu,
   (MenuEntry*)&fingeringMenu,
   (MenuEntry*)&rollerMenu,
   (MenuEntry*)&pitchBendMenu
