@@ -190,6 +190,10 @@ void readEEPROM(const bool factoryReset) {
         if(settingsVersion < 47) {
             writeSetting(EXTRA_SRC_ADDR, EXTRA_SRC_FACTORY);
         }
+        if(settingsVersion < 48) {
+          writeSetting(STRIPCTL_ADDR, STRIPCTL_FACTORY);
+          writeSetting(STRIPCC_ADDR, STRIPCC_FACTORY);
+        }
 
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
@@ -290,7 +294,9 @@ void readEEPROM(const bool factoryReset) {
     rollerMode      = readSettingBounded(ROLLER_ADDR, 0, 3, ROLLER_FACTORY);
     portLoLimit     = readSettingBounded(PORT_LO_LIM_ADDR, 0, 127, PORT_LO_LIM_FACTORY);
     extraSrc        = readSettingBounded(EXTRA_SRC_ADDR, 0, 1, EXTRA_SRC_FACTORY);
-    
+    stripControl    = readSettingBounded(STRIPCTL_ADDR, 0, 2, STRIPCTL_FACTORY);
+    stripCC         = readSettingBounded(STRIPCC_ADDR, 0, 127, STRIPCC_FACTORY);
+
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
     legacy           = (dipSwBits & (1<<DIPSW_LEGACY))?1:0;
@@ -625,4 +631,10 @@ void configModeSetup() {
 //"Main loop". Just sits and wait for midi messages and lets the sysex handler do all the work.
 void configModeLoop() {
     usbMIDI.read();
+    if (!digitalRead(ePin)){
+      configShowMessage("Sending config...");
+      sendSysexSettings();
+      configShowMessage("Config sent.");
+      delay(3000);
+    }
 }

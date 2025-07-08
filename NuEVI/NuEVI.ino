@@ -118,8 +118,10 @@ unsigned short vibSquelchBite = 12; //vibrato signal squelch (bite)
 unsigned short vibControl = 0;
 unsigned short biteControl = 0; // OFF, VIB, GLD, CC
 unsigned short leverControl = 0; // OFF, VIB, GLD, CC
+unsigned short stripControl = 0; // OFF, GLD, CC
 unsigned short biteCC = 0; // 0 - 127
 unsigned short leverCC = 0; // 0 -127
+unsigned short stripCC = 0; // 0 -127
 
 unsigned short cvTune;  // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
 unsigned short cvScale; // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
@@ -239,6 +241,7 @@ int leverPortThr = 70;
 int leverPortThr = 70;
 #endif
 int leverPortRead;
+int stripRead;
 int center;
 
 int biteSensor=0;    // capacitance data from bite sensor, for midi cc and threshold checks
@@ -250,6 +253,7 @@ byte biteJumper=0;
 byte widiJumper=0;
 int oldbitecc=0;
 int oldlevercc=0;
+int oldstripcc=0;
 
 int cvPitch;
 int cvPitchSum;
@@ -1842,10 +1846,23 @@ void extraController() {
   #if defined(LITE) or defined(EVIR2)
   exSensor = exSensor * 0.6 + 0.4 * map(constrain(touchSensorRollers.filteredData(extraPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, extracHiLimit, extracLoLimit);
   exSensor2 = exSensor2 * 0.6 + 0.4 * map(constrain(touchSensorRollers.filteredData(extraPin2), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, extracHiLimit, extracLoLimit);
-#else
+  //if (extraSrc) exSensorUse = exSensor; else exSensorUse = exSensor2;
+  exSensorUse = exSensor2;
+  int stripCClevel = 0;
+  if (2 == stripControl){ // strip/aux set to CC
+      if (((exSensor) >= extracThrVal)) { // we are over the threshold, calculate CC value
+        stripCClevel = map(constrain((exSensor), extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
+      }
+
+      if (stripCClevel != oldstripcc) {
+        midiSendControlChange(stripCC, stripCClevel);
+        oldstripcc = stripCClevel;
+      }
+  }
+  #else
   exSensor = exSensor * 0.6 + 0.4 * touchRead(extraPin); // get sensor data, do some smoothing - SENSOR PIN 16 - PCB PIN "EC" (marked K4 on some prototype boards)
-#endif
-if (extraSrc) exSensorUse = exSensor; else exSensorUse = exSensor2;
+  exSensorUse = exSensor;
+  #endif
   exSensorIndicator = map(constrain(exSensorUse, extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
   if (pinkySetting == EC2){
     CC1sw = true;
@@ -2008,6 +2025,19 @@ void portamento_() {
     }
 #endif
   }
+
+#if defined(LITE) or defined(EVIR2)
+  if (1 == stripControl) {
+    // Portamento is controlled with glide strip/aux sensor
+
+    stripRead = map(constrain(touchSensorRollers.filteredData(extraPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, extracHiLimit, extracLoLimit);
+
+    if (portamento && ((stripRead) >= extracThrVal)) { // if we are enabled and over the threshold, send portamento
+      portSumCC += map(constrain((stripRead), extracThrVal, extracMaxVal), extracThrVal, extracMaxVal, 0, 127);
+    }
+  }
+#endif
+
   portSumCC = constrain(portSumCC, 0 , 127); // Total output glide rate limited to full range
   finalPortCC = map(portSumCC, 0 , 127, portLoLimit , portLimit); // Map to operate between set limits
 
@@ -2476,7 +2506,10 @@ void readSwitches() {
       pinkyKey=(touchValueRH[halfPitchBendKeyPin] < ctouchThrVal);
       specialKey=(touchValueRH[specialKeyPin] < ctouchThrVal);
       patchKey=(touchValueRH[lockGlidePin] < ctouchThrVal);
-      if (!patchKey) patchKey=pinkyKey=(touchValueRH[patchPinEVI] < ctouchThrVal);
+      if (!patchKey && (touchValueRH[patchPinEVI] < ctouchThrVal)){
+        patchKey=1;
+        pinkyKey=1;
+      }
 
       // Octave rollers
       int touchValueRollers[12];

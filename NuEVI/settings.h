@@ -97,8 +97,10 @@
 #define ROLLER_ADDR 186
 #define PORT_LO_LIM_ADDR 188
 #define EXTRA_SRC_ADDR 190
+#define STRIPCTL_ADDR 192
+#define STRIPCC_ADDR 194
 
-#define EEPROM_SIZE 192 //Last address +2
+#define EEPROM_SIZE 196 //Last address +2
 
 
 //DAC output modes
@@ -115,7 +117,7 @@
 #define DIPSW_FPENABLE    7
 
 //"factory" values for settings
-#define EEPROM_VERSION 47
+#define EEPROM_VERSION 48
 
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
@@ -203,6 +205,8 @@
 #define ROLLER_FACTORY 1
 #define PORT_LO_LIM_FACTORY 0
 #define EXTRA_SRC_FACTORY 0
+#define STRIPCTL_FACTORY 1
+#define STRIPCC_FACTORY 1
 
 #define NO_CHECKSUM 0x7F007F00
 

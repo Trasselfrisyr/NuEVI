@@ -1597,6 +1597,33 @@ const MenuEntrySub leverCCMenu = {
   , nullptr
 };
 
+const MenuEntrySub stripCtlMenu = {
+#if defined(EVIR2)
+  MenuType::ESub, "AUX CTL", "AUX DEST", &stripControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+#else
+  MenuType::ESub, "STRIP CTL", "STRIP DEST", &stripControl, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+#endif
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "OFF", "GLD", "CC" };
+    strncpy(out, labs[stripControl], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(STRIPCTL_ADDR,stripControl); }
+  , nullptr
+};
+
+const MenuEntrySub stripCCMenu = {
+#if defined(EVIR2)
+    MenuType::ESub, "AUX CC",  "CC NUMBER", &stripCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#else
+  MenuType::ESub, "STRIP CC",  "CC NUMBER", &stripCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#endif
+    [](SubMenuRef __unused, char* out, const char** __unused unit) {
+      numToString(stripCC, out);
+    },
+  [](const MenuEntrySub & __unused sub) { writeSetting(STRIPCC_ADDR,stripCC); }
+    , nullptr
+  };
+
 const MenuEntrySub portMenu = {
   MenuType::ESub, "GLIDE MOD", "PORT/GLD", &portamento, 0, 5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
@@ -1811,13 +1838,14 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portLimitMenu,
   (MenuEntry*)&portLoLimitMenu,
   (MenuEntry*)&vibratoSubMenu,
-  #if defined(LITE)
-  (MenuEntry*)&extraSrcMenu,
-  #endif
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
   (MenuEntry*)&harmSelectMenu,
+  #if defined(LITE)
+  (MenuEntry*)&stripCtlMenu,
+  (MenuEntry*)&stripCCMenu,
+  #endif
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
@@ -1836,11 +1864,12 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&portLimitMenu,
   (MenuEntry*)&portLoLimitMenu,
   (MenuEntry*)&vibratoSubMenu,
-  (MenuEntry*)&extraSrcMenu,
   (MenuEntry*)&extraMenu,
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
   (MenuEntry*)&harmSelectMenu,
+  (MenuEntry*)&stripCtlMenu,
+  (MenuEntry*)&stripCCMenu,
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
