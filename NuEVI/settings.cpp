@@ -628,6 +628,30 @@ void configModeSetup() {
     configShowMessage("Ready.");
 }
 
+bool resetSure(bool factoryReset){
+  delay(500);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextColor(WHITE);
+  display.setTextSize(0);
+
+  display.println("Reset all settings?");
+  display.println("Press UP to reset");
+  display.println("Press DOWN to exit");
+  display.println("");
+  display.display();
+  int loopExit = 2;
+  while (2 == loopExit){
+    if (digitalRead(ePin) && digitalRead(mPin) && digitalRead(dPin) && !digitalRead(uPin)) loopExit = 1; //UP pressed
+    if (digitalRead(ePin) && digitalRead(mPin) && !digitalRead(dPin) && digitalRead(uPin)) loopExit = 0; //DOWN pressed
+  }
+  if (loopExit) display.println("RESETTING"); else display.println("NO RESET - EXIT");
+  display.display();
+  delay(1000);
+  logoDisplay();
+  return (bool)loopExit;
+}
+
 //"Main loop". Just sits and wait for midi messages and lets the sysex handler do all the work.
 void configModeLoop() {
     usbMIDI.read();

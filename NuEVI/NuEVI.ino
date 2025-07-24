@@ -720,6 +720,7 @@ void setup() {
   }
   #endif
 
+  if (factoryReset) factoryReset = resetSure(factoryReset);
 
   //Read eeprom data into global vars
   readEEPROM(factoryReset);

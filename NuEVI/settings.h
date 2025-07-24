@@ -232,4 +232,6 @@ void configShowMessage(const char* message);
 void configModeSetup();
 void configModeLoop();
 
+bool resetSure(bool factoryReset);
+
 #endif

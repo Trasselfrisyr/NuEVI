@@ -41,6 +41,7 @@ extern const unsigned long menuTimeUp;           // menu shuts off after one min
 extern byte subVibSquelch;  // TODO: This is broken <- subVibSquelch is never set, we need another way to expose what menu is open.
 
 void initDisplay();
+void logoDisplay();
 void showVersion();
 void menu();
 void drawSensorPixels();

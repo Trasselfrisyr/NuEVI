@@ -255,6 +255,22 @@ void initDisplay() {
   memset(activeSub, 0, sizeof(activeSub));
 }
 
+void logoDisplay() {
+
+  // Show image buffer on the display hardware.
+  // Since the buffer is intialized with an Adafruit splashscreen
+  // internally, this will display the splashscreen.
+
+  display.clearDisplay();
+  #if defined(NURAD)
+  display.drawBitmap(0,0,nurad_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
+  #else
+  display.drawBitmap(0,0,nuevi_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
+  #endif
+  display.display();
+
+}
+
 void showVersion() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
