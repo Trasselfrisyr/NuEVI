@@ -1414,7 +1414,7 @@ void loop() {
       int timeDivider = timeDividerList[cvVibRate];
       int cvVib = map(((waveformsTable[map(currentTime%timeDivider, 0, timeDivider, 0, maxSamplesNum-1)] - 2047) * exSensorIndicator), -259968,259969,-11,11);
       cvPitchSum = cvPitch + cvVib;
-    }
+    } else cvPitchSum = cvPitch;
     int cvPitchTuned = 2*(cvTune-100)+map(cvPitchSum,0,4032,0,4032+2*(cvScale-100));
     analogWrite(dacPin,constrain(cvPitchTuned,0,4095));
   } else if(dacMode == DAC_MODE_BREATH) { // else breath CV on DAC pin, directly to unused pin of MIDI DIN jack
@@ -2180,7 +2180,7 @@ void autoCal() {
 #else
   calRead = touchRead(vibratoPin);
 #endif
-#if defined(SEAMUS) or defined(LITE)
+#if defined(SEAMUS) or defined(LITE) or defined(EVIR2)
 #else
   calRead = 3000-calRead;
 #endif

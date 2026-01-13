@@ -1615,7 +1615,7 @@ const MenuEntrySub leverCCMenu = {
 
 const MenuEntrySub stripCtlMenu = {
 #if defined(EVIR2)
-  MenuType::ESub, "AUX CTL", "AUX DEST", &stripControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "AUX CTL", "AUX DEST", &stripControl, 0, 2, MenuEntryFlags::EMenuEntryWrap,
 #else
   MenuType::ESub, "STRIP CTL", "STRIP DEST", &stripControl, 0, 2, MenuEntryFlags::EMenuEntryWrap,
 #endif

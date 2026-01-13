@@ -58,7 +58,7 @@ void updateSensorLEDs() {
     analogWrite(pLedPin, 0);
   }
   #if defined(NURAD)
-  if (exSensorIndicator){
+  if (exSensorIndicator && extraCT){
     analogWrite(eLedPin, map(constrain(exSensorIndicator, 0, 127), 0, 127, MIN_LED_BRIGHTNESS, EXTCON_LED_BRIGHTNESS));
   } else {
     analogWrite(eLedPin, 0);
