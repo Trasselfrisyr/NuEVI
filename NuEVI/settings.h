@@ -1,6 +1,7 @@
 #ifndef __SETTINGS_H
 #define __SETTINGS_H
 
+
 #include <stdint.h>
 
 // EEPROM addresses for settings
@@ -95,8 +96,11 @@
 #define CVRATE_ADDR 184
 #define ROLLER_ADDR 186
 #define PORT_LO_LIM_ADDR 188
+#define EXTRA_SRC_ADDR 190
+#define STRIPCTL_ADDR 192
+#define STRIPCC_ADDR 194
 
-#define EEPROM_SIZE 190 //Last address +2
+#define EEPROM_SIZE 196 //Last address +2
 
 
 //DAC output modes
@@ -113,7 +117,7 @@
 #define DIPSW_FPENABLE    7
 
 //"factory" values for settings
-#define EEPROM_VERSION 46
+#define EEPROM_VERSION 48
 
 #define BREATH_THR_FACTORY 1400
 #define BREATH_MAX_FACTORY 4000
@@ -134,7 +138,7 @@
 #define VELOCITY_FACTORY 0  // 0 is dynamic/breath controlled velocity
 #define PORTAM_FACTORY 2    // 0 - OFF, 1 - ON, 2 - SW
 #define PB_FACTORY 1        // 0 - OFF, 1 - 12
-#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal
+#define EXTRA_FACTORY 1     // 0 - OFF, 1 - Modulation wheel, 2 - Foot pedal, 3 - Filter Cutoff, 4 - Sustain pedal, 5 - GLD
 #define VIBRATO_FACTORY 4   // 0 - OFF, 1 - 9 depth
 #define DEGLITCH_FACTORY 20 // 0 - OFF, 5 to 70 ms in steps of 5
 #define PATCH_FACTORY 1     // MIDI program change 1-128
@@ -200,6 +204,9 @@
 #define CVRATE_FACTORY 3 // 3 is 5.5Hz
 #define ROLLER_FACTORY 1
 #define PORT_LO_LIM_FACTORY 0
+#define EXTRA_SRC_FACTORY 0
+#define STRIPCTL_FACTORY 1
+#define STRIPCC_FACTORY 1
 
 #define NO_CHECKSUM 0x7F007F00
 
@@ -224,5 +231,7 @@ void configShowMessage(const char* message);
 
 void configModeSetup();
 void configModeLoop();
+
+bool resetSure(bool factoryReset);
 
 #endif

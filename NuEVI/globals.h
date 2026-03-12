@@ -64,6 +64,11 @@ extern int calOffsetRollers[6];
 extern int calOffsetRH[12];
 extern int calOffsetLH[12];
 #endif
+#if defined(EVIER2)
+extern int calOffsetRollers[12];
+extern int calOffsetRH[12];
+#endif
+
 
 extern unsigned short breathThrVal;
 extern unsigned short breathMaxVal;
@@ -126,13 +131,16 @@ extern unsigned short hmzKey; // 0-11 (0 is C)
 extern unsigned short hmzLimit; // 2-5
 extern unsigned short otfKey; //OFF:ON
 extern unsigned short breathInterval; // 3-15
-extern unsigned short biteControl; // OFF, VIB, GLD, CC, VIB+, GLD+, VG, VG+
-extern unsigned short leverControl; // OFF, VIB, GLD, CC, VIB+, GLD+, VG, VG+
+extern unsigned short biteControl; // OFF, VIB, GLD, CC
+extern unsigned short leverControl; // OFF, VIB, GLD, CC
+extern unsigned short stripControl; // OFF, GLD, CC
 extern unsigned short biteCC; // 0 - 127
 extern unsigned short leverCC; // 0 -127
+extern unsigned short stripCC; // 0 -127
 extern unsigned short cvTune;  // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
 extern unsigned short cvScale; // 1 - 199 representing -99 to +99 in menu (offset of 100 to keep postitive)
 extern unsigned short cvVibRate; // OFF, 1 - 8 CV extra controller LFO vibrato rate 4.5Hz to 8Hz
+extern unsigned short extraSrc;   // LIP:GLS
 extern uint16_t gateOpenEnable;
 extern uint16_t specialKeyEnable;
 extern byte rotatorOn;
@@ -170,9 +178,11 @@ extern int lastBite;
 extern byte biteJumper;
 extern byte widiJumper;
 extern int exSensor;
+extern int exSensorUse;
+extern int exSensor2;
 extern int exSensorIndicator;
 
-extern int pitchBend;
+extern long pitchBend;
 extern int pbSend;
 
 extern int pbUp;
@@ -194,6 +204,7 @@ extern int breathLevel;
 extern byte portIsOn;
 extern int oldport;
 extern int finalPortCC;
+extern int oldstripcc;
 
 #if defined(NURAD)
             // Key variables, TRUE (1) for pressed, FALSE (0) for not pressed

@@ -187,6 +187,14 @@ void readEEPROM(const bool factoryReset) {
             writeSetting(PORT_LO_LIM_ADDR, PORT_LO_LIM_FACTORY);
         }
 
+        if(settingsVersion < 47) {
+            writeSetting(EXTRA_SRC_ADDR, EXTRA_SRC_FACTORY);
+        }
+        if(settingsVersion < 48) {
+          writeSetting(STRIPCTL_ADDR, STRIPCTL_FACTORY);
+          writeSetting(STRIPCC_ADDR, STRIPCC_FACTORY);
+        }
+
         writeSetting(VERSION_ADDR, EEPROM_VERSION);
     }
 
@@ -204,7 +212,7 @@ void readEEPROM(const bool factoryReset) {
     velocity        = readSettingBounded(VELOCITY_ADDR, 0, 127, VELOCITY_FACTORY);
     portamento      = readSettingBounded(PORTAM_ADDR, 0, 5, PORTAM_FACTORY);
     PBdepth         = readSettingBounded(PB_ADDR, 0, 12, PB_FACTORY);
-    extraCT         = readSettingBounded(EXTRA_ADDR, 0, 4, EXTRA_FACTORY);
+    extraCT         = readSettingBounded(EXTRA_ADDR, 0, 5, EXTRA_FACTORY);
     vibrato         = readSettingBounded(VIBRATO_ADDR, 0, 9, VIBRATO_FACTORY);
     deglitch        = readSettingBounded(DEGLITCH_ADDR, 0, 70, DEGLITCH_FACTORY);
     extracThrVal    = readSettingBounded(EXTRAC_THR_ADDR, extracLoLimit, extracHiLimit, EXTRAC_THR_FACTORY);
@@ -285,7 +293,10 @@ void readEEPROM(const bool factoryReset) {
     cvVibRate       = readSettingBounded(CVRATE_ADDR, 0, 8, CVRATE_FACTORY);
     rollerMode      = readSettingBounded(ROLLER_ADDR, 0, 3, ROLLER_FACTORY);
     portLoLimit     = readSettingBounded(PORT_LO_LIM_ADDR, 0, 127, PORT_LO_LIM_FACTORY);
-    
+    extraSrc        = readSettingBounded(EXTRA_SRC_ADDR, 0, 1, EXTRA_SRC_FACTORY);
+    stripControl    = readSettingBounded(STRIPCTL_ADDR, 0, 2, STRIPCTL_FACTORY);
+    stripCC         = readSettingBounded(STRIPCC_ADDR, 0, 127, STRIPCC_FACTORY);
+
     //Flags stored in bit field
     fastBoot         = (dipSwBits & (1<<DIPSW_FASTBOOT))?1:0;
     legacy           = (dipSwBits & (1<<DIPSW_LEGACY))?1:0;
@@ -617,7 +628,37 @@ void configModeSetup() {
     configShowMessage("Ready.");
 }
 
+bool resetSure(bool factoryReset){
+  delay(500);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextColor(WHITE);
+  display.setTextSize(0);
+
+  display.println("Reset all settings?");
+  display.println("Press UP to reset");
+  display.println("Press DOWN to exit");
+  display.println("");
+  display.display();
+  int loopExit = 2;
+  while (2 == loopExit){
+    if (digitalRead(ePin) && digitalRead(mPin) && digitalRead(dPin) && !digitalRead(uPin)) loopExit = 1; //UP pressed
+    if (digitalRead(ePin) && digitalRead(mPin) && !digitalRead(dPin) && digitalRead(uPin)) loopExit = 0; //DOWN pressed
+  }
+  if (loopExit) display.println("RESETTING"); else display.println("NO RESET - EXIT");
+  display.display();
+  delay(1000);
+  logoDisplay();
+  return (bool)loopExit;
+}
+
 //"Main loop". Just sits and wait for midi messages and lets the sysex handler do all the work.
 void configModeLoop() {
     usbMIDI.read();
+    if (!digitalRead(ePin)){
+      configShowMessage("Sending config...");
+      sendSysexSettings();
+      configShowMessage("Config sent.");
+      delay(3000);
+    }
 }

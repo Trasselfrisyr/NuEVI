@@ -255,6 +255,22 @@ void initDisplay() {
   memset(activeSub, 0, sizeof(activeSub));
 }
 
+void logoDisplay() {
+
+  // Show image buffer on the display hardware.
+  // Since the buffer is intialized with an Adafruit splashscreen
+  // internally, this will display the splashscreen.
+
+  display.clearDisplay();
+  #if defined(NURAD)
+  display.drawBitmap(0,0,nurad_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
+  #else
+  display.drawBitmap(0,0,nuevi_logo_bmp,LOGO16_GLCD_WIDTH,LOGO16_GLCD_HEIGHT,1);
+  #endif
+  display.display();
+
+}
+
 void showVersion() {
   display.setTextColor(WHITE);
   display.setTextSize(1);
@@ -1567,23 +1583,62 @@ const MenuEntrySub biteCCMenu = {
 };
 
 const MenuEntrySub leverCtlMenu = {
-  MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 7, MenuEntryFlags::EMenuEntryWrap,
+#if defined(LITE) || defined(EVIR2)
+  MenuType::ESub, "PAD CTL", "PAD DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+#else
+  MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
+#endif
   [](SubMenuRef __unused,char* out, const char ** __unused unit) {
-    const char* labs[] = { "OFF", "VIB", "GLD", "CC", "VIB+", "GLD+", "VG", "VG+" };
-    strncpy(out, labs[leverControl], 5);
+    #if defined(EVIR2)
+    const char* labs[] = { "OFF", "OFF", "GLD", "CC" };
+    #else
+    const char* labs[] = { "OFF", "VIB", "GLD", "CC" };
+    #endif
+    strncpy(out, labs[leverControl], 4);
   },
   [](SubMenuRef __unused sub) { writeSetting(LEVERCTL_ADDR,leverControl); }
   , nullptr
 };
 
 const MenuEntrySub leverCCMenu = {
+#if defined(LITE) || defined(EVIR2)
+  MenuType::ESub, "PAD CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#else
   MenuType::ESub, "LEVER CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#endif
   [](SubMenuRef __unused, char* out, const char** __unused unit) {
     numToString(leverCC, out);
   },
 [](const MenuEntrySub & __unused sub) { writeSetting(LEVERCC_ADDR,leverCC); }
   , nullptr
 };
+
+const MenuEntrySub stripCtlMenu = {
+#if defined(EVIR2)
+  MenuType::ESub, "AUX CTL", "AUX DEST", &stripControl, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+#else
+  MenuType::ESub, "STRIP CTL", "STRIP DEST", &stripControl, 0, 2, MenuEntryFlags::EMenuEntryWrap,
+#endif
+  [](SubMenuRef __unused,char* out, const char ** __unused unit) {
+    const char* labs[] = { "OFF", "GLD", "CC" };
+    strncpy(out, labs[stripControl], 4);
+  },
+  [](SubMenuRef __unused sub) { writeSetting(STRIPCTL_ADDR,stripControl); }
+  , nullptr
+};
+
+const MenuEntrySub stripCCMenu = {
+#if defined(EVIR2)
+    MenuType::ESub, "AUX CC",  "CC NUMBER", &stripCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#else
+  MenuType::ESub, "STRIP CC",  "CC NUMBER", &stripCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
+#endif
+    [](SubMenuRef __unused, char* out, const char** __unused unit) {
+      numToString(stripCC, out);
+    },
+  [](const MenuEntrySub & __unused sub) { writeSetting(STRIPCC_ADDR,stripCC); }
+    , nullptr
+  };
 
 const MenuEntrySub portMenu = {
   MenuType::ESub, "GLIDE MOD", "PORT/GLD", &portamento, 0, 5, MenuEntryFlags::EMenuEntryWrap,
@@ -1629,12 +1684,26 @@ const MenuEntrySub pitchBendMenu = {
 };
 
 const MenuEntrySub extraMenu = {
-  MenuType::ESub, "EXCT CC A", "EXCT CC A", &extraCT, 0,4, MenuEntryFlags::EMenuEntryWrap,
+  MenuType::ESub, "EXCT CC A", "EXCT CC A", &extraCT, 0,5, MenuEntryFlags::EMenuEntryWrap,
   [](SubMenuRef __unused,char* out, const char** __unused unit) {
-    const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP" };
+    const char* extraMenuLabels[] = { "OFF", "MW", "FP", "CF", "SP", "GLD" };
     strncpy(out, extraMenuLabels[extraCT], 12);
   },
   [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_ADDR,extraCT); }
+  , nullptr
+};
+
+const MenuEntrySub extraSrcMenu = {
+  MenuType::ESub, "EXCT SRC", "INPUT", &extraSrc, 0,1, MenuEntryFlags::EMenuEntryWrap,
+  [](SubMenuRef __unused,char* out, const char** __unused unit) {
+    #if defined(EVIR2)
+    const char* extraSrcMenuLabels[] = { "LIP", "AUX"};
+    #else
+    const char* extraSrcMenuLabels[] = { "LIP", "GLS"};
+    #endif
+    strncpy(out, extraSrcMenuLabels[extraSrc], 12);
+  },
+  [](const MenuEntrySub & __unused sub) { writeSetting(EXTRA_SRC_ADDR,extraSrc); }
   , nullptr
 };
 
@@ -1789,10 +1858,37 @@ const MenuEntry* controlMenuEntries[] = {
   (MenuEntry*)&extraCC2Menu,
   (MenuEntry*)&harmonicsMenu,
   (MenuEntry*)&harmSelectMenu,
+  #if defined(LITE)
+  (MenuEntry*)&stripCtlMenu,
+  (MenuEntry*)&stripCCMenu,
+  #endif
   (MenuEntry*)&deglitchMenu,
   (MenuEntry*)&pinkyMenu,
   (MenuEntry*)&lvlCtrlCCMenu,
   (MenuEntry*)&lpinky3Menu,
+  (MenuEntry*)&fingeringMenu,
+  (MenuEntry*)&rollerMenu,
+  (MenuEntry*)&pitchBendMenu
+};
+#elif defined(EVIR2)
+const MenuEntry* controlMenuEntries[] = {
+  (MenuEntry*)&biteCtlMenu,
+  (MenuEntry*)&biteCCMenu,
+  (MenuEntry*)&leverCtlMenu,
+  (MenuEntry*)&leverCCMenu,
+  (MenuEntry*)&portMenu,
+  (MenuEntry*)&portLimitMenu,
+  (MenuEntry*)&portLoLimitMenu,
+  (MenuEntry*)&vibratoSubMenu,
+  (MenuEntry*)&extraMenu,
+  (MenuEntry*)&extraCC2Menu,
+  (MenuEntry*)&harmonicsMenu,
+  (MenuEntry*)&harmSelectMenu,
+  (MenuEntry*)&stripCtlMenu,
+  (MenuEntry*)&stripCCMenu,
+  (MenuEntry*)&deglitchMenu,
+  (MenuEntry*)&pinkyMenu,
+  (MenuEntry*)&lvlCtrlCCMenu,
   (MenuEntry*)&fingeringMenu,
   (MenuEntry*)&rollerMenu,
   (MenuEntry*)&pitchBendMenu
@@ -1861,7 +1957,11 @@ const MenuEntrySub vibRetnMenu = {
 };
 
 const MenuEntrySub vibSenseMenu = {
+#if defined(LITE)
+  MenuType::ESub, "SENSE PAD", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+#else
   MenuType::ESub, "SENSE LVR", "LEVEL", &vibSens, 1, 12, MenuEntryFlags::ENone,
+#endif
   [](SubMenuRef __unused,char* textBuffer, const char** __unused unit) {
     numToString(vibSens, textBuffer);
   },
@@ -1870,7 +1970,11 @@ const MenuEntrySub vibSenseMenu = {
 };
 
 const MenuEntrySub vibSquelchMenu = {
+#if defined(LITE)
+  MenuType::ESub, "SQUELCH P", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+#else
   MenuType::ESub, "SQUELCH L", "LEVEL", &vibSquelch, 1, 30, MenuEntryFlags::ENone,
+#endif
   [](SubMenuRef __unused, char* textBuffer, const char** __unused unit) {
     numToString(vibSquelch, textBuffer);
   },
