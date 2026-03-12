@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include "Wiring.h"
+#include "wiring.h"
 #include "simusbmidi.h"
 
 #include "core_pins.h"
@@ -45,7 +45,7 @@ CPHA - Samples data on the falling edge of the data clock when 1, rising edge wh
 SPR1 and SPR0 - Sets the SPI speed, 00 is fastest (4MHz) 11 is slowest (250KHz)
 */
 
-
+#define __unused __attribute__((unused))
 
 #define LSBFIRST 0
 #define MSBFIRST 1
@@ -70,12 +70,15 @@ public:
 	void print(uint32_t intValue);
 	void write(const uint8_t str);
 	void flush();
-
+    void setRX(int) {};
+    void setTX(int) {};
 };
 
 
 extern SimSerial Serial;
+extern SimSerial Serial2; //Used for MIDI serial putput with default hardware
 extern SimSerial Serial3; //Used for MIDI serial putput with default hardware
+extern SimSerial Serial7; //Used for MIDI serial putput with default hardware
 extern SimUsbMidi usbMIDI;
 
 //extern void putString(int row, int col, int color, const char* msg, const FONT_INFO fontInfo);

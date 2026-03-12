@@ -8,10 +8,8 @@ void __disable_irq() {}
 
 struct IntervalTimer
 {
-    public:
-        IntervalTimer() {};
-        bool begin(void (*funct)(), unsigned int microseconds) { };
-
+    IntervalTimer() { };
+    bool begin(void (* __attribute__((unused)) func)() ,unsigned int __attribute__((unused)) microseconds) { return true; }
 };
 
 #endif

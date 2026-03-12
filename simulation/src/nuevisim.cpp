@@ -2,7 +2,7 @@
 #include <string>
 #include <iostream>
 
-#include <SDL2/SDL.h>
+#include "sdl_wrapper.h"
 
 #include <Adafruit_MPR121.h>
 #include <Adafruit_SSD1306.h>
@@ -34,7 +34,9 @@ extern Adafruit_SSD1306 display;
 extern Adafruit_MPR121 touchSensor;
 SimWire Wire;
 SimSerial Serial;
-SimSerial Serial3; //Midi
+SimSerial Serial2;
+SimSerial Serial3;
+SimSerial Serial7;
 SimUsbMidi usbMIDI;
 EEPROMClass EEPROM;
 
@@ -68,6 +70,14 @@ extern void readTeensySwitches(void);
 extern void readSwitches(void);
 extern int patchLimit(int value);
 
+void port(int portCC);
+void autoCal(void);
+void battCheck(void);
+void leverCC_(void);
+void biteCC_(void);
+static void startHarmonizerNotes(byte note);
+static void stopHarmonizerNotes(byte note);
+
 static uint8_t digitalInputs[256]; // random number of inputs..
 static uint8_t digitalOutputs[256]; // random number of inputs..
 static uint16_t analogInputs[256]; // random number of inputs..
@@ -93,6 +103,11 @@ void delay(unsigned int ms)
     uint32_t endTick = SDL_GetTicks() + ms;
     auto checktime = [endTick]() -> bool { return endTick > SDL_GetTicks(); };
     SimLoop(checktime,NULL);
+}
+
+void delayMicroseconds(unsigned int us) {
+    // since SDL_GetTicks resolution is ms, lets use delay()
+    delay(us/1000);
 }
 
 void pinMode(uint8_t __attribute((unused)) pin, uint8_t __attribute((unused)) mode)
@@ -558,7 +573,7 @@ static int SimRun(std::string eepromFile, bool eepromWrite, bool factoryReset, b
 
 static int SimInit()
 {
-	int result = result = SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
+	int result = SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO );
 	if( 0 != result ) {
 		fprintf(stderr, "Could not initialize SDL");
 		return 1;
@@ -675,3 +690,4 @@ int main(int argc, const char** argv)
 
     return SimRun(eepromFileName, args::get(eepromWrite), args::get(factoryReset), args::get(configMode));
 }
+

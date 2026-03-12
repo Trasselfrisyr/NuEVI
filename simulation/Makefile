@@ -1,21 +1,31 @@
 CC=clang
 CXX=clang++
 
-CFLAGS=-Wall -Wextra -Wpedantic -Wno-gnu -mmacosx-version-min=10.9 -F/Library/Frameworks
+CFLAGS=-Wall -Wextra -Wpedantic -Wno-gnu
 CFLAGS += -DARDUINO=10808 -DTEENSYDUINO=146 -D__MK20DX256__ -DUSB_MIDI
 
 RELEASE ?= 0
 ifeq ($(RELEASE), 1)
-   CFLAGS +=-O3
+   CFLAGS+=-O2
 else
-   CFLAGS += -O0 -g 
+   CFLAGS+=-O0 -g
 endif
 
 
 CXXFLAGS= $(CFLAGS) -std=c++14
 
-LIBS=-framework SDL2 -lc++ -lc -framework OpenGL
-LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
+LIBS=
+LDFLAGS=
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+  CFLAGS+=-mmacosx-version-min=10.9 -F/Library/Frameworks
+  LIBS+=-framework SDL2 -framework OpenGL
+  LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
+else ifeq ($(UNAME_S), Linux)
+  CFLAGS+=-D__LINUX__ $(shell pkg-config --cflags sdl2)
+  LIBS+=$(shell pkg-config --libs sdl2 opengl)
+endif
 
 SYSINC = ./include
 INCS = ../NuEVI ./include ./imgui ./gl3w
@@ -48,14 +58,16 @@ CXXFILES=		../NuEVI/menu.cpp \
 				imgui/examples/imgui_impl_opengl3.cpp
 
 
-CFILES= 		gl3w/gl3w.c
+CFILES= 		gl3w/gl3w.c	\
+				../NuEVI/name.c
+
 
 OBJS=$(CXXFILES:.cpp=.o) $(CFILES:.c=.o)
 
 all: $(TARGET)
 
 nuevisim: $(OBJS)
-	$(LD) $(LDFLAGS) -o $(TARGET) $(LIBS) $^
+	$(CXX) $(LDFLAGS) -o $(TARGET) $^ $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCDIRS) -c -o $@  $<

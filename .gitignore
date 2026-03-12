@@ -1,3 +1,4 @@
 .vscode/ipch
 *.o
 .DS_STORE
+simulation/nuevisim
