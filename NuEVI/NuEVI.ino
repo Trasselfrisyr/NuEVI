@@ -2009,7 +2009,7 @@ void portamento_() {
       portSumCC += map(constrain(biteSensor, portamThrVal, portamMaxVal), portamThrVal, portamMaxVal, 0, 127);
     }
   }
-  if (2 == leverControl) {
+  if (2 == leverControl || 5 == leverControl || 6 == leverControl || 7 == leverControl) {
     // Portamento is controlled with thumb lever
 #if defined(LITE) or defined(EVIR2)
     leverPortRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
@@ -2095,7 +2095,7 @@ void portOff() {
 
 void biteCC_() {
   int biteCClevel = 0;
-  if (3 == biteControl){
+  if (3 == biteControl || 4 == biteControl || 5 == biteControl || 7 == biteControl){
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
