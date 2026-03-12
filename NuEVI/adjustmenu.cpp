@@ -133,7 +133,7 @@ static void leverSave(const AdjustMenuEntry& e) {
 }
 
 const AdjustMenuEntry leverAdjustMenu = {
-  #if defined(LITE) or defined(EVIR2)
+  #if defined(LITE) || defined(EVIR2)
   "PAD", 
   #else
   "LEVER", 
@@ -193,7 +193,7 @@ void autoCalSelected() {
   }
   // Pitch Bend
   if(adjustOption == 2) {
- #if defined(LITE) or defined(EVIR2)
+ #if defined(LITE) || defined(EVIR2)
     calRead = map(constrain(touchSensorRollers.filteredData(pbUpPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
     calReadNext = map(constrain(touchSensorRollers.filteredData(pbDnPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, pitchbHiLimit, pitchbLoLimit);
 #else
@@ -208,12 +208,12 @@ void autoCalSelected() {
   }
   // Lever
   if(adjustOption == 5) {
-#if defined(LITE) or defined(EVIR2)
+#if defined(LITE) || defined(EVIR2)
     calRead = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
 #else
     calRead = touchRead(vibratoPin);
 #endif
-#if defined(SEAMUS) or defined(LITE) or defined(EVIR2)
+#if defined(SEAMUS) || defined(LITE) || defined(EVIR2)
 #else
     calRead = 3000-calRead;
 #endif
@@ -432,7 +432,7 @@ void plotSensorPixels(){
     if (biteJumper) { //PBITE (if pulled low with jumper or if on a NuRAD, use pressure sensor instead of capacitive bite sensor)
       biteSensor=analogRead(bitePressurePin); // alternative kind bite sensor (air pressure tube and sensor)  PBITE
     } else {
-#if defined(LITE) or defined(EVIR2)
+#if defined(LITE) || defined(EVIR2)
 #else
       biteSensor = touchRead(bitePin);     // get sensor data, do some smoothing - SENSOR PIN 17 - PCB PINS LABELED "BITE" (GND left, sensor pin right)
 #endif
@@ -445,7 +445,7 @@ void plotSensorPixels(){
     int pos2 = map(constrain(pbDn, pitchbLoLimit, pitchbHiLimit), pitchbLoLimit, pitchbHiLimit, 28, 118);
     redraw = updateSensorPixel(pos, pos2);
   }
-  #if defined(LITE) or defined(EVIR2)
+  #if defined(LITE) || defined(EVIR2)
   else if(adjustOption == 3) {
     int pos = map(constrain(exSensor, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
     int pos2 = map(constrain(exSensor2, extracLoLimit, extracHiLimit), extracLoLimit, extracHiLimit, 28, 118);
@@ -515,12 +515,12 @@ void plotSensorPixels(){
   }
   #endif
   else if(adjustOption == 5) {
-#if defined(LITE) or defined(EVIR2)
+#if defined(LITE) || defined(EVIR2)
   int rd = map(constrain(touchSensorRollers.filteredData(vibratoPin), ctouchLoLimit, ctouchHiLimit), ctouchLoLimit, ctouchHiLimit, leverHiLimit, leverLoLimit);
 #else
   int rd = touchRead(vibratoPin);
 #endif
-#if defined(SEAMUS) or defined(LITE) or defined(EVIR2)
+#if defined(SEAMUS) || defined(LITE) || defined(EVIR2)
     int pos = map(constrain(rd, leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);
 #else
      int pos = map(constrain(3000-rd, leverLoLimit, leverHiLimit), leverLoLimit, leverHiLimit, 28, 118);

@@ -1583,7 +1583,7 @@ const MenuEntrySub biteCCMenu = {
 };
 
 const MenuEntrySub leverCtlMenu = {
-#if defined(LITE) or defined(EVIR2)
+#if defined(LITE) || defined(EVIR2)
   MenuType::ESub, "PAD CTL", "PAD DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
 #else
   MenuType::ESub, "LEVER CTL", "LEVER DEST", &leverControl, 0, 3, MenuEntryFlags::EMenuEntryWrap,
@@ -1601,7 +1601,7 @@ const MenuEntrySub leverCtlMenu = {
 };
 
 const MenuEntrySub leverCCMenu = {
-#if defined(LITE) or defined(EVIR2)
+#if defined(LITE) || defined(EVIR2)
   MenuType::ESub, "PAD CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
 #else
   MenuType::ESub, "LEVER CC",  "CC NUMBER", &leverCC, 0, 127, MenuEntryFlags::EMenuEntryWrap,
