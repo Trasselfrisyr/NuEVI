@@ -500,6 +500,10 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
       if(val<ctouchLoLimit || val>ctouchHiLimit) continue;
     }
 
+    if(addr == LEVER_THR_ADDR || addr == LEVER_MAX_ADDR) {
+      if(val<leverLoLimit || val>leverHiLimit) continue;
+    }
+
     writeSetting(addr, val);
   }
 
