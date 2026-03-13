@@ -1347,7 +1347,7 @@ void loop() {
   }
   // Is it time to send more CC data?
   currentTime = millis();
-  if ((currentTime - ccBreathSendTime) > (breathInterval-1)){
+  if ((currentTime - ccBreathSendTime) >= breathInterval ) {
     breath();
     ccBreathSendTime = currentTime;
   }
