@@ -17,18 +17,20 @@ CXXFLAGS= $(CFLAGS) -std=c++14
 LIBS=
 LDFLAGS=
 
+SYSINC = ./include
+INCS = ../NuEVI ./include ./imgui ./gl3w
+
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)
-  CFLAGS+=-mmacosx-version-min=10.9 -F/Library/Frameworks
-  LIBS+=-framework SDL2 -framework OpenGL
-  LDFLAGS=-macosx_version_min 10.9 -rpath @executable_path/../Frameworks
+  SYSINC+=./platform/macos
+  CFLAGS+=-mmacos-version-min=10.9 -F/Library/Frameworks
+  LIBS+=-framework SDL2 -framework OpenGL -F/Library/Frameworks
+  LDFLAGS+=-Wl,-rpath,@executable_path/../Frameworks
+  LDFLAGS+=-Wl,-rpath,/Library/Frameworks
 else ifeq ($(UNAME_S), Linux)
   CFLAGS+=-D__LINUX__ $(shell pkg-config --cflags sdl2)
   LIBS+=$(shell pkg-config --libs sdl2 opengl)
 endif
-
-SYSINC = ./include
-INCS = ../NuEVI ./include ./imgui ./gl3w
 
 INCDIRS = $(addprefix -isystem ,$(SYSINC))
 INCDIRS += $(addprefix -I,$(INCS))
