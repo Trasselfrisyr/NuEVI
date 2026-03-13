@@ -663,6 +663,6 @@ void configModeLoop() {
       configShowMessage("Sending config...");
       sendSysexSettings();
       configShowMessage("Config sent.");
-      delay(3000);
+      delay(1500);
     }
 }
