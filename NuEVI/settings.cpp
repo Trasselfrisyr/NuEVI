@@ -500,6 +500,10 @@ bool receiveSysexSettings(const uint8_t* data, const uint16_t length) {
       if(val<ctouchLoLimit || val>ctouchHiLimit) continue;
     }
 
+    if(addr == LEVER_THR_ADDR || addr == LEVER_MAX_ADDR) {
+      if(val<leverLoLimit || val>leverHiLimit) continue;
+    }
+
     writeSetting(addr, val);
   }
 
@@ -595,7 +599,7 @@ void handleSysex(uint8_t *data, unsigned int length) {
   } else if(!strncmp(messageCode, "c03", 3)) { //Version info request
     configShowMessage("Sending version.");
     sendSysexVersion();
-  } else if(!strncmp(messageCode, "c02", 3)) { //New config incoming
+  } else if(!strncmp(messageCode, "c01", 3) || !strncmp(messageCode, "c02", 3)) { //New config incoming. Accept both c01 and c02 so device will accept its own sysex dump.
     configShowMessage("Receiving config...");
 
     //Tell receiveSysexSettings about what's between sysex start and end markers
@@ -659,6 +663,6 @@ void configModeLoop() {
       configShowMessage("Sending config...");
       sendSysexSettings();
       configShowMessage("Config sent.");
-      delay(3000);
+      delay(1500);
     }
 }

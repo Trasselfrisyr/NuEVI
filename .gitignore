@@ -1,4 +1,6 @@
-.vscode/ipch
+.vscode
+.pio
 *.o
 .DS_STORE
+*.code-workspace
 simulation/nuevisim
