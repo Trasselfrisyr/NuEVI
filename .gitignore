@@ -3,3 +3,4 @@
 *.o
 .DS_STORE
 *.code-workspace
+simulation/nuevisim

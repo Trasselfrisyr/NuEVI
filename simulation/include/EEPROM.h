@@ -45,11 +45,9 @@ private:
     uint8_t someFakeEEPROM_memory[2048]; //Teensy 3.2 size
     FILE *storage;
     bool autoUpdate;
-
-
 };
 
-extern EEPROMClass EEPROM  __unused;
+extern EEPROMClass EEPROM;
 
 
 #endif

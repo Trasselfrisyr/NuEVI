@@ -2,7 +2,9 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 
+#define __unused __attribute__((unused))
 
 #include "simusbmidi.h"
 
