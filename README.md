@@ -1,4 +1,6 @@
-!! ORIGINAL REPO HAS BEEN MOVED TO BERGLUNDINST ORGANISATION !!
+### ⚠️ ORIGINAL REPO HAS BEEN MOVED TO BERGLUNDINST ORGANISATION ⚠️
+
+This repository exists for archival purposes. Please update any references/links to https://github.com/berglundinst/NuEVI instead.
 
 
 # NuEVI
